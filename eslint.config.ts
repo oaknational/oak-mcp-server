@@ -32,7 +32,6 @@ export default defineConfig(
     files: ['packages/**/*.ts'],
     rules: {
       '@typescript-eslint/no-confusing-void-expression': 'off',
-      '@typescript-eslint/no-deprecated': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
       '@typescript-eslint/no-unnecessary-type-arguments': 'off',
       '@typescript-eslint/no-unnecessary-type-parameters': 'off',

@@ -1,0 +1,56 @@
+{
+  "name": "@oaknational/posthog-node",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Privacy-preserving PostHog Node adapter for Oak MCP product analytics",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist .turbo",
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run && node src/posthog-mcp-logger.smoke.ts",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@oaknational/build-metadata": "workspace:*",
+    "@oaknational/observability": "workspace:*",
+    "@oaknational/result": "workspace:*",
+    "@posthog/mcp": "0.11.4",
+    "posthog-node": "5.48.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/posthog-node"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/posthog-node#readme"
+}
