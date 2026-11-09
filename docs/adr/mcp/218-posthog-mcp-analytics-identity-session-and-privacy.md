@@ -1,0 +1,787 @@
+> **Archival copy from OOCE.**
+> OOCE path: `docs/architecture/architectural-decisions/218-posthog-mcp-analytics-identity-session-and-privacy.md`
+> OOCE SHA: `d5846cf6f37270c73291640a526124429369ee97`
+> Frozen at that SHA. This repository does not maintain it.
+
+# ADR-218: PostHog MCP Analytics Identity, Session, and Privacy Boundary
+
+**Status**: Accepted (revised 2026-07-27; amended 2026-08-03 — retention
+period 12 months → 5 years, see the Amendment at the end; implementation and
+October public-beta enablement remain to be proven)
+**Date**: 2026-07-26
+**Related**:
+[ADR-112](112-per-request-mcp-transport.md) — fresh server and
+transport per request;
+[ADR-143](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md) —
+provider-neutral fan-out;
+[ADR-160](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md) —
+non-bypassable redaction;
+[ADR-162](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/162-observability-first.md) — product and engineering
+evidence axes;
+[ADR-171](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/171-observability-configuration-orthogonal-axes.md) —
+sink selection;
+[ADR-212](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/212-federated-visibility-authority-and-evidence-boundaries.md)
+— product-usage and operational-evidence separation.
+**Resolves**: ADR-160's deferred Clerk identity-envelope question for
+PostHog.
+**Supersedes in part**: ADR-162's 2026-04-19 History note where it
+defers PostHog until after public beta and treats Sentry as sufficient
+for the first product-usage question; ADR-171's expectation that
+PostHog extends the homogeneous diagnostic sink registry. ADR-162's
+five-axis and vendor-independence decisions and ADR-171's single
+selection axis remain unchanged.
+
+## Context
+
+Oak already measures and reports engineering errors, traces, and
+runtime behaviour. Sentry is one destination for that evidence. The
+missing capability is product understanding: deterministic evidence
+of which MCP tools, resources, prompts, and other protocol features
+people use, how often they use them, the order of calls, whether they
+complete successfully, whether authenticated actors return over time,
+and how engagement unfolds.
+
+That need is not met by sending more diagnostic telemetry. Product
+interaction facts and engineering diagnostics answer different
+questions, have different audiences, and require different data
+envelopes.
+
+The MCP service runs as Express on Vercel. Every request creates a
+fresh MCP server and transport; there is no process-resident session
+to reuse. The service nevertheless receives a verified, durable Clerk
+principal, and the MCP Streamable HTTP protocol can carry an opaque
+session identifier from initialisation into later requests. These
+facts create several identifiers with different meanings:
+
+- authenticated actor;
+- Clerk authentication session;
+- MCP protocol session;
+- individual call or event;
+- inferred period of activity; and
+- host conversation.
+
+Conflating them would make the resulting statistics unreliable and
+would create unnecessary cross-system linkability.
+
+The app is rendered inside third-party AI-assistant hosts. Its view is
+web technology, but it is not an Oak webpage and Oak does not control
+the host's cookie banner or persistence. The intended analytics are
+therefore server-side product events, not browser analytics.
+
+PostHog's official `@posthog/mcp` package supplies the chosen
+first-party MCP event constructors. It is a pre-1.0 beta whose event
+surface may change, so its output is an untrusted vendor input to Oak's
+policy boundary, not the definition of Oak's analytics contract.
+
+Evaluation of the `@posthog/mcp@0.10.0` baseline found that neither
+automatic server wrapper is protocol-transparent enough for Oak's
+server. Its high-level wrapper removes legitimate `context` and
+`conversation_id` tool-call arguments before Oak's handlers receive
+them. Its low-level wrapper preserves those arguments but reconstructs
+`tools/list` results without legal `nextCursor` and top-level `_meta`
+fields. Independently of that dated baseline, instrumentation that
+changes the MCP wire contract is not observational and is not accepted.
+
+## Decision
+
+### 1. Keep product analytics and diagnostics distinct
+
+Oak adopts a provider-neutral product-analytics capability alongside,
+not inside, the engineering error-observability capability.
+
+- PostHog receives approved product-interaction facts.
+- Sentry remains the specialist surface for errors, traces, exception
+  payloads, and operational diagnosis.
+- Consumer and application-composition code depends on Oak contracts.
+  Only the PostHog adapter imports the official `posthog-node` and
+  `@posthog/mcp` packages.
+- No cross-provider correlation identifier is emitted by default.
+  Any future call-level bridge requires a separately approved purpose,
+  identifier, access boundary, and delivery plan. No stable person
+  identifier is shared between PostHog and Sentry.
+
+`OBSERVABILITY_SINKS` remains the one selection axis. A single closed
+`OBSERVABILITY_SINK_DEFINITIONS` registry classifies its literals by
+capability class, with exact `diagnostic: ['sentry', 'file']` and
+`product_analytics: ['posthog']` groups. Literal spreads and indexed
+access derive the full selection and diagnostic-only tuples and unions;
+no second kind list or widening assertion is permitted. The homogeneous
+`SinkRegistry` uses only the diagnostic union. PostHog projects through
+a parallel discriminated product-analytics runtime with exact on and
+inert off modes; it is not represented as an exception/message sink.
+Production continues to require at least one diagnostic-group member,
+so selecting only PostHog does not satisfy the remote-diagnostics
+locality rule. This preserves one configuration axis without inventing
+`ObservabilitySink<'posthog'>`.
+
+This is a per-sink projection of one protected source context. It does
+not weaken ADR-160. The keyed PostHog identity is derived inside the
+authentication and policy boundary, before the raw Clerk principal is
+discarded. The shared redactor then closes the remaining candidate
+context, and the destination projection is reconstructed from only
+those redacted fields plus the already-derived pseudonym. No outbound
+projection can read the raw principal after the barrier.
+
+### 2. Model five measurement units without substitution
+
+1. **Actor.** Repeat-use analysis uses a stable PostHog-scoped
+   pseudonym derived from the verified Clerk principal through a
+   versioned, destination- and environment-scoped keyed function. The
+   raw Clerk identifier, name, email, and authentication-session
+   identifier do not leave the authentication boundary for PostHog.
+   The pseudonym is personal data for Oak; it is not described as
+   anonymous.
+2. **MCP protocol session.** A session exists only when the server
+   issues an opaque `MCP-Session-Id`, the client replays it on later
+   requests, and Oak can verify that the identifier was server-issued
+   and remains bound to the authenticated actor. The researched
+   `@posthog/mcp` baseline does not meet that bar: its token is
+   unsigned client-readable JSON, forged tokens and client metadata
+   are accepted, its SSE response does not emit the newly minted
+   header, and JSON continuity depends on replay of that untrusted
+   token. Oak therefore removes `$session_id` from the current event
+   projection and reports no protocol-session statistics. A future
+   Oak-owned session mechanism must be authenticated, actor-bound,
+   replay-tested, and independent of process memory before this
+   measurement unit becomes populated.
+3. **Call or event.** Every observed interaction has a UUIDv7 event
+   identifier that remains stable across delivery retry. It identifies
+   one fact, not one person, authentication session, protocol session,
+   or conversation.
+4. **Activity window.** A downstream, versioned rule may group ordered
+   calls by observed timing. The output is always labelled as an
+   inferred activity window. It is not renamed as an MCP session or
+   host conversation.
+5. **Host conversation.** No host-conversation identifier is captured
+   while continuity depends on an agent remembering and echoing a
+   value. PostHog's optional conversation mechanism stays disabled.
+
+The Clerk authentication-session identifier remains an authentication
+concept and is not reused as any of these measurement units.
+
+The relationship for the current release is:
+
+```text
+PostHog-scoped actor
+  └─ zero or more calls/events
+
+inferred activity windows = versioned analytical views over calls
+proven MCP protocol sessions = empty until Oak supplies a trusted round trip
+host conversations = not measured
+```
+
+### 3. Define raw data as allowlisted facts, never content
+
+The raw analytical grain is one unaggregated fact row per observed
+event. “Raw” never means raw request or response material.
+
+The closed event envelope may contain:
+
+- event identifiers;
+- a same-action cross-provider correlation identifier only after the
+  separate approval required above, never by default;
+- server-observed timestamps and duration;
+- MCP primitive or method and an allowlisted capability name;
+- bounded outcome or error category;
+- protocol, client, environment, and release categories. The client
+  categories are three orthogonal closed axes, each derived inside this
+  process and never a forwarded client string, and each an unverified
+  client self-declaration that must never gate access or entitlement:
+  `oak_client_family` (vendor, from the `initialize` handshake only),
+  `oak_client_surface` (form factor) and `oak_client_product` (vendor
+  product, derived per request — see the 2026-08-13 Amendment);
+- a rebuilt `$mcp_client_user_agent`: the product spelling from that closed
+  table, an optional major version of at most two digits, and an optional
+  build surface from a closed list, admitted only when re-parsing it
+  reproduces it byte for byte (see the 2026-09-07 Amendment);
+- the PostHog-scoped actor pseudonym; and
+- a trusted protocol-session projection, only after the future proof
+  described above exists.
+
+It excludes:
+
+- tool arguments and responses;
+- prompts, model output, resource content, search terms, query text,
+  feedback text, and other free text;
+- names, emails, raw Clerk identifiers, authentication-session
+  identifiers, tokens, headers, cookies, IP addresses, and GeoIP;
+- exception messages, stack traces, and diagnostic payloads;
+- browser autocapture, session replay, device fingerprinting, and
+  iframe persistence; and
+- stable person identifiers shared with another processor.
+
+Oak's transport observer constructs only the closed facts needed by
+the applicable official manual capture call. It never supplies request
+parameters, responses, errors, or free text. Oak then reconstructs
+every outbound event from the exact allowlist and drops unknown events
+and properties. Vendor sanitisation is defence in depth.
+
+The supported PostHog deletion API resolves a Person before it queues
+event deletion. Purely profileless events can be located by
+`distinct_id`, but cannot be deleted through that API because no
+Person is resolved. Oak therefore permits one minimal PostHog Person
+record for the destination-scoped actor pseudonym. It contains no
+name, email, direct identifier, `$set`, `$set_once`, person property,
+or group membership. This record is a deletion index and repeat-use
+anchor, not a richer user profile. It remains pseudonymous personal
+data and is deleted with the actor's events.
+
+### 4. Preserve serverless transport without trusting package sessions
+
+ADR-112's fresh MCP server and transport per request remains binding.
+A protocol session is client-carried context across those fresh
+instances, not a long-lived Express process, sticky Vercel instance,
+or server-side session store.
+
+Oak observes the protocol through a provider-neutral decorator around
+the public MCP SDK `Transport` passed to `server.connect`. The
+application retains its concrete transport for transport-owned
+operations such as HTTP request handling. The decorator recognises
+only the three approved operations, projects only closed facts from
+authenticated request/response pairs, isolates concurrent requests,
+and forwards protocol traffic unchanged. Unsupported or unmatched
+traffic is forwarded without analytics. When analytics is off,
+observation returns the original transport reference.
+
+The official manual `PostHogMCP.captureInitialize`,
+`captureToolsList`, and `captureToolCall` methods construct the three
+vendor events. Oak passes only the approved identity and categorical
+facts. It does not call the package's automatic high- or low-level
+instrumentation wrappers.
+
+This clarifies the old assumption that per-request serverless
+transport and protocol-session measurement are incompatible in
+principle. It does not make the package's current token trustworthy.
+
+The dated baseline probe found that `@posthog/mcp@0.10.0` mutates
+`transport.sessionId` only after the MCP SDK has already constructed
+SSE response headers. SSE therefore sends no `MCP-Session-Id`. JSON
+response mode constructs headers later and does send the token, but
+the token is an unsigned base64url JSON object and the package accepts
+client-forged session IDs and client metadata. The package's generated
+session-per-request fallback and replayed JSON token are both removed
+from Oak events. Actor, call, order, duration, outcome, and inferred
+activity-window measurements remain deterministic without them.
+
+### 5. Limit analytics to what is strictly necessary for a safe service
+
+Oak cannot currently present one meaningful and reliable permission
+choice before capture across every third-party MCP host. Authentication,
+OAuth scopes, host tool approval, server metadata, and optional MCP
+elicitation do not together create such a choice and must not be
+presented as though they do.
+
+That constraint narrows the processing; it does not widen it. Oak
+collects only the closed, content-free interaction facts that it needs
+to build, operate, and maintain a safe MCP service. Without evidence of
+how people interact with the service—which capabilities are used, in
+what order, with what outcome, and where interaction fails—Oak cannot
+responsibly understand the service it operates or improve its safety
+and usefulness.
+
+The event envelope in this ADR is therefore the strict ceiling for
+product analytics. Every event and field must be necessary for a named
+service-understanding, safety, maintenance, or improvement question.
+Anything merely interesting, potentially useful later, content-bearing,
+or outside the allowlist is not collected.
+
+“Strictly necessary” in this decision names Oak's product and
+architecture boundary. It does not assert that PostHog is required to
+execute an individual tool call, or pre-empt the distinct terminology
+and tests in data-protection law. The official-source research about
+PECR, UK GDPR, notice, objections, and consent remains part of the
+evidence supplied to Oak's compliance and privacy specialists.
+
+This ADR does not prescribe how those specialists conduct their work.
+It supplies the system facts, product purpose, chosen data ceiling,
+retention and deletion commitments, and retained research for their
+independent assessment and advice. Their conclusions and any resulting
+changes are recorded in the consultation surface.
+
+Oak provides clear information about this processing. The absence of a
+sensible permission surface is not treated as permission, and OAuth
+authorisation is not described as agreement to analytics.
+
+Choice remains documented as a possible future product capability, not
+as the initial approach. The research shows that a later choice could
+use an Oak-controlled preference or suppression state inside the
+authenticated boundary, checked before every PostHog emit. The Clerk
+connection journey, an Oak-hosted account/privacy page, an app-only MCP
+App action, and optional MCP form or URL elicitation are possible
+surfaces. None is misrepresented as a universal current mechanism.
+
+Before public capture is enabled, Oak must also have:
+
+- an MCP-specific privacy notice and an approved lawful basis;
+- an approved data-minimising event and identifier allowlist;
+- least-privilege access to unaggregated rows;
+- a maximum 5-year (60-month) retention period across PostHog and every
+  authorised copy (amended 2026-08-03 from 12 months — see the Amendment
+  at the end);
+- a tested request-for-deletion route across PostHog and every
+  authorised copy; and
+- a documented separation between PostHog, Sentry, and any
+  Oak-controlled join.
+
+The release sequence, approvals, and evidence links live in Linear and
+the internal compliance consultation. This ADR records the durable
+boundary, not delivery status.
+
+### 6. Use one MCP-dedicated client and a serverless delivery boundary
+
+Oak uses one warm-instance PostHog client for the current all-MCP event
+estate. The official manual MCP API may apply its installed package
+name and version as client provenance; that label is accurate for the
+three manually constructed MCP events and Oak-authored MCP resource
+events. The app currently serves no MCP prompts. A second client is
+warranted only if Oak later sends genuinely non-MCP product events
+that need different provenance or policy.
+
+The provider-neutral transport observer supplies initialisation, tool
+listing, and tool-call facts to the official manual MCP API. Oak emits
+resource reads explicitly through a closed adapter; it does not expose
+the Node client's general capture method to application code.
+
+The transport projection and final client policy are synchronous,
+closed reconstruction boundaries. The observer reads only the
+allowlisted categorical facts from protocol messages and passes no
+content fields to the vendor API. The client-level policy is the
+universal, non-bypassable final reconstruction barrier for manual MCP
+and Oak-authored resource events.
+
+Observation and capture faults fail open: they emit only the fixed,
+content-free `posthog_event_policy_failed` operational signal. The
+bounded synchronous projection does not await analytics delivery,
+change protocol semantics, replace the delegate promise, or annotate
+an MCP message. Identity-projection failure remains a distinct
+`posthog_identity_projection_failed` signal with the same content-free
+and fail-open constraint.
+
+The module-scoped client receives Vercel's `waitUntil` function. The
+installed compatible Node SDK then schedules a bounded debounced flush
+and extends the invocation lifetime until that work settles. Oak does
+not construct or shut down a client per request, and it does not
+depend on an unawaited background task after the response. Delivery
+failures are reported through a content-free operational signal and
+never change the MCP response.
+
+The integration manifests use compatible, non-exact dependency ranges.
+The lockfile records the exact tested resolution, not the supported
+version contract. An upgrade is routine maintenance when the complete
+operation, privacy, identity, protocol, lifecycle, retry, and
+final-wire contract suite passes. If a vendor API changes, the adapter
+is repaired while those behaviours remain fixed; the architecture is
+reopened only if Oak changes the boundary deliberately or a vendor
+change makes it impossible to preserve.
+
+## Rationale
+
+### Why a destination-scoped pseudonym
+
+Anonymous-per-request events cannot answer repeat-use questions and
+cannot reliably locate a person's events for deletion. Sending the raw
+Clerk identifier exposes an authentication principal to a processor.
+A universal UUIDv7 person key would add a mapping store and create an
+unnecessary cross-system join key, while also revealing issuance time.
+
+A destination-scoped keyed projection provides stable PostHog
+attribution and deterministic deletion lookup without disclosing the
+source identifier or enabling identifier-only joins with other
+processors. The minimal Person row is necessary because PostHog's
+supported event-deletion route is person-scoped. A profileless
+materialise-then-delete workaround exists in current implementation
+details, but it is not a documented deletion contract and is not the
+baseline.
+
+### Why protocol sessions but not conversations
+
+The MCP specification defines a conditional, client-carried session
+round-trip for Streamable HTTP. In principle, continuity can survive
+fresh serverless request instances because a conforming client carries
+it. The current package token is not server-authenticated or
+actor-bound, so Oak does not populate that measurement unit yet.
+
+PostHog's conversation feature has different semantics: it alters tool
+schemas and responses and relies on an agent to echo an agent-controlled
+value. That is useful as a cooperative grouping hint, but it cannot
+support deterministic Oak statistics. Activity windows meet the
+remaining engagement-analysis need without pretending Oak can see a
+host conversation.
+
+### Why official manual MCP events plus an Oak transport boundary
+
+The official package already constructs canonical MCP initialisation,
+tool-listing, and tool-call events. Its automatic wrappers do more than
+observe: the high-level wrapper removes legitimate request fields and
+the low-level wrapper removes legitimate response fields. Oak
+therefore owns the observation seam at the public transport boundary
+and calls the official manual event API with closed categorical facts.
+Oak adds resource-read observations through its own closed MCP adapter,
+and Oak's allowlist defines what may leave the process. A future prompt
+event requires a separately approved event surface and deterministic
+observation seam.
+
+## Alternatives considered
+
+1. **Use the raw Clerk identifier in PostHog.** Rejected because it
+   discloses the authentication principal and makes cross-processor
+   linkage too easy.
+2. **Mint one universal UUIDv7 user identifier.** Rejected because it
+   creates a new mapping obligation and a general-purpose join key.
+3. **Stay anonymous per request.** Rejected because it cannot answer
+   approved repeat-use questions or support deterministic
+   person-scoped deletion.
+4. **Use the Clerk authentication session as the MCP session.**
+   Rejected because sign-in lifecycle and MCP protocol lifecycle are
+   different.
+5. **Enable PostHog conversation IDs.** Rejected while continuity
+   depends on model cooperation and untrusted agent input.
+6. **Collect arguments and responses for later analysis.** Rejected
+   because the stated product questions do not require content and
+   the privacy cost is disproportionate.
+7. **Add browser PostHog to the embedded view.** Rejected because the
+   server observes the required MCP interactions directly and Oak
+   does not control the host's cookie or storage surface.
+8. **Use an OAuth analytics scope as consent.** Rejected because
+   authorisation scopes grant client access to protected resources;
+   they do not prove a valid, purpose-specific data-processing choice.
+9. **Rely only on MCP elicitation for the analytics choice.** Rejected
+   because elicitation is optional, client-negotiated, and occurs
+   inside another MCP interaction. It cannot guarantee a decision
+   before the first event that might otherwise be captured.
+10. **Require a universal cross-host permission gate in the initial
+    baseline.** Not selected because MCP provides no reliable,
+    mandatory pre-capture permission surface across hosts. Oak instead
+    limits collection to the interaction facts strictly necessary to
+    build, operate, and maintain a safe service. The research into a
+    possible future choice mechanism is retained for a later product
+    decision.
+11. **Keep all events profileless.** Rejected because PostHog's
+    supported bulk-deletion API resolves Person records before it
+    queues event deletion. A minimal pseudonymous Person with no
+    person properties provides a documented, testable deletion route.
+12. **Treat the package session token as an MCP session.** Rejected
+    because SSE does not return it and JSON mode accepts unsigned,
+    client-forged session and client-metadata claims.
+13. **Use two PostHog clients for the current event set.** Rejected
+    because all current events describe MCP interaction and share one
+    policy and lifecycle. The package's client relabelling is accurate
+    for that bounded estate.
+14. **Use the package's high-level automatic wrapper.** Rejected
+    because it removes legitimate `context` and `conversation_id`
+    tool-call arguments before dispatch and therefore changes
+    application behaviour.
+15. **Use the package's low-level automatic wrapper.** Rejected
+    because it reconstructs tool-list results without legal
+    `nextCursor` and top-level `_meta` fields and therefore changes the
+    wire response.
+
+## Consequences
+
+### Positive
+
+- Product and data teams can analyse capability adoption, call order,
+  engagement intensity, and approved repeat use from deterministic
+  fact rows without presenting an untrusted package token as a
+  protocol session.
+- Sentry and PostHog remain useful specialist surfaces rather than
+  becoming two copies of the same telemetry.
+- Actor and call measurement works across fresh Vercel request
+  instances without a shared session store.
+- The stable actor projection is useful within PostHog but resists
+  identifier-only linkage elsewhere.
+- Content collection is excluded by architecture rather than analyst
+  convention.
+
+### Costs and constraints
+
+- The actor pseudonym remains personal data and brings transparency,
+  access, retention, and erasure duties.
+- A minimal Person row exists in PostHog for each actor pseudonym so
+  the supported event-deletion route can resolve it.
+- Key versioning must preserve deletion across every retained
+  pseudonym version without creating a shadow identity ledger.
+- The current release reports no MCP protocol-session statistics. A
+  future mechanism must prove server issuance, actor binding, client
+  replay, and transport compatibility before that changes.
+- A pre-1.0 vendor package requires manual-API and final-wire contract
+  tests and re-verification whenever its compatible dependency range
+  advances.
+- Event-level access and exports require explicit governance because
+  minimised rows can still reveal behavioural patterns.
+
+Package-level contract tests and application-level analytics-on/off
+wire equivalence remain required delivery evidence. This ADR does not
+claim that proof is complete.
+
+### Maturity
+
+The decision is accepted. Repository proof remains required by MCP-63.
+MCP-117 separately owns controlled deployed-event evidence, while
+MCP-173 owns public-beta governance and enablement. Acceptance of this
+ADR does not assert that the integration, notice, retention, access
+controls, or deletion route are already live.
+
+## Relationships and supersession
+
+- ADR-112 remains authoritative for fresh per-request server and
+  transport construction. This ADR clarifies that a client-carried
+  protocol-session identifier does not make the Vercel runtime
+  stateful.
+- ADR-160's closure principle remains unchanged. This ADR resolves its
+  identity question with explicit per-sink projections and a
+  PostHog-only pseudonym.
+- ADR-162's observability axes and vendor-independence principle remain
+  unchanged. Its earlier PostHog deferral and “Sentry is sufficient”
+  sequencing note are superseded.
+- ADR-171 remains the configuration-axis authority: PostHog is
+  selected through the existing sink axis rather than a new mode.
+  This ADR supersedes only its earlier expectation that every selected
+  kind extends the homogeneous diagnostic sink registry.
+- ADR-201 continues to own any future evidence-edge connector or
+  write-back mechanism.
+- ADR-212 continues to classify PostHog as product-usage evidence,
+  Sentry as operational evidence, and neither as proof of value or
+  impact.
+- The April and May 2026 identity explorations remain historical
+  evidence but are superseded where they prescribe anonymous
+  per-request identity, raw Clerk IDs in PostHog, no MCP protocol
+  session, or deferred PostHog delivery.
+
+## Official evidence
+
+- [MCP Streamable HTTP session semantics](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+- [PostHog MCP analytics](https://posthog.com/docs/mcp-analytics)
+- [PostHog MCP conversation-ID caveats](https://posthog.com/docs/mcp-analytics/conversation-id)
+- [PostHog MCP user identification](https://posthog.com/docs/mcp-analytics/identifying-users)
+- [PostHog MCP privacy and redaction](https://posthog.com/docs/mcp-analytics/privacy)
+- [PostHog manual MCP event API (`PostHogMCP` source)](https://github.com/PostHog/posthog-js/blob/a027bf5c0d48a39388f9db3da7565e2d283e0b65/packages/mcp/src/extensions/posthog-mcp.ts)
+- [PostHog anonymous and identified events](https://posthog.com/docs/data/anonymous-vs-identified-events)
+- [PostHog person deletion](https://posthog.com/docs/data/persons#deleting-person-data)
+- [PostHog bulk-deletion implementation](https://github.com/PostHog/posthog/blob/1b7381290f60da044f05358ae09f46a4b3e7c827/posthog/api/person.py#L653-L722)
+- [PostHog MCP stateless and multi-instance support (`@posthog/mcp` 0.10.0 source)](https://github.com/PostHog/posthog-js/tree/a027bf5c0d48a39388f9db3da7565e2d283e0b65/packages/mcp#stateless--multi-pod-servers)
+- [Vercel `waitUntil`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package)
+- [Clerk session-token claims](https://clerk.com/docs/guides/sessions/session-tokens)
+- [ICO pseudonymisation guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/)
+- [ICO storage-and-access technology guidance](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/)
+- [ICO right-to-object guidance](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights/right-to-object/)
+- [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation)
+
+## Amendment: Retention period 12 months → 5 years (2026-08-03)
+
+§5 originally committed this processing to a maximum **12-month** retention
+period. That figure was a provisional default carried from an early note with
+no recorded reasoning (established by investigation, 2026-08-03). It is
+amended to a maximum **5 years (60 months)**, aligning MCP analytics retention
+with the period Oak already applies to main-website (OWA) analytics and other
+products.
+
+Decided 2026-08-03 by the project owner with the DPO/privacy lead and the
+product and analytics leads; the author of the original provisional figure was
+consulted before the change. Rationale: MCP usage analytics do not differ in
+nature from Oak's other products, so retention stays in line with them; a
+12-month window makes year-on-year comparison impossible; and what is
+collected is deliberately minimal (session starts and tool usage — no content,
+no IP or location, pseudonymous identifiers only), so a shorter window is not
+warranted on data-minimisation grounds.
+
+This amendment revises the decision record only. The enforced PostHog
+configuration (project retention setting and the Oak-owned scheduled deletion
+job) is re-based from 12 months to 5 years separately, tracked in Linear. The
+tested person-scoped deletion route committed in §5 is unchanged.
+
+## Amendment: `oak_client_product`, a per-request client-product category (2026-08-13)
+
+§3 permits "client categories" without naming them. This amendment records a
+third such axis, `oak_client_product`, with the closed vocabulary
+`claude_ai | claude_code | codex | other | unavailable`. It stays within the
+existing §3 ceiling — the permit bullet already read "client categories", and
+enumerating the three axes in fact narrows it, since a fourth axis now needs its
+own amendment. Like its two siblings it is derived inside this process from a
+self-declaring client header, and only the derived category is emitted; the
+envelope gains one field per automatic event, and no new kind of fact.
+
+**Why a third axis rather than reusing one.** Measured 2026-08-13 (MCP-594):
+every `$mcp_tool_call` reached PostHog with no client attribution at all, so
+tool error rates could not be read by client — the blocker on MCP-574. The
+cause is structural, not a coding slip. `oak_client_family` derives from the
+`initialize` handshake's `clientInfo`, and ADR-112's per-request transport
+destroys the observing instance before the next request arrives, so it can never
+reach a `tools/call`; independent confirmation is that Sentry carries
+`mcp.client.name` on 1,754 spans over 14 days, every one of them an
+`initialize` and none a tool call. `oak_client_surface` _is_ per-request, but is
+a form-factor vocabulary, so it merges Claude Code and Codex into `cli` —
+collapsing precisely the distinction the error-rate question needs. Form factor
+and vendor product are orthogonal, so the axes coexist rather than one widening.
+
+**Why not PostHog's own `harness` dimension.** PostHog resolves that column
+server-side from `$mcp_client_name`, `$mcp_client_user_agent` and
+`$mcp_vendor_client` — raw client strings, two of them raw headers, which the §3
+exclusion list forbids. Emitting them was rejected: live traffic contains opaque
+32-character per-installation identifiers arriving as `clientInfo.name`, so
+forwarding the raw value would place a stable per-installation identifier in the
+envelope. PostHog's built-in column therefore stays empty by decision, and the
+equivalent breakdown is read from `oak_client_product`. Recorded here so a future
+reader does not mistake that empty column for a data defect.
+
+**Standing constraints on the vocabulary.** Every token row must be
+evidence-backed by a client string verified first-hand in live traffic; matching
+is anchored to the header's leading token, so a value that merely contains a
+product name is not treated as that product self-declaring; and a missing or
+non-canonical category drops the event rather than defaulting it. Adding a client
+is a token row plus its derivation-table test row — never a looser match rule,
+and never a forwarded raw string.
+
+**`other` and `unavailable` are separate members, and the line between them is
+container readability — never value presence.**
+
+- `other` — the header container was readable and named no product Oak
+  recognises, **including when it carried no client header at all**. Every client
+  may choose that, so this is a measurement and its share is expected to be
+  non-zero (Oak's own probes and the browser widget live there).
+- `unavailable` — the header container was missing, or opaque to an own-property
+  read, so the derivation could not run. Only a change in transport shape
+  produces it: an SDK release that stops populating `requestInfo`, or a move to a
+  Fetch-native adapter whose `Headers` instance the reader cannot see. It is
+  therefore readable as a defect signal, and a rising share is the alarm on this
+  mechanism's own health.
+
+Drawing the line at value presence instead — the shape first implemented under
+this amendment — let any client raise `unavailable` simply by omitting its
+User-Agent. That made a documented transport alarm client-influenceable, which is
+not an alarm: the same false-green that made `harness = other` unreadable,
+recreated one layer up inside its own cure. The readability decision therefore
+belongs at the reader boundary, which is the only place that can see which
+container it was handed, and the reader reports it explicitly rather than letting
+an empty value list stand for both facts. Corrected on review, 2026-08-13
+(reviewer the product owner, agent-authored by Vesta hunts Expanse).
+
+**The value is an unverified self-declaration.** Any client can send
+`user-agent: claude-code/…`; leading-token anchoring makes accidental
+misattribution harder but does not resist deliberate impersonation, and it is
+unauthenticated by construction. It is therefore sound for analytics aggregates
+and service understanding, and **must never gate access, authorisation, quota,
+rate limiting, entitlement, or tiering**. Any conclusion drawn from a per-product
+breakdown — including an error rate — is influenceable by a client that chooses
+to misdeclare, so treat it as evidence about a population rather than proof about
+a named vendor.
+
+**Scope.** The two per-request axes are carried on the three automatic events
+(`$mcp_initialize`, `$mcp_tools_list`, `$mcp_tool_call`) only.
+`$mcp_resource_read` carries no client attribution at all, so a resource-read
+breakdown is not comparable to a tool-call one.
+
+Decided by the Director seat under the five Decision Lenses (two independent
+converging runs), 2026-08-13, on the MCP-594 investigation. The event-contract
+surface obligation is MCP-364's.
+
+## Amendment: a rebuilt `$mcp_client_user_agent` so PostHog's harness column resolves (2026-09-07)
+
+The 2026-08-13 amendment recorded that PostHog's built-in `harness` column
+"stays empty by decision", and that emitting the three raw properties it
+resolves from was rejected. This amendment reverses that outcome for ONE of
+the three, `$mcp_client_user_agent`, and only in a rebuilt form; §3's
+"may contain" list gains the matching bullet, which is the allowlist entry
+this section records. The raw values stay excluded for the same reasons as
+before: live `clientInfo.name` values carry per-installation identifiers, and
+the raw user agent and vendor header are unbounded client-controlled strings.
+
+**What changes.** The three automatic events may now carry a
+`$mcp_client_user_agent` rebuilt from three pieces:
+
+- the product token, re-emitted in the spelling observed in live traffic
+  from the same evidence-backed table that derives `oak_client_product`
+  (`Claude-User`, `claude-code`, `codex-mcp-client`). A header naming no
+  product omits the whole property, so the column resolves to "other"
+  exactly as before;
+- an optional major version: `0`, or `1` to `99` with no leading zero, read
+  from the ASCII digits after the product token's `/` and copied from the
+  header. This is the one place client-supplied bytes reach the value, and it
+  is bounded to exactly a hundred distinct values by construction. A longer,
+  zero-padded or non-ASCII digit run — a 16-digit installation id, say —
+  omits the version rather than truncating it, so the slot cannot carry a
+  stable per-installation identifier. The pre-review
+  shape of this amendment allowed a digits-and-dots version of up to sixteen
+  characters, which the same day's security review identified as exactly
+  that channel; the bound is the cure;
+- an optional build surface: the first bracketed segment of the header, when
+  it is in the closed list for THAT product — `cli`, `sdk-ts`,
+  `claude-vscode`, `claude-desktop` for `claude-code`; `chatgpt`, `codex`,
+  `agent builder`, `responses api` for `openai-mcp`; none for any other
+  product, whose PostHog label is an exact token match that a surface would
+  break — and only when a version is present (PostHog reads the product as
+  everything before the first `/`, so without one the bracket would be
+  swallowed into the product token). These lists are the vendor's own
+  vocabulary, taken from its labelling rule (below), not sets observed
+  first-hand in Oak's traffic — only `(cli)` has been — which is a stated
+  exception to the 2026-08-13 amendment's evidence-backed-token constraint,
+  accepted because every member is a fixed string re-emitted from the list
+  and never a forwarded byte.
+
+**The OpenAI row, added ahead of launch.** Oak launches on OpenAI's platform
+in the week of 2026-09-07, and at the product owner's direction the product table
+gains an `openai-mcp` row before the first live OpenAI header has been seen.
+That is a second stated exception to the evidence-backed-token constraint,
+grounded in PostHog's published resolver and its fixtures, which record the
+OpenAI client's shape from PostHog's own traffic: `openai-mcp/<version>` with
+a `(ChatGPT)`, `(Codex)`, `(Agent Builder)` or `(Responses API)` surface. The
+closed product vocabulary gains `chatgpt` and `openai` accordingly: an
+`openai-mcp` header with the `chatgpt` surface is `chatgpt`, with `codex` it
+is `codex` (the same client that also reports as `codex-mcp-client`), and
+otherwise `openai`. The check on this row is the first live OpenAI user agent
+Oak observes after launch, which confirms it or corrects it; the row and its
+surfaces are expected to need adjustment as that telemetry arrives.
+
+**How PostHog labels it.** The labelling rule is open source, in
+PostHog/posthog at commit `b6c6a333` (2026-09-02):
+[`products/mcp_analytics/backend/mcp_harness.py`](https://github.com/PostHog/posthog/blob/b6c6a333056473cc7f20513256b62daeb5c05669/products/mcp_analytics/backend/mcp_harness.py),
+with input-to-label examples in
+[`tests/test_harness_breakdown.py`](https://github.com/PostHog/posthog/blob/b6c6a333056473cc7f20513256b62daeb5c05669/products/mcp_analytics/backend/tests/test_harness_breakdown.py)
+beside it. Its precedence is the vendor header, then a user agent whose
+product is `claude-code` or starts `grok`, then the client name, then any
+other user agent; Oak emits neither a vendor header nor a client name, so
+for Oak's events the user agent resolves. For such an event it takes the
+product token before the first `/` plus the first bracketed segment and
+buckets the pair: `claude-code/2 (cli)` labels "Claude Code",
+`(sdk-ts)` "Claude Agent SDK", `(claude-vscode)` "Claude Code (VS Code)",
+`(claude-desktop)` "Claude Desktop", `Claude-User` "Claude.ai", and
+`codex-mcp-client/0` "OpenAI Codex". The rebuilt shapes above were chosen
+against that rule, and a unit test in the adapter carries a transcription of
+it so a change to the shape is judged against the label it will receive. It
+is Oak's copy of the vendor's rule, not the rule; a vendor change is caught
+by the post-deploy check.
+
+The validator at the final event policy is the derivation itself: a value is
+admitted iff re-parsing it reproduces it byte for byte, so the grammar has one
+home and a new table row cannot drift from the barrier. A mismatch drops the
+property, not the event.
+
+**What this adds to the envelope.** Two facts beyond `oak_client_product`:
+the client software's major version, and a build surface finer than
+`oak_client_surface` (which reads `claude-desktop` as `cli` and `sdk-ts` as
+`sdk`, and cannot tell the VS Code extension from any other `vscode` token).
+Both are properties of the calling software, never of the teacher; both are
+unverified self-declarations under the 2026-08-13 amendment's standing
+constraints and must never gate anything. The guarantee given up is "no
+header version byte ships": the wire test that pinned the full version absent
+now pins the major version present and the full version absent.
+
+**Why.** MCP-574 reads error rates off PostHog's built-in MCP dashboard, whose
+harness breakdown does not read `oak_client_product`. Every call therefore
+showed as "other" there, which was mistaken for an instrumentation defect and
+drew a recommendation to run the vendor's auto-instrumentation wizard — which
+would have shipped the very content §3 excludes. Populating the column from a
+closed reconstruction answers the dashboard without reopening §3.
+
+**What did NOT change.** The raw `$mcp_client_name`, `$mcp_client_version` and
+`$mcp_vendor_client` properties stay excluded: the version FACT ships only as
+the bounded major inside the rebuilt user agent, never the raw
+`clientInfo.version`. `$mcp_resource_read` still carries no client
+attribution. Intent, arguments, responses, error text, and every other §3
+exclusion are untouched.
+
+Directed by the product owner, 2026-09-07 (MCP-687); agent-authored; the version
+bound and the recompute validator follow the same day's pre-PR security and
+code reviews. The acceptance check is an observed breakdown in the live
+project after deploy, which is also the only detector of a later change to
+the vendor's rule.
