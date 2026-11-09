@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 
 class Refusal extends Error {}
@@ -79,6 +79,28 @@ const SHORT_FLAGS = (letter, valueLetters = '') => ({
   },
 });
 
+function withoutValues(words) {
+  const kept = [];
+  for (let index = 0; index < words.length; index += 1) {
+    const word = words[index];
+    const cluster = /^-[a-zA-Z]/.test(word) ? word.slice(1) : '';
+    const valueAt = [...cluster].findIndex((char) => COMMIT_VALUE_LETTERS.includes(char));
+    const longName = word.startsWith('--') ? word.split('=')[0] : '';
+    if (valueAt !== -1) {
+      kept.push(`-${cluster.slice(0, valueAt + 1)}`);
+    } else if (COMMIT_VALUE_OPTIONS.has(longName)) {
+      kept.push(longName);
+    } else {
+      kept.push(word);
+    }
+    const separated = valueAt === cluster.length - 1 || word === longName;
+    if (COMMIT_VALUE_OPTIONS.has(word) || (valueAt !== -1 && separated && !word.includes('='))) {
+      index += 1;
+    }
+  }
+  return kept;
+}
+
 function tokenize(text) {
   const segments = [];
   let segment = [];
@@ -99,7 +121,8 @@ function tokenize(text) {
     }
     segment = [];
   };
-  for (const char of text) {
+  for (let at = 0; at < text.length; at += 1) {
+    const char = text[at];
     if (quote) {
       if (char === quote) {
         quote = '';
@@ -113,10 +136,21 @@ function tokenize(text) {
       endToken();
     } else if (SEPARATORS.has(char)) {
       endSegment();
-    } else if ((char === '>' || char === '<') && !/^\d*$/.test(token)) {
-      endToken();
-      token = char;
+    } else if (char === '>' || char === '<') {
+      if (!/^\d*$/.test(token)) {
+        endToken();
+      }
+      token += char;
+      while (text[at + 1] === char) {
+        token += char;
+        at += 1;
+      }
+      if (text[at + 1] === '|' || text[at + 1] === '&') {
+        token += text[at + 1];
+        at += 1;
+      }
       hasToken = true;
+      endToken();
     } else {
       token += char;
       hasToken = true;
@@ -133,7 +167,16 @@ const isEnvPath = (path) => {
 };
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
-const HUSKY_PATH = /(?:^|\/)\.husky(?:\/|$)/;
+const HOOK_FILES = /(?:^|\/)(?:\.husky(?:\/|$)|\.git\/config(?:\.worktree)?$)/;
+const OUTPUT_REDIRECT = /^\d*>>?[|&]?$/;
+const INCLUDE_PATH = /^include(?:if\..+)?\.path$/i;
+const TEMP_DIR = /^\/(?:tmp|private\/tmp|var\/folders)\//;
+const SKIP_MESSAGE = "editing .husky/ or .git/config changes the repository's hooks";
+const isAbbreviation = (word, full, shortest) => word.length >= shortest && full.startsWith(word);
+const isHookSkipSwitch = (word) =>
+  ['--no-verify', '--no-pre-commit', '--no-commit-msg'].includes(word) ||
+  isAbbreviation(word, '--no-verify', '--no-v'.length);
+let rootDir = process.cwd();
 
 function worktree(dir) {
   const status = spawnSync('git', ['-C', dir, 'status', '--porcelain', '--untracked-files=all'], {
@@ -220,10 +263,14 @@ function checkGit(args, callDir) {
   let index = 0;
   for (; index < args.length; index += 1) {
     const word = args[index];
-    if (word === '-C') {
-      index += 1;
-      dir = isAbsolute(args[index] ?? '') ? args[index] : join(dir, args[index] ?? '');
-    } else if (['-c', '--git-dir', '--work-tree', '--namespace', '--exec-path'].includes(word)) {
+    if (word === '-C' || (word.startsWith('-C') && word.length > 2)) {
+      const target = word === '-C' ? (args[index + 1] ?? '') : word.slice(2);
+      index += word === '-C' ? 1 : 0;
+      dir = isAbsolute(target) ? target : join(dir, target);
+    } else if (/^--(?:git-dir|work-tree)(?:=|$)/.test(word)) {
+      dir = UNKNOWN_DIR;
+      index += word.includes('=') ? 0 : 1;
+    } else if (['-c', '--namespace', '--exec-path'].includes(word)) {
       index += 1;
     } else if (!word.startsWith('-')) {
       break;
@@ -237,7 +284,8 @@ function checkGit(args, callDir) {
   const readsConfig = sub === 'config' && rest.some((word) => CONFIG_READS.has(word));
   if (
     args.slice(0, index).some((word) => HOOKS_PATH.test(word)) ||
-    (!readsConfig && rest.some((word) => HOOKS_PATH.test(word)))
+    (!readsConfig &&
+      (sub === 'commit' ? withoutValues(rest) : rest).some((word) => HOOKS_PATH.test(word)))
   ) {
     refuseSkip("overriding core.hooksPath skips the repository's hooks");
   }
@@ -247,8 +295,8 @@ function checkGit(args, callDir) {
   const options = rest.slice(0, rest.indexOf('--') === -1 ? undefined : rest.indexOf('--'));
 
   if (['commit', 'push', 'merge', 'rebase', 'cherry-pick', 'am', 'revert', 'pull'].includes(sub)) {
-    for (const word of options) {
-      if (['--no-verify', '--no-pre-commit', '--no-commit-msg'].includes(word)) {
+    for (const word of sub === 'commit' ? withoutValues(options) : options) {
+      if (isHookSkipSwitch(word)) {
         refuseSkip(`${word} is a hook-skip switch`);
       }
       if (
@@ -276,7 +324,7 @@ function checkGit(args, callDir) {
       }
       break;
     case 'commit':
-      for (const word of options) {
+      for (const word of withoutValues(options)) {
         if (word === '--all' || SHORT_FLAGS('a', COMMIT_VALUE_LETTERS).test(word)) {
           refuse(
             `git commit ${word} stages every tracked edit. Stage by explicit pathspec, then commit.`,
@@ -377,6 +425,9 @@ function checkGit(args, callDir) {
       }
       break;
     case 'config':
+      if (!readsConfig && rest.some((word) => INCLUDE_PATH.test(word))) {
+        refuseSkip('a config include can set core.hooksPath');
+      }
       if (
         rest.some((word) => /^alias\./i.test(word)) &&
         !rest.some((word) => ['--get', '--get-all', '--list', '-l'].includes(word))
@@ -418,7 +469,7 @@ function checkAlias(sub, rest, dir) {
   }
 }
 
-function checkRm(args) {
+function checkRm(args, dir) {
   const flags = args.filter((word) => /^-[^-]/.test(word)).join('');
   const recursive = args.includes('--recursive') || /[rR]/.test(flags);
   const force = args.includes('--force') || /f/.test(flags);
@@ -426,7 +477,13 @@ function checkRm(args) {
     return;
   }
   for (const path of args.filter((word) => !word.startsWith('-'))) {
-    if (path.includes('..') || !SCRATCH.test(path)) {
+    const resolved = resolve(dir, path);
+    const inside =
+      isAbsolute(path) ||
+      path.startsWith('$') ||
+      (dir !== UNKNOWN_DIR && !relative(rootDir, resolved).startsWith('..')) ||
+      TEMP_DIR.test(`${resolved}/`);
+    if (path.includes('..') || !SCRATCH.test(path) || !inside) {
       refuse(
         `rm -rf is allowed only inside the scratch area (.cache, node_modules, dist, coverage, a temp directory), not on ${path}.`,
       );
@@ -452,13 +509,55 @@ function unwrap(command, args) {
   return undefined;
 }
 
-function checkSegment(words, callDir, depth) {
+const WRAPPER_VALUE_LETTERS = 'uCngUS';
+const WRAPPER_LONG_OPTIONS = new Set(['--unset', '--chdir']);
+
+function wrapperOption(word, next) {
+  const [name, attached] = word.split(/=(.*)/s);
+  if (WRAPPER_LONG_OPTIONS.has(name)) {
+    return {
+      value: attached ?? next,
+      consumesNext: attached === undefined,
+      chdir: name === '--chdir',
+    };
+  }
+  if (!/^-[a-zA-Z]/.test(word)) {
+    return undefined;
+  }
+  for (let at = 1; at < word.length && /[a-zA-Z]/.test(word[at]); at += 1) {
+    if (WRAPPER_VALUE_LETTERS.includes(word[at])) {
+      const rest = word.slice(at + 1);
+      return {
+        value: rest === '' ? next : rest,
+        consumesNext: rest === '',
+        chdir: word[at] === 'C',
+      };
+    }
+  }
+  return undefined;
+}
+
+function checkSegment(words, startDir, depth) {
   if (depth > 4) {
     return;
   }
+  let callDir = startDir;
+  let wrapped = false;
   let start = 0;
   for (; start < words.length; start += 1) {
     const word = words[start];
+    if (/^GIT_(?:DIR|WORK_TREE)=/.test(word)) {
+      callDir = UNKNOWN_DIR;
+    }
+    wrapped ||= PREFIXES.has(word);
+    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
+    if (option !== undefined) {
+      if (option.chdir) {
+        callDir = cdTarget(callDir, option.value);
+      }
+      start += option.consumesNext ? 1 : 0;
+      continue;
+    }
     if (HOOK_SKIP_ENV.has(word)) {
       refuseSkip(`${word} is a hook-skip switch`);
     }
@@ -481,7 +580,7 @@ function checkSegment(words, callDir, depth) {
   if (command === 'git') {
     checkGit(args, callDir);
   } else if (command === 'rm') {
-    checkRm(args);
+    checkRm(args, callDir);
   } else if (SHELLS.has(command)) {
     const flag = args.findIndex((word) => /^-[a-z]*c$/.test(word));
     if (flag !== -1) {
@@ -491,24 +590,18 @@ function checkSegment(words, callDir, depth) {
     checkCommand(args.join(' '), callDir, depth + 1);
   }
   if (!['git', 'echo', 'printf'].includes(command)) {
-    const secret = args.find((word) => isEnvPath(word.replace(/^[<>]+/, '')));
+    const secret = args.find((word) => isEnvPath(word.replace(/^\d*[<>]+/, '')));
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
     }
   }
+  const hookFile = (word) => HOOK_FILES.test(resolve(callDir, word));
   if (
-    (args.some((word) => HUSKY_PATH.test(word)) && touchesHooks(command, args)) ||
-    redirectsInto(words, HUSKY_PATH)
+    (args.some(hookFile) && touchesHooks(command, args, hookFile)) ||
+    words.some((word, index) => OUTPUT_REDIRECT.test(word) && hookFile(words[index + 1] ?? ''))
   ) {
-    refuseSkip("editing .husky/ changes the repository's hooks");
+    refuseSkip(SKIP_MESSAGE);
   }
-}
-
-function redirectsInto(words, pattern) {
-  return words.some((word, index) => {
-    const target = /^\d*>>?\|?(.*)$/.exec(word);
-    return target !== null && pattern.test(target[1] === '' ? (words[index + 1] ?? '') : target[1]);
-  });
 }
 
 const HOOK_EDITORS = new Set([
@@ -526,7 +619,7 @@ const HOOK_EDITORS = new Set([
 const COPIERS = new Set(['cp', 'install', 'rsync']);
 const GIT_HOOK_EDITS = new Set(['rm', 'mv', 'checkout', 'restore', 'apply', 'clean']);
 
-function touchesHooks(command, args) {
+function touchesHooks(command, args, hookFile) {
   if (command === 'sed') {
     return args.some((word) => word === '--in-place' || /^-[a-zA-Z]*i/.test(word));
   }
@@ -536,11 +629,14 @@ function touchesHooks(command, args) {
   if (COPIERS.has(command)) {
     const operands = args.filter((word) => !word.startsWith('-'));
     return (
-      HUSKY_PATH.test(operands.at(-1) ?? '') ||
-      args.some(
-        (word, index) =>
-          /^(?:-t|--target-directory)/.test(word) && HUSKY_PATH.test(args[index + 1] ?? word),
-      )
+      hookFile(operands.at(-1) ?? '') ||
+      args.some((word, index) => {
+        const flag = /^(?:-t|--target-directory=?)/.exec(word)?.[0];
+        return (
+          flag !== undefined &&
+          hookFile(word.length > flag.length ? word.slice(flag.length) : (args[index + 1] ?? ''))
+        );
+      })
     );
   }
   if (command !== 'git') {
@@ -557,6 +653,9 @@ function checkCommand(text, callDir, depth = 0) {
     return;
   }
   const dirs = [callDir];
+  for (const [, inner] of text.matchAll(/\$\(([^()]*)\)/g)) {
+    checkCommand(inner ?? '', callDir, depth + 1);
+  }
   for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
     if (segment[0] === 'cd') {
       dirs.push(cdTarget(dirs.at(-1), segment[1]));
@@ -588,6 +687,7 @@ function decide(call) {
   }
   const input = call.tool_input ?? {};
   const callDir = call.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  rootDir = callDir;
   const filePath = String(input.file_path ?? '');
   switch (call.tool_name) {
     case 'Bash':
@@ -610,8 +710,8 @@ function decide(call) {
       if (isEnvPath(filePath)) {
         refuse(`${call.tool_name} on ${filePath} is refused. Environment files hold secrets.`);
       }
-      if (call.tool_name !== 'Read' && HUSKY_PATH.test(filePath)) {
-        refuseSkip("editing .husky/ changes the repository's hooks");
+      if (call.tool_name !== 'Read' && HOOK_FILES.test(resolve(callDir, filePath))) {
+        refuseSkip(SKIP_MESSAGE);
       }
       break;
     default:

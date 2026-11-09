@@ -483,3 +483,141 @@ describe('git-guard review fixes', () => {
     expect(bash(clean, REPAIR_COMMAND).status).toBe(0);
   });
 });
+
+describe('git-guard tripwire forms agents emit', () => {
+  let parent = '';
+  let inner = '';
+
+  beforeAll(() => {
+    parent = makeRepo();
+    inner = join(parent, 'inner');
+    mkdirSync(inner);
+    git(inner, 'init', '--quiet', '--initial-branch=main');
+    git(inner, 'config', 'user.name', 'Test');
+    git(inner, 'config', 'user.email', '');
+    writeFileSync(join(inner, 'f.txt'), 'one\n');
+    git(inner, 'add', 'f.txt');
+    git(inner, 'commit', '--quiet', '--message', 'seed');
+    writeFileSync(join(inner, 'f.txt'), 'two\n');
+  });
+
+  afterAll(() => {
+    rmSync(parent, { recursive: true, force: true });
+  });
+
+  it.each([
+    'cat 0<.env.local',
+    'cat 0< .env.local',
+    'echo "$(<.env.local)"',
+    'echo x 1>.husky/pre-commit',
+    'echo x 2>.husky/pre-commit',
+    'echo x 2>> .husky/pre-commit',
+    'echo x >|.husky/pre-commit',
+    'echo x >| .husky/pre-commit',
+    'echo x &>.husky/pre-commit',
+    'git commit --no-verif -m x',
+    'git commit --no-veri -m x',
+    'git push --no-verif',
+    'git merge --no-verif topic',
+    'git merge --no-verify topic',
+    'printf "[core]\\n\\thooksPath = /dev/null\\n" >> .git/config',
+    'echo x > .git/config',
+    'echo x >| .git/config',
+    'sed -i s/a/b/ .git/config',
+    'git config include.path /tmp/extra',
+    'git config --add include.path ../extra',
+    'git config includeIf.gitdir:/work/.path /tmp/extra',
+    'cd .husky && rm pre-commit',
+    'cd .husky && echo x > pre-commit',
+    'cd .husky; echo x 2>pre-commit',
+    'cd .husky && sed -i s/a/b/ pre-commit',
+    'cd .husky && cp /tmp/x pre-commit',
+    'cd .husky && cp -t . /tmp/x',
+    'cd .husky && install /tmp/x pre-commit',
+    'cd .husky && rsync /tmp/x pre-commit',
+    'cd .husky && mv /tmp/x pre-commit',
+    'cd .husky && tee pre-commit',
+    'cd .husky && ln -sf /tmp/x pre-commit',
+    'cd .git && cp /tmp/x config',
+    'cd .git && tee config',
+    'cd /etc && rm -rf dist',
+    'cd /usr/local && rm -rf node_modules',
+  ])('refuses %s', (command) => {
+    expect(bash(parent, command).status).toBe(2);
+  });
+
+  it.each([
+    ['Edit', { file_path: '/work/.git/config' }],
+    ['Write', { file_path: '/work/.git/config' }],
+  ] as const)('refuses %s of git config', (tool, input) => {
+    expect(decide(parent, tool, { ...input }).status).toBe(2);
+  });
+
+  it.each([
+    ['Edit', 'pre-commit'],
+    ['Write', 'config'],
+  ] as const)('refuses %s of a bare name from inside a hook directory', (tool, name) => {
+    const dir = name === 'config' ? '.git' : '.husky';
+    expect(decide(join(parent, dir), tool, { file_path: name }).status).toBe(2);
+  });
+
+  it.each([
+    'git -Cinner stash',
+    'git -Cinner reset --hard',
+    'git --git-dir=inner/.git --work-tree=inner stash',
+    'git --work-tree inner stash',
+    'GIT_DIR=inner/.git GIT_WORK_TREE=inner git stash',
+    'env GIT_WORK_TREE=inner git stash',
+    'env -u FOO git -C inner stash',
+    'env -Cinner git stash',
+    'env --chdir=inner git stash',
+    'env --chdir inner git stash',
+    'env -iCinner git stash',
+    'env -iC inner git stash',
+    'env -C./inner git stash',
+    'env -iC./inner git stash',
+    'env -C../parent/inner git stash',
+  ])('checks %s against the dirty nested repository', (command) => {
+    expect(bash(parent, command).status).toBe(2);
+  });
+
+  it.each([
+    'env -u FOO git stash',
+    'env -uFOO git stash',
+    'env --unset=FOO git stash',
+    'env --unset FOO git stash',
+    'env -i -u FOO -u BAR git stash',
+    'env -C inner git stash',
+  ])('unwraps %s in a dirty tree', (command) => {
+    expect(bash(dirty, command).status).toBe(2);
+  });
+
+  it.each([
+    'git commit -m "-am fix"',
+    'git commit -m "-n means no"',
+    'git commit --message "-a"',
+    'cat 0<.env.example',
+    'cat 0<README.md',
+    'echo "$(<README.md)"',
+    'git config --get include.path',
+    'cd .husky && ls',
+    'cd .husky && cp pre-commit /tmp/bak',
+    'cd .git && cp config /tmp/bak',
+    'cd /tmp && rm -rf dist',
+    'cd packages && rm -rf dist',
+    'env -u FOO git status',
+    'git commit --no-edit',
+    'git commit -m "docs: core.hooksPath is set by prepare"',
+    'git commit -m"docs: core.hooksPath is set by prepare"',
+    'git commit --message="docs: core.hooksPath is set by prepare"',
+    'git commit --message "docs: core.hooksPath is set by prepare"',
+    'git commit -F core.hooksPath.txt',
+    'env -u core.hooksPath git status',
+  ])('allows %s', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it('allows git commit -m with a dash-led message on a dirty tree', () => {
+    expect(bash(dirty, 'git commit -m "-am fix" file.txt').status).toBe(0);
+  });
+});
