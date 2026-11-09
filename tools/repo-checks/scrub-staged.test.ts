@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -138,5 +138,46 @@ describe('scrub-staged', () => {
   it('scans a binary file that holds text', () => {
     stage('data.bin', `\0${email('jane.doe', 'example.org')}\n`);
     expect(scrub().status).toBe(1);
+  });
+
+  it('scans staged content when run from a subdirectory', () => {
+    mkdirSync(join(repo, 'sub'));
+    stage('sub/notes.md', `contact: ${email('jane.doe', 'example.org')}\n`);
+    const result = scrub(join(repo, 'sub'));
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('sub/notes.md:1 contains an email address');
+  });
+
+  it('says when no scrub list is found, without printing paths or terms', () => {
+    stage('doc.md', 'nothing personal here\n');
+    const result = scrub();
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe(
+      'scrub-staged: no CLAUDE.local.md scrub list found; checking email addresses only\n',
+    );
+  });
+
+  it('stays quiet when a scrub list is found', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    stage('doc.md', 'nothing personal here\n');
+    expect(scrub().stderr).toBe('');
+  });
+
+  it('refuses a staged file name that matches the scrub list without printing it', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    stage('notes-zorblax-codename.md', 'nothing personal here\n');
+    const result = scrub();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('a staged file name matches the scrub list');
+    expect(result.stderr).not.toContain('zorblax');
+    expect(result.stderr).not.toContain('notes-');
+  });
+
+  it('hides the path of a matching file when it also has a content finding', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    stage('alpha-term.md', `contact: ${email('jane.doe', 'example.org')}\n`);
+    const result = scrub();
+    expect(result.stderr).toContain('(path hidden):1 contains an email address');
+    expect(result.stderr).not.toContain('alpha-term');
   });
 });

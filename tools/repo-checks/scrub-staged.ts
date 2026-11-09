@@ -17,10 +17,10 @@ function scrubListFile(): string | undefined {
     .find((file) => existsSync(file));
 }
 
-function readScrubList(): string[] {
+function readScrubList(): string[] | undefined {
   const file = scrubListFile();
   if (file === undefined) {
-    return [];
+    return undefined;
   }
   const terms: string[] = [];
   let inList = false;
@@ -49,7 +49,7 @@ function addedLines(file: string): { line: number; text: string }[] {
     '--text',
     '-U0',
     '--',
-    `:(literal)${file}`,
+    `:(top,literal)${file}`,
   );
   const added: { line: number; text: string }[] = [];
   let line = 0;
@@ -68,20 +68,35 @@ function addedLines(file: string): { line: number; text: string }[] {
   return added;
 }
 
-const terms = readScrubList();
+const scrubList = readScrubList();
+if (scrubList === undefined) {
+  process.stderr.write(
+    'scrub-staged: no CLAUDE.local.md scrub list found; checking email addresses only\n',
+  );
+}
+const terms = scrubList ?? [];
 const staged = git('diff', '--cached', '--name-only', '-z', '--no-renames', '--diff-filter=ACMR')
   .split('\0')
   .filter((file) => file !== '' && !SKIPPED_FILES.has(file));
 
+const matchesTerm = (text: string): boolean => {
+  const lowered = text.toLowerCase();
+  return terms.some((term) => lowered.includes(term));
+};
+
 const findings: string[] = [];
 for (const file of staged) {
+  const nameMatches = matchesTerm(file);
+  const label = nameMatches ? '(path hidden)' : file;
+  if (nameMatches) {
+    findings.push('a staged file name matches the scrub list');
+  }
   for (const { line, text } of addedLines(file)) {
-    const lowered = text.toLowerCase();
     if (EMAIL.test(text)) {
-      findings.push(`${file}:${String(line)} contains an email address`);
+      findings.push(`${label}:${String(line)} contains an email address`);
     }
-    if (terms.some((term) => lowered.includes(term))) {
-      findings.push(`${file}:${String(line)} matches a pattern from the local scrub list`);
+    if (matchesTerm(text)) {
+      findings.push(`${label}:${String(line)} matches a pattern from the local scrub list`);
     }
   }
 }
