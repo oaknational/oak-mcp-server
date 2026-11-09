@@ -222,12 +222,23 @@ describe('import from OOCE', () => {
     };
     const stable = Buffer.from('export const stable = 1;\n');
     expect(imported.files['packages/alpha/src/stable.ts']).toBe(
-      createHash('sha256').update(stable).digest('hex'),
+      `sha256:${createHash('sha256').update(stable).digest('hex')}`,
     );
     expect(imported.files).not.toHaveProperty('packages/alpha/package.json');
     expect(imported.files).not.toHaveProperty('packages/alpha/src/index.ts');
     expect(imported.files).not.toHaveProperty('packages/alpha/src/helper.ts');
     expect(Object.keys(readJson('tools/import-from-ooce/imported.json'))).toEqual(['files']);
+  });
+
+  it('writes imported.json in canonical form with sorted keys', () => {
+    run();
+    const raw = read('tools/import-from-ooce/imported.json');
+    const paths = Object.keys((JSON.parse(raw) as { files: Record<string, string> }).files);
+    expect(paths).toEqual([...paths].sort());
+    expect(raw).toBe(`${JSON.stringify(JSON.parse(raw), null, 2)}\n`);
+    expect(Object.values((JSON.parse(raw) as { files: Record<string, string> }).files)).toSatisfy(
+      (values: string[]) => values.every((v) => /^sha256:[0-9a-f]{64}$/.test(v)),
+    );
   });
 
   it('lists modified and supplied files in PROVENANCE.md with the source path and SHA', () => {

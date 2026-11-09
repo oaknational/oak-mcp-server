@@ -551,15 +551,12 @@ function json(value: unknown): Buffer {
 }
 
 function renderImported(plans: PackagePlan[]): Buffer {
-  const files: Record<string, string> = {};
-  for (const plan of plans) {
-    for (const file of plan.files) {
-      if (file.kind === 'copied') {
-        files[file.path] = sha256(file.bytes);
-      }
-    }
-  }
-  return json({ files });
+  const entries = plans
+    .flatMap((plan) => plan.files)
+    .filter((file) => file.kind === 'copied')
+    .map((file): [string, string] => [file.path, `sha256:${sha256(file.bytes)}`])
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return json({ files: Object.fromEntries(entries) });
 }
 
 function renderCounts(manifest: Manifest, sha: Sha40, counts: Map<string, TestCount>): Buffer {
