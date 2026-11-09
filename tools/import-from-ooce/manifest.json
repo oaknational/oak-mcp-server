@@ -128,7 +128,8 @@
         {
           "path": "src/redaction-form.ts",
           "find": "if (value.includes('://') || value.includes('?')) {",
-          "replace": "if (/^[^=&]*(?::\\/\\/|\\?)/u.test(value)) {"
+          "replace": "if (/^[^=&]*(?::\\/\\/|\\?)/u.test(value)) {",
+          "reason": "A form body with a URL-valued field, such as redirect_uri, is redacted as a form, so an OAuth code in it no longer reaches Sentry. OOCE has the same bug."
         }
       ]
     },
