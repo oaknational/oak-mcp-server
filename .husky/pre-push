@@ -44,7 +44,7 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
     *[!0]*) range="$remote_sha..$local_sha" ;;
     *) range="$local_sha $not_pushed" ;;
   esac
-  gitleaks git --no-banner --redact=100 --config .gitleaks.toml --log-opts="$range" . || scan_status=1
+  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range" . || scan_status=1
 done < "$refs_file"
 if [ "$scan_status" -ne 0 ]; then
   echo "❌ Secret scan failed."
