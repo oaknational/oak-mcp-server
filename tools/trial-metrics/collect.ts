@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 
 export type GraphQl = (query: string, variables: Record<string, string | null>) => unknown;
 
-export interface MergedPr {
+interface MergedPr {
   number: number;
   title: string;
   body: string;
@@ -15,10 +15,10 @@ export interface MergedPr {
   mergeCommit: string;
 }
 
-export type ChangeFailure =
+type ChangeFailure =
   { kind: 'none' } | { kind: 'pending' } | { kind: 'revert' | 'hotfix'; by: number };
 
-export interface Row {
+interface Row {
   pr: MergedPr;
   changeFailure: ChangeFailure;
   agentCorrection: boolean;
@@ -26,7 +26,7 @@ export interface Row {
   guidanceTokens: number;
 }
 
-export interface Options {
+interface Options {
   repo: string;
   since: string;
   until?: string | undefined;
@@ -140,12 +140,7 @@ function failureCause(pr: MergedPr, later: MergedPr, repo: string): 'revert' | '
   return 'none';
 }
 
-export function changeFailure(
-  pr: MergedPr,
-  all: MergedPr[],
-  repo: string,
-  now: Date,
-): ChangeFailure {
+function changeFailure(pr: MergedPr, all: MergedPr[], repo: string, now: Date): ChangeFailure {
   const deadline = pr.mergedAt.getTime() + FAILURE_WINDOW_MS;
   for (const later of all) {
     const at = later.mergedAt.getTime();
@@ -168,7 +163,7 @@ function frontmatter(text: string): string {
   return /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? '';
 }
 
-export function guidanceTokens(paths: string[], read: (path: string) => string): number {
+function guidanceTokens(paths: string[], read: (path: string) => string): number {
   const present = new Set(paths);
   const loaded: string[] = [];
   const queue = ['CLAUDE.md'];
@@ -341,4 +336,11 @@ function main(): void {
   process.stderr.write(`api calls: ${String(apiCalls)}\n`);
 }
 
-if (import.meta.main) main();
+if (import.meta.main) {
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  }
+}
