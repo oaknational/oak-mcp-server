@@ -1,0 +1,27 @@
+{
+  "name": "@oaknational/mcp-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Developer documentation site for Oak National Academy's MCP server.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "next build && node scripts/csp.mts",
+    "preview": "node scripts/preview.mts",
+    "test": "vitest run --root ../.. apps/docs",
+    "test:a11y": "playwright test"
+  },
+  "dependencies": {
+    "@oaknational/oak-components": "^3.25.0",
+    "next": "^16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "styled-components": "^6.6.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

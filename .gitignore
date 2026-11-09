@@ -6,3 +6,8 @@ AGENTS.local.md
 node_modules/
 dist/
 coverage/
+.next/
+out/
+next-env.d.ts
+playwright-report/
+test-results/
