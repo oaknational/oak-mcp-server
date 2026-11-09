@@ -22,10 +22,14 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-known_remote=0
-if git remote | grep -qx -- "$1"; then
-  known_remote=1
-fi
+remote_refs="$(git ls-remote --heads "$1" 2> /dev/null)" || remote_refs=""
+tips_file="$(mktemp)"
+trap 'rm -f "$refs_file" "$tips_file"' EXIT
+printf '%s\n' "$remote_refs" | cut -f1 > "$tips_file"
+set --
+while read -r tip; do
+  [ -n "$tip" ] && git cat-file -e "$tip^{commit}" 2> /dev/null && set -- "$@" "$tip"
+done < "$tips_file"
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
 while read -r _local_ref local_sha _remote_ref remote_sha; do
@@ -40,9 +44,9 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
   if [ "$remote_known" = 1 ]; then
     range="$remote_sha..$local_sha"
     git rev-list "$range" > /dev/null
-  elif [ "$known_remote" = 1 ]; then
-    range="$local_sha --not --remotes=$1"
-    git rev-list "$local_sha" --not "--remotes=$1" > /dev/null
+  elif [ "$#" -gt 0 ]; then
+    range="$local_sha --not $*"
+    git rev-list "$local_sha" --not "$@" > /dev/null
   else
     range="$local_sha"
     git rev-list "$local_sha" > /dev/null

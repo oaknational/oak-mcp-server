@@ -189,4 +189,31 @@ describe('scrub-staged', () => {
     expect(result.stderr).toContain('(path hidden):1 contains an email address');
     expect(result.stderr).not.toContain('alpha-term');
   });
+
+  it('gives one refusal line with a count when several file names match', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    for (const name of ['a-alpha-term.md', 'b-alpha-term.md', 'c-beta-term.md']) {
+      stage(name, 'nothing personal here\n');
+    }
+    const result = scrub();
+    expect(result.status).toBe(1);
+    const lines = result.stderr.split('\n').filter((line) => line.includes('file name'));
+    expect(lines).toEqual(['  3 staged file names match the scrub list']);
+    expect(result.stderr).not.toContain('alpha-term');
+  });
+
+  it('scans 2,000 staged files in under one second', () => {
+    const count = 2000;
+    mkdirSync(join(repo, 'bulk'));
+    for (let index = 0; index < count; index += 1) {
+      writeFileSync(join(repo, 'bulk', `file-${String(index)}.txt`), `line ${String(index)}\n`);
+    }
+    writeFileSync(join(repo, 'bulk', 'file-1999.txt'), `${email('jane.doe', 'example.org')}\n`);
+    git('add', 'bulk');
+    const started = performance.now();
+    const result = scrub();
+    const elapsed = performance.now() - started;
+    expect(result.stderr).toContain('bulk/file-1999.txt:1 contains an email address');
+    expect(elapsed).toBeLessThan(1000);
+  }, 60_000);
 });

@@ -38,20 +38,7 @@ function readScrubList(): string[] | undefined {
   return terms;
 }
 
-function addedLines(file: string): { line: number; text: string }[] {
-  const diff = git(
-    'diff',
-    '--cached',
-    '--no-color',
-    '--no-ext-diff',
-    '--no-textconv',
-    '--no-renames',
-    '--no-relative',
-    '--text',
-    '-U0',
-    '--',
-    `:(top,literal)${file}`,
-  );
+function parseAddedLines(diff: string): { line: number; text: string }[] {
   const added: { line: number; text: string }[] = [];
   let line = 0;
   let inHunk = false;
@@ -69,6 +56,26 @@ function addedLines(file: string): { line: number; text: string }[] {
   return added;
 }
 
+const STAGED_FLAGS = ['--cached', '--no-renames', '--no-relative', '--diff-filter=ACMR'];
+
+function stagedDiffs(files: string[]): string[] {
+  const chunks = git(
+    'diff',
+    ...STAGED_FLAGS,
+    '--no-color',
+    '--no-ext-diff',
+    '--no-textconv',
+    '--text',
+    '-U0',
+  )
+    .split(/^diff --git /m)
+    .slice(1);
+  if (chunks.length !== files.length) {
+    throw new Error('scrub-staged: staged diff does not match the staged file list');
+  }
+  return chunks;
+}
+
 const scrubList = readScrubList();
 if (scrubList === undefined) {
   process.stderr.write(
@@ -76,17 +83,10 @@ if (scrubList === undefined) {
   );
 }
 const terms = scrubList ?? [];
-const staged = git(
-  'diff',
-  '--cached',
-  '--name-only',
-  '-z',
-  '--no-renames',
-  '--no-relative',
-  '--diff-filter=ACMR',
-)
+const stagedFiles = git('diff', ...STAGED_FLAGS, '--name-only', '-z')
   .split('\0')
-  .filter((file) => file !== '' && !SKIPPED_FILES.has(file));
+  .filter((file) => file !== '');
+const diffs = stagedDiffs(stagedFiles);
 
 const matchesTerm = (text: string): boolean => {
   const lowered = text.toLowerCase();
@@ -94,13 +94,17 @@ const matchesTerm = (text: string): boolean => {
 };
 
 const findings: string[] = [];
-for (const file of staged) {
+let hiddenNames = 0;
+stagedFiles.forEach((file, index) => {
+  if (SKIPPED_FILES.has(file)) {
+    return;
+  }
   const nameMatches = matchesTerm(file);
   const label = nameMatches ? '(path hidden)' : file;
   if (nameMatches) {
-    findings.push('a staged file name matches the scrub list');
+    hiddenNames += 1;
   }
-  for (const { line, text } of addedLines(file)) {
+  for (const { line, text } of parseAddedLines(diffs[index] ?? '')) {
     if (EMAIL.test(text)) {
       findings.push(`${label}:${String(line)} contains an email address`);
     }
@@ -108,6 +112,13 @@ for (const file of staged) {
       findings.push(`${label}:${String(line)} matches a pattern from the local scrub list`);
     }
   }
+});
+if (hiddenNames > 0) {
+  findings.unshift(
+    hiddenNames === 1
+      ? 'a staged file name matches the scrub list'
+      : `${String(hiddenNames)} staged file names match the scrub list`,
+  );
 }
 
 if (findings.length > 0) {

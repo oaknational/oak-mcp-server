@@ -1,5 +1,15 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 const root = join(import.meta.dirname, '..', '..');
 const hasGitleaks = spawnSync('gitleaks', ['version']).status === 0;
 const NULL_SHA = '0'.repeat(40);
+
+process.env['pnpm_config_verify_deps_before_run'] = 'false';
 
 let repo = '';
 
@@ -122,6 +134,67 @@ describe('pre-merge-commit', () => {
   });
 });
 
+describe('hook installation', () => {
+  it('runs the hooks in a linked worktree before any install', () => {
+    const manifest = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
+      scripts: { prepare: string };
+    };
+    stubPreCommit(1);
+    git('add', '.husky/pre-commit');
+    commit('chore: add refusing hook');
+    execFileSync('sh', ['-c', manifest.scripts.prepare], {
+      cwd: repo,
+      env: {
+        ...process.env,
+        PATH: `${join(root, 'node_modules', '.bin')}:${process.env.PATH ?? ''}`,
+      },
+    });
+    const linked = join(repo, '..', `linked-${String(Date.now())}`);
+    git('worktree', 'add', '-q', linked, '-b', 'topic');
+    writeFileSync(join(linked, 'file.txt'), 'content\n');
+    execFileSync('git', ['add', 'file.txt'], { cwd: linked });
+    const { status } = spawnSync('git', ['commit', '-q', '-m', 'feat(repo): add file'], {
+      cwd: linked,
+      encoding: 'utf8',
+    });
+    rmSync(linked, { recursive: true, force: true });
+    expect(status).not.toBe(0);
+  });
+
+  it('ships every hook executable and independent of the husky helper directory', () => {
+    const hooks = readdirSync(join(root, '.husky'), { withFileTypes: true }).filter((entry) =>
+      entry.isFile(),
+    );
+    expect(hooks.length).toBeGreaterThan(0);
+    for (const { name } of hooks) {
+      const path = join(root, '.husky', name);
+      expect(statSync(path).mode & 0o111, name).not.toBe(0);
+      expect(readFileSync(path, 'utf8'), name).not.toContain('_/');
+    }
+  });
+});
+
+describe('pre-commit', () => {
+  it('prints no staged path that matches the scrub list', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), '## Scrub list\n\n- `zorblax-codename`\n');
+    copyFileSync(join(root, '.husky', 'pre-commit'), join(repo, '.husky', 'pre-commit'));
+    const bin = join(repo, 'stub-bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'pnpm'), '#!/bin/sh\necho "pnpm $*"\nexit 1\n', { mode: 0o755 });
+    git('switch', '-q', '-c', 'topic');
+    writeFileSync(join(repo, 'notes-zorblax-codename.md'), 'nothing personal here\n');
+    git('add', 'notes-zorblax-codename.md');
+    const { status, stdout, stderr } = spawnSync('sh', ['.husky/pre-commit'], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}` },
+    });
+    expect(status).toBe(1);
+    expect(stderr).toContain('a staged file name matches the scrub list');
+    expect(stdout + stderr).not.toContain('zorblax');
+  });
+});
+
 describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
   it('scans the full local history when the push targets a URL', () => {
     git('switch', '-q', '-c', 'topic');
@@ -137,5 +210,45 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
       encoding: 'utf8',
     });
     expect(status).toBe(1);
+  });
+
+  describe('with a named remote', () => {
+    let remote = '';
+
+    beforeEach(() => {
+      remote = mkdtempSync(join(tmpdir(), 'remote-'));
+      execFileSync('git', ['init', '-q', '--bare', '-b', 'main', remote]);
+      git('remote', 'add', 'origin', remote);
+      git('switch', '-q', '-c', 'topic');
+      const token = ['ghp', 'aB3dE5gH7jK9mN1pQ3sT5vX7zA9cD1fG3hJ5'].join('_');
+      writeFileSync(join(repo, 'leak.txt'), `token=${token}\n`);
+      git('add', 'leak.txt');
+      commit('chore: add leak');
+      git('push', '-q', 'origin', 'topic');
+    });
+
+    afterEach(() => {
+      rmSync(remote, { recursive: true, force: true });
+    });
+
+    function push(): number | null {
+      const sha = git('rev-parse', 'HEAD');
+      const { status } = spawnSync('sh', ['.husky/pre-push', 'origin', remote], {
+        cwd: repo,
+        input: `refs/heads/again ${sha} refs/heads/again ${NULL_SHA}\n`,
+        encoding: 'utf8',
+      });
+      return status;
+    }
+
+    it('scans commits whose remote branch was deleted without a pruning fetch', () => {
+      execFileSync('git', ['-C', remote, 'branch', '-q', '-D', 'topic']);
+      expect(git('rev-parse', 'refs/remotes/origin/topic')).toBe(git('rev-parse', 'HEAD'));
+      expect(push()).toBe(1);
+    });
+
+    it('skips commits the remote still holds', () => {
+      expect(push()).toBe(0);
+    });
   });
 });
