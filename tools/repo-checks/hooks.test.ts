@@ -265,6 +265,22 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
       expect(elapsed).toBeLessThan(1000);
     }, 30_000);
 
+    it('scans against the push target when a URL rewrite points back at the fetch URL', () => {
+      const upstream = mkdtempSync(join(tmpdir(), 'upstream-'));
+      try {
+        execFileSync('git', ['init', '-q', '--bare', '-b', 'main', upstream]);
+        git('push', '-q', upstream, 'topic');
+        execFileSync('git', ['-C', remote, 'branch', '-q', '-D', 'topic']);
+        git('remote', 'set-url', 'origin', upstream);
+        git('config', `url.${remote}.pushInsteadOf`, upstream);
+        git('config', `url.${upstream}.insteadOf`, remote);
+        expect(git('remote', 'get-url', '--push', 'origin')).toBe(remote);
+        expect(push()).toBe(1);
+      } finally {
+        rmSync(upstream, { recursive: true, force: true });
+      }
+    });
+
     it('scans a commit the fetch URL holds but the push target does not', () => {
       const upstream = mkdtempSync(join(tmpdir(), 'upstream-'));
       try {

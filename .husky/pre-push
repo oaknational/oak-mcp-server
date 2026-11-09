@@ -22,7 +22,11 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-remote_refs="$(git ls-remote --heads "$2" 2> /dev/null)" || remote_refs=""
+remote_refs=""
+# An insteadOf rewrite would make ls-remote query a remote other than the push target.
+if [ "$(git ls-remote --get-url "$2" 2> /dev/null)" = "$2" ]; then
+  remote_refs="$(git ls-remote --heads "$2" 2> /dev/null)" || remote_refs=""
+fi
 tips_file="$(mktemp)"
 trap 'rm -f "$refs_file" "$tips_file"' EXIT
 printf '%s\n' "$remote_refs" | cut -f1 | sed -n 's/^\(..*\)$/\1^{commit}/p' |
