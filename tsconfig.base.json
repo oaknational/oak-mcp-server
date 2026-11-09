@@ -21,6 +21,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["*.ts", "*.mjs", "tools/**/*.ts"],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "include": ["*.ts", "*.mjs", "tools/**/*.ts", "packages/**/*.ts", "apps/**/*.ts"],
+  "exclude": ["**/node_modules", "**/dist", "**/coverage"]
 }
