@@ -1,0 +1,158 @@
+name: CI
+
+# One required status check, `ci-gate`, fans in every other job in this file.
+# It fails unless each needed job succeeded, so a failed, cancelled or skipped
+# job all block the merge. The workflow runs on every pull request, whatever
+# its base, so a layer in a stack gets checked before its parent lands.
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  checks:
+    name: checks
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm markdownlint
+      - run: pnpm build
+      - run: pnpm test
+
+  pr-title:
+    name: pr-title
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Check the title and the Linear section
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node tools/repo-checks/pr-title.ts
+
+  pr-size:
+    name: pr-size
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Count authored files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node tools/repo-checks/pr-size.ts
+
+  version-check:
+    name: version-check
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Match the release bump to the diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: git diff --name-only --no-renames -z "$BASE_SHA" HEAD | node tools/repo-checks/version-rules.ts
+
+  # Scans every branch, tag and the checked-out head, so it also covers commits
+  # made through the GitHub API, the web editor or Dependabot, which never run
+  # local hooks. The binary is checksum-pinned because it is a security control.
+  secret-scan:
+    name: secret-scan
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned gitleaks
+        run: |
+          version=8.30.0
+          asset="gitleaks_${version}_linux_x64.tar.gz"
+          expected=79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e
+          curl -sSfL --proto '=https' --proto-redir '=https' -o "$asset" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${asset}"
+          echo "${expected}  ${asset}" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f "$asset" gitleaks
+          gitleaks version
+      - name: Scan for secrets
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: diff.renameLimit
+          GIT_CONFIG_VALUE_0: '3000'
+        run: gitleaks detect --config .gitleaks.toml --redact=100 --source . --log-opts="--branches --remotes --tags HEAD"
+
+  ci-gate:
+    name: ci-gate
+    permissions: {}
+    needs:
+      - checks
+      - pr-title
+      - pr-size
+      - version-check
+      - secret-scan
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every needed job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          echo "Job results: $RESULTS"
+          IFS=',' read -ra results <<< "$RESULTS"
+          for result in "${results[@]}"; do
+            if [ "$result" != "success" ]; then
+              echo "::error::A needed job ended '$result', not 'success'. Blocking the merge."
+              exit 1
+            fi
+          done
+          echo "Every needed job succeeded."

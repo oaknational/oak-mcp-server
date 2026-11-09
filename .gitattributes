@@ -2,3 +2,13 @@
 docs/adr/mcp/** oak-archival
 docs/engineering/** oak-archival
 pnpm-lock.yaml linguist-generated
+.agents/skills/tdd/** linguist-generated
+.claude/skills/tdd/** linguist-generated
+.agents/skills/pr-create/** linguist-generated
+.claude/skills/pr-create/** linguist-generated
+.agents/skills/security-review/** linguist-generated
+.claude/skills/security-review/** linguist-generated
+.agents/skills/ticket-start/** linguist-generated
+.claude/skills/ticket-start/** linguist-generated
+.agents/skills/accessibility-review/** linguist-generated
+.claude/skills/accessibility-review/** linguist-generated
