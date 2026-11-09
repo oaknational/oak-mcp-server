@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -499,11 +499,38 @@ describe('git-guard tripwire forms agents emit', () => {
     git(inner, 'add', 'f.txt');
     git(inner, 'commit', '--quiet', '--message', 'seed');
     writeFileSync(join(inner, 'f.txt'), 'two\n');
+    mkdirSync(join(inner, 'sub'));
+    symlinkSync(inner, join(parent, 'link'));
   });
 
   afterAll(() => {
     rmSync(parent, { recursive: true, force: true });
   });
+
+  it.each([
+    'cd link && git stash',
+    'git -C link stash',
+    'cd inner/sub && git stash',
+    'cd inner/sub/.. && git stash',
+    'cd link/sub && git stash',
+    'cd -P inner && git stash',
+    'cd -- inner && git stash',
+    'cd -L inner && git stash',
+    'pushd inner && git stash',
+    'pushd inner >/dev/null; git stash; popd',
+    'builtin cd inner && git stash',
+    'command cd inner && git stash',
+    'cd "inner" && git reset --hard',
+  ])('checks %s against the dirty nested repository', (command) => {
+    expect(bash(parent, command).status).toBe(2);
+  });
+
+  it.each(['cd inner/.. && git stash', 'cd link/.. && git stash', 'pushd . && git status'])(
+    'allows %s from a clean parent',
+    (command) => {
+      expect(bash(parent, command).status).toBe(0);
+    },
+  );
 
   it.each([
     'cat 0<.env.local',
