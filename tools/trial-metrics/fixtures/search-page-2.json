@@ -1,10 +1,10 @@
 {
   "data": {
     "search": {
-      "issueCount": 7,
+      "issueCount": 9,
       "pageInfo": {
         "hasNextPage": false,
-        "endCursor": "Y3Vyc29yOjc="
+        "endCursor": "Y3Vyc29yOjk="
       },
       "nodes": [
         {
@@ -15,7 +15,7 @@
           "createdAt": "2026-10-08T12:00:00Z",
           "mergedAt": "2026-10-10T12:00:00Z",
           "mergeCommit": {
-            "oid": "0000000000000000000000000000000000000001"
+            "oid": "0000000000000000000000000000000000000002"
           },
           "labels": {
             "nodes": [
@@ -44,6 +44,34 @@
         },
         {
           "number": 107,
+          "title": "feat(tools): add the glossary tool",
+          "body": "Adds a glossary tool.",
+          "headRefName": "feat/glossary",
+          "createdAt": "2026-10-19T09:00:00Z",
+          "mergedAt": "2026-10-20T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 108,
+          "title": "Revert \"feat(tools): add the glossary tool\"",
+          "body": "Reverts example-org/example-repo#107\n\nThe glossary tool timed out.",
+          "headRefName": "revert-107-feat/glossary",
+          "createdAt": "2026-10-22T08:00:00Z",
+          "mergedAt": "2026-10-22T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 109,
           "title": "docs(tools): describe the quiz tool",
           "body": "Documents the quiz tool.",
           "headRefName": "docs/quiz-tool",

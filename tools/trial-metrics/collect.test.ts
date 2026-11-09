@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collect, format, type GraphQl } from './collect.ts';
 
 const PLACEHOLDER = '0000000000000000000000000000000000000001';
+const APP_PLACEHOLDER = '0000000000000000000000000000000000000002';
 const REPO = 'example-org/example-repo';
 const NOW = new Date('2026-10-30T00:00:00Z');
 
@@ -26,6 +27,7 @@ const onDemand = {
 
 let checkout: string;
 let commit: string;
+let appCommit: string;
 
 function git(args: string[]): string {
   return execFileSync('git', ['-C', checkout, ...args], {
@@ -40,15 +42,27 @@ function git(args: string[]): string {
   }).trim();
 }
 
-beforeAll(() => {
-  checkout = mkdtempSync(join(tmpdir(), 'trial-metrics-'));
-  git(['init', '--quiet']);
-  for (const [path, text] of Object.entries({ ...alwaysOn, ...onDemand })) {
+function commitFiles(files: Record<string, string>, parent?: string): string {
+  for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(checkout, path)), { recursive: true });
     writeFileSync(join(checkout, path), text);
     git(['add', '--', path]);
   }
-  commit = git(['commit-tree', git(['write-tree']), '-m', 'fixture tree']);
+  return git([
+    'commit-tree',
+    git(['write-tree']),
+    ...(parent ? ['-p', parent] : []),
+    '-m',
+    'fixture',
+  ]);
+}
+
+beforeAll(() => {
+  checkout = mkdtempSync(join(tmpdir(), 'trial-metrics-'));
+  git(['init', '--quiet']);
+  const root = commitFiles({ 'README.md': 'Readme text.\n' });
+  commit = commitFiles({ ...alwaysOn, ...onDemand }, root);
+  appCommit = commitFiles({ 'apps/app-a/index.ts': 'export {};\n' }, commit);
 });
 
 afterAll(() => {
@@ -56,15 +70,12 @@ afterAll(() => {
 });
 
 function recorded(): { graphql: GraphQl; queries: string[] } {
-  const pages = ['search-page-1.json', 'search-page-2.json'].map(
-    (name) =>
-      JSON.parse(
-        readFileSync(join(import.meta.dirname, 'fixtures', name), 'utf8').replaceAll(
-          PLACEHOLDER,
-          commit,
-        ),
-      ) as unknown,
-  );
+  const pages = ['search-page-1.json', 'search-page-2.json'].map((name) => {
+    const raw = readFileSync(join(import.meta.dirname, 'fixtures', name), 'utf8');
+    return JSON.parse(
+      raw.replaceAll(PLACEHOLDER, commit).replaceAll(APP_PLACEHOLDER, appCommit),
+    ) as unknown;
+  });
   const queries: string[] = [];
   const graphql: GraphQl = (_query, variables) => {
     queries.push(String(variables.q));
@@ -73,16 +84,26 @@ function recorded(): { graphql: GraphQl; queries: string[] } {
   return { graphql, queries };
 }
 
-function run(until?: string) {
+function run(until?: string, path?: string) {
   const { graphql, queries } = recorded();
-  const result = collect({ repo: REPO, since: '2026-10-01', until, checkout, now: NOW, graphql });
+  const result = collect({
+    repo: REPO,
+    since: '2026-10-01',
+    until,
+    path,
+    checkout,
+    now: NOW,
+    graphql,
+  });
   const byNumber = new Map(result.rows.map((row) => [row.pr.number, row]));
   return { ...result, byNumber, queries };
 }
 
 describe('trial-metrics collect', () => {
   it('marks a PR reverted inside 7 days as a change failure', () => {
-    expect(run().byNumber.get(101)?.changeFailure).toEqual({ kind: 'revert', by: 102 });
+    const { byNumber } = run();
+    expect(byNumber.get(101)?.changeFailure).toEqual({ kind: 'revert', by: 102 });
+    expect(byNumber.get(107)?.changeFailure).toEqual({ kind: 'revert', by: 108 });
   });
 
   it('does not count a revert on day 8', () => {
@@ -94,13 +115,15 @@ describe('trial-metrics collect', () => {
   });
 
   it('leaves a PR pending until its 7 days have passed', () => {
-    expect(run().byNumber.get(107)?.changeFailure).toEqual({ kind: 'pending' });
+    const { byNumber } = run();
+    expect(byNumber.get(109)?.changeFailure).toEqual({ kind: 'pending' });
+    expect(byNumber.get(108)?.changeFailure).toEqual({ kind: 'none' });
   });
 
   it('flags the agent-correction label and only that label', () => {
     const { byNumber } = run();
     expect(byNumber.get(105)?.agentCorrection).toBe(true);
-    expect(byNumber.get(107)?.agentCorrection).toBe(false);
+    expect(byNumber.get(109)?.agentCorrection).toBe(false);
     expect(byNumber.get(101)?.agentCorrection).toBe(false);
   });
 
@@ -116,7 +139,7 @@ describe('trial-metrics collect', () => {
 
   it('reads every page and counts each API call', () => {
     const { rows, apiCalls } = run();
-    expect(rows.map((row) => row.pr.number)).toEqual([101, 102, 103, 105, 106, 104, 107]);
+    expect(rows.map((row) => row.pr.number)).toEqual([101, 102, 103, 105, 106, 104, 107, 108, 109]);
     expect(apiCalls).toBe(2);
   });
 
@@ -127,13 +150,19 @@ describe('trial-metrics collect', () => {
     expect(queries[0]).toBe(`repo:${REPO} is:pr is:merged merged:2026-10-01..2026-10-17`);
   });
 
+  it('keeps only PRs whose merge commit touches --path', () => {
+    const { rows, byNumber } = run(undefined, 'apps/app-a');
+    expect(rows.map((row) => row.pr.number)).toEqual([105]);
+    expect(byNumber.get(105)?.changeFailure).toEqual({ kind: 'hotfix', by: 106 });
+  });
+
   it('prints the four metric columns and the rates', () => {
     const table = format(run().rows);
     expect(table).toContain(
       '| PR | merged | change failure | agent correction | open to merge (h) | guidance tokens |',
     );
-    expect(table).toContain('change-failure rate: 2/6 (33.3%), 1 pending');
-    expect(table).toContain('agent-correction rate: 1/7 (14.3%)');
+    expect(table).toContain('change-failure rate: 3/8 (37.5%), 1 pending');
+    expect(table).toContain('agent-correction rate: 1/9 (11.1%)');
   });
 
   it('names the missing commit when the checkout lacks it', () => {

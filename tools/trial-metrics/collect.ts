@@ -30,6 +30,7 @@ export interface Options {
   repo: string;
   since: string;
   until?: string | undefined;
+  path?: string | undefined;
   checkout: string;
   now: Date;
   graphql: GraphQl;
@@ -125,24 +126,18 @@ function fetchMergedPrs(graphql: GraphQl, q: string): { prs: MergedPr[]; apiCall
   }
 }
 
-function prRef(repo: string, number: number): string {
-  return `(?:${repo.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')})?#${String(number)}(?!\\d)`;
+function mentions(text: string, repo: string, number: number): boolean {
+  const owner = repo.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  return new RegExp(`(?:^|[^\\w/])(?:${owner})?#${String(number)}(?!\\d)`).test(text);
 }
 
-function failureCause(
-  pr: MergedPr,
-  later: MergedPr,
-  repo: string,
-): 'revert' | 'hotfix' | undefined {
-  if (later.title === `Revert "${pr.title}"`) return 'revert';
-  if (new RegExp(`^Reverts ${prRef(repo, pr.number)}`, 'm').test(later.body)) return 'revert';
+function failureCause(pr: MergedPr, later: MergedPr, repo: string): 'revert' | 'hotfix' | 'none' {
+  const revertBody = later.body.split('\n').find((line) => line.startsWith('Reverts '));
+  if (revertBody !== undefined && mentions(revertBody, repo, pr.number)) return 'revert';
+  if (/^revert\b/i.test(later.title) && mentions(later.title, repo, pr.number)) return 'revert';
   const hotfix = /hotfix/i.test(later.title) || /hotfix/i.test(later.headRefName);
-  if (
-    hotfix &&
-    new RegExp(`(?:^|[^\\w/])${prRef(repo, pr.number)}`).test(`${later.title}\n${later.body}`)
-  )
-    return 'hotfix';
-  return undefined;
+  if (hotfix && mentions(`${later.title}\n${later.body}`, repo, pr.number)) return 'hotfix';
+  return 'none';
 }
 
 export function changeFailure(
@@ -156,7 +151,7 @@ export function changeFailure(
     const at = later.mergedAt.getTime();
     if (later.number === pr.number || at < pr.mergedAt.getTime() || at > deadline) continue;
     const kind = failureCause(pr, later, repo);
-    if (kind) return { kind, by: later.number };
+    if (kind !== 'none') return { kind, by: later.number };
   }
   return now.getTime() < deadline ? { kind: 'pending' } : { kind: 'none' };
 }
@@ -164,6 +159,7 @@ export function changeFailure(
 function git(checkout: string, args: string[]): string {
   return execFileSync('git', ['-C', checkout, ...args], {
     encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
     maxBuffer: 256 * 1024 * 1024,
   });
 }
@@ -233,8 +229,18 @@ export function collect(options: Options): { rows: Row[]; apiCalls: number } {
   );
   const tokensAt = guidanceReader(options.checkout);
   const end = options.until === undefined ? Infinity : Date.parse(options.until) + DAY_MS;
+  const touches = (pr: MergedPr): boolean =>
+    options.path === undefined ||
+    git(options.checkout, [
+      'diff',
+      '--name-only',
+      `${pr.mergeCommit}^1`,
+      pr.mergeCommit,
+      '--',
+      options.path,
+    ]) !== '';
   const rows = prs
-    .filter((pr) => pr.mergedAt.getTime() < end)
+    .filter((pr) => pr.mergedAt.getTime() < end && touches(pr))
     .sort((a, b) => a.mergedAt.getTime() - b.mergedAt.getTime())
     .map((pr) => ({
       pr,
@@ -314,6 +320,7 @@ function main(): void {
       repo: { type: 'string', default: 'oaknational/oak-mcp-server' },
       since: { type: 'string' },
       until: { type: 'string' },
+      path: { type: 'string' },
       checkout: { type: 'string', default: '.' },
     },
   });
@@ -325,6 +332,7 @@ function main(): void {
     repo: values.repo,
     since: values.since ?? trialStart(),
     until: values.until,
+    path: values.path,
     checkout: values.checkout,
     now: new Date(),
     graphql: ghGraphQl,

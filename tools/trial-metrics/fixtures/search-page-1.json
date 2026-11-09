@@ -1,7 +1,7 @@
 {
   "data": {
     "search": {
-      "issueCount": 7,
+      "issueCount": 9,
       "pageInfo": {
         "hasNextPage": true,
         "endCursor": "Y3Vyc29yOjQ="
@@ -23,9 +23,9 @@
         },
         {
           "number": 102,
-          "title": "Revert \"feat(tools): add the lesson summary tool\"",
-          "body": "Reverts example-org/example-repo#101",
-          "headRefName": "revert-101-feat/lesson-summary",
+          "title": "Revert \"feat(tools): add the lesson summary tool (#101)\"",
+          "body": "The summary tool broke search ranking.",
+          "headRefName": "revert-lesson-summary",
           "createdAt": "2026-10-05T08:00:00Z",
           "mergedAt": "2026-10-05T09:00:00Z",
           "mergeCommit": {
@@ -54,8 +54,8 @@
           "title": "Revert \"fix(search): trim whitespace from queries\"",
           "body": "Reverts example-org/example-repo#103",
           "headRefName": "revert-103-fix/trim-queries",
-          "createdAt": "2026-10-14T09:00:00Z",
-          "mergedAt": "2026-10-14T10:00:00Z",
+          "createdAt": "2026-10-13T09:00:00Z",
+          "mergedAt": "2026-10-13T10:00:00Z",
           "mergeCommit": {
             "oid": "0000000000000000000000000000000000000001"
           },
