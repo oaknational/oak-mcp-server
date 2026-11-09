@@ -5,7 +5,8 @@ import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const hook = join(import.meta.dirname, '../../.claude/hooks/git-guard.sh');
+const hook =
+  process.env.GIT_GUARD_HOOK ?? join(import.meta.dirname, '../../.claude/hooks/git-guard.sh');
 let clean = '';
 let dirty = '';
 let untrackedOnly = '';
@@ -63,8 +64,16 @@ const blockedWhenDirty = [
   'git checkout HEAD -- file.txt',
   'git checkout .',
   'git restore file.txt',
-  'git restore --staged file.txt',
+  'git restore --staged --worktree file.txt',
+  'git restore -SW file.txt',
   'git reset --hard',
+  'git reset --merge',
+  'git commit -m x .',
+  'git commit -m x -- .',
+  'if git stash; then :; fi',
+  'if true; then :; elif git stash; then :; fi',
+  'while git stash; do break; done',
+  'until git stash; do :; done',
   'git reset --hard HEAD',
   'git checkout file.txt',
   'git checkout HEAD file.txt',
@@ -95,6 +104,11 @@ const blockedWhenDirty = [
 const allowedWhenDirty = [
   'git stash pop',
   'git stash list',
+  'git restore --staged file.txt',
+  'git restore -S file.txt',
+  'git restore --source=HEAD --staged file.txt',
+  'git commit -m . file.txt',
+  'git commit -m x -- file.txt',
   'git reset --soft HEAD~1',
   'git checkout -b topic',
   'git checkout -b topic side',
@@ -142,6 +156,22 @@ const blockedAlways = [
   'head .env*',
   'cat .env.*',
   'git add --all',
+  'git add ..',
+  'git add -- ..',
+  'git push --mirror',
+  'git commit \\\n  --no-verify -m x',
+  'git commit -m x \\\n  -n',
+  'git add \\\n  -A',
+  'git push \\\n  --force origin topic',
+  'if git commit --no-verify -m x; then :; fi',
+  'echo x >.husky/pre-commit',
+  'echo x >> .husky/pre-commit',
+  'cp x .husky/pre-commit',
+  'cp -t .husky x',
+  'git -c core.hooksPath=/x config --get user.name',
+  'rm -rf "$TMPDIR"',
+  'rm -rf "$TMPDIR/../x"',
+  'rm -rf distribution',
   'git add -- .',
   'git -C . add -A',
   'git push --force origin topic',
@@ -187,6 +217,19 @@ const allowedAlways = [
   'git log --oneline .husky',
   'ls .husky',
   'cat .husky/pre-commit',
+  'sed -n 1,5p .husky/pre-commit',
+  'awk 1 .husky/pre-commit',
+  'grep -n exit .husky/pre-commit',
+  'cp .husky/pre-commit /tmp/pre-commit.copy',
+  'git commit -m "see .husky/pre-commit > notes"',
+  'gh pr create --title t --body "<code>.husky/pre-commit</code> runs the gate"',
+  'gh pr create --body "hook path -> .husky/pre-commit"',
+  'git config --get core.hooksPath',
+  'git config --get-all core.hooksPath',
+  'rm -rf "$TMPDIR/scratch"',
+  'rm -rf "${TMPDIR}/scratch"',
+  'rm -rf packages/server/dist apps/web/node_modules',
+  'git add .gitignore',
   'cat .env.example',
   'head .env.sample',
   'rm -rf /private/tmp/claude-1/scratch/x',
@@ -249,6 +292,11 @@ describe.each([
     ['Edit', { file_path: '/work/app/.env' }],
     ['Edit', { file_path: '/work/.husky/pre-commit' }],
     ['Write', { file_path: '/work/.husky/commit-msg' }],
+    ['Grep', { pattern: 'SECRET', path: '.env.local' }],
+    ['Grep', { pattern: 'SECRET', path: '/work/apps/.env.production' }],
+    ['Grep', { pattern: 'SECRET', glob: '.env*' }],
+    ['Grep', { pattern: 'SECRET', glob: '**/.env.local' }],
+    ['Grep', { pattern: 'SECRET', path: '.', glob: '{.env.local,*.ts}' }],
   ])('blocks %s of %j', (tool, input) => {
     expect(decide(repo(), tool, input).status).toBe(2);
   });
@@ -258,6 +306,10 @@ describe.each([
     ['Read', { file_path: '/work/.env.example' }],
     ['Read', { file_path: '/work/.husky/pre-commit' }],
     ['Edit', { file_path: '/work/AGENTS.md' }],
+    ['Grep', { pattern: 'export', path: 'src' }],
+    ['Grep', { pattern: 'export', glob: '*.ts' }],
+    ['Grep', { pattern: 'KEY', path: '/work/.env.example' }],
+    ['Grep', { pattern: 'export' }],
   ])('allows %s of %j', (tool, input) => {
     expect(decide(repo(), tool, input).status).toBe(0);
   });
@@ -304,6 +356,38 @@ describe('git-guard with a git alias', () => {
     expect(bash(repo, 'git hide').status).toBe(2);
     expect(bash(repo, 'git shell').status).toBe(2);
     rmSync(repo, { recursive: true, force: true });
+  });
+});
+
+describe('git-guard with an alias that takes arguments', () => {
+  let repo = '';
+
+  beforeAll(() => {
+    repo = makeRepo();
+    git(repo, 'config', 'alias.co', 'checkout');
+    git(repo, 'config', 'alias.sh', '!git checkout');
+    writeFileSync(join(repo, 'file.txt'), 'edited\n');
+  });
+
+  afterAll(() => {
+    rmSync(repo, { recursive: true, force: true });
+  });
+
+  it.each(['git co file.txt', 'git co -- file.txt', 'git co HEAD .', 'git sh file.txt'])(
+    'refuses %s while the tree is dirty',
+    (command) => {
+      expect(bash(repo, command).status).toBe(2);
+    },
+  );
+
+  it.each(['git co side', 'git sh side', 'git co -b topic'])('allows %s', (command) => {
+    expect(bash(repo, command).status).toBe(0);
+  });
+
+  it('names the restore alternative when it refuses git restore', () => {
+    const { stderr } = bash(repo, 'git restore file.txt');
+    expect(stderr).toContain('git restore --staged');
+    expect(stderr).not.toContain('Commit them first');
   });
 });
 

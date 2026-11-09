@@ -22,7 +22,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|MultiEdit",
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep",
         "hooks": [
           {
             "type": "command",
