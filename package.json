@@ -30,6 +30,7 @@
     "prepare": "git config core.hooksPath .husky",
     "skills:check": "node tools/repo-checks/skills-check.ts",
     "test": "vitest run",
+    "trial:metrics": "node tools/trial-metrics/collect.ts",
     "typecheck": "tsc --project tsconfig.base.json --noEmit"
   },
   "devDependencies": {
