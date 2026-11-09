@@ -29,6 +29,8 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
+      - name: Download the shellcheck binary that actionlint calls
+        run: pnpm exec shellcheck --version
       - name: Install pinned actionlint and zizmor
         run: |
           fetch() {
