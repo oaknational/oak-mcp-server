@@ -124,6 +124,11 @@
           "path": "README.md",
           "find": "`@oaknational/type-helpers`, ",
           "replace": ""
+        },
+        {
+          "path": "src/redaction-form.ts",
+          "find": "if (value.includes('://') || value.includes('?')) {",
+          "replace": "if (/^[^=&]*(?::\\/\\/|\\?)/u.test(value)) {"
         }
       ]
     },

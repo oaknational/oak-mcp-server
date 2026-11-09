@@ -12,7 +12,7 @@ function shouldRedactFormKey(key: string, options: FormRedactionOptions): boolea
 }
 
 function isLikelyFormEncodedPayload(value: string): boolean {
-  if (value.includes('://') || value.includes('?')) {
+  if (/^[^=&]*(?::\/\/|\?)/u.test(value)) {
     return false;
   }
 

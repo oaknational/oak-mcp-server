@@ -34,8 +34,8 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 ### `packages/observability`
 
 - Source: `packages/core/observability` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 14 files.
-- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/primitives.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `src/sink-registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 13 files.
+- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/primitives.ts`, `src/redaction-form.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `src/sink-registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Supplied from this repository: `src/type-safe.ts`.
 - Dropped `packages/core/observability/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
