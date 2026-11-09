@@ -25,7 +25,7 @@
     "knip": "knip --treat-config-hints-as-errors",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
-    "markdownlint": "markdownlint-cli2",
+    "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "husky",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.base.json --noEmit"
