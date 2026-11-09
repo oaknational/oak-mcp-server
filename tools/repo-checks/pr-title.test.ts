@@ -61,6 +61,10 @@ describe('pr-title', () => {
     expect(check('MCP-1: fix: x', '## Linear\n\n<!-- Fixes MCP-9 -->\n')).not.toBe('');
   });
 
+  it('ignores a closing keyword hidden by a nested HTML comment', () => {
+    expect(check('MCP-1: fix: x', '## Linear\n\n<!<!-- -->-- Fixes MCP-9 -->\n')).not.toBe('');
+  });
+
   it.each(['dependabot[bot]', INVENTED_APP])(
     'exempts %s from the id and the Linear section',
     (author) => {

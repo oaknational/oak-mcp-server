@@ -14,6 +14,7 @@ interface Job {
 const workflow = parse(
   readFileSync(join(import.meta.dirname, '../../.github/workflows/ci.yml'), 'utf8'),
 ) as {
+  on: { pull_request: { types?: string[] } };
   jobs: Record<string, Job>;
 };
 const gate = workflow.jobs['ci-gate'];
@@ -25,6 +26,10 @@ function runGate(results: string): number | null {
 }
 
 describe('ci-gate', () => {
+  it('reruns when the title or body is edited', () => {
+    expect(workflow.on.pull_request.types).toContain('edited');
+  });
+
   it('needs every other job in ci.yml', () => {
     const others = Object.keys(workflow.jobs).filter((name) => name !== 'ci-gate');
     expect([...(gate?.needs ?? [])].sort()).toEqual(others.sort());

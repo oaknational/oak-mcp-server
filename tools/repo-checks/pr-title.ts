@@ -9,8 +9,13 @@ const CLOSING = /\b(?:fixes|closes|resolves)\s+[A-Z][A-Z0-9]*-\d+/i;
 const REFERENCES = /\breferences\s+[A-Z][A-Z0-9]*-\d+[ \t]*(.*)$/im;
 const MIN_REASON_WORDS = 3;
 
+function stripComments(text: string): string {
+  const stripped = text.replace(/<!--[\s\S]*?-->/g, '');
+  return stripped === text ? text : stripComments(stripped);
+}
+
 export function section(body: string, heading: string): string | undefined {
-  const lines = body.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/);
+  const lines = stripComments(body).split(/\r?\n/);
   const start = lines.findIndex(
     (line) => line.trim().toLowerCase() === `## ${heading}`.toLowerCase(),
   );
