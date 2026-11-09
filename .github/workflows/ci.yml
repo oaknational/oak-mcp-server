@@ -127,8 +127,15 @@ jobs:
           GIT_CONFIG_KEY_0: diff.renameLimit
           GIT_CONFIG_VALUE_0: '3000'
         run: |
-          git show "$BASE_SHA:.gitleaks.toml" > "$RUNNER_TEMP/gitleaks.toml"
-          gitleaks detect --config "$RUNNER_TEMP/gitleaks.toml" --redact=100 --source . --log-opts="-m --branches --remotes --tags HEAD"
+          rm -f .gitleaksignore
+          : "${BASE_SHA:?BASE_SHA must be set}"
+          git cat-file -e "$BASE_SHA^{commit}"
+          if git cat-file -e "$BASE_SHA:.gitleaks.toml" 2>/dev/null; then
+            git show "$BASE_SHA:.gitleaks.toml" > "$RUNNER_TEMP/gitleaks.toml"
+          else
+            printf '[extend]\nuseDefault = true\n' > "$RUNNER_TEMP/gitleaks.toml"
+          fi
+          gitleaks detect --config "$RUNNER_TEMP/gitleaks.toml" --ignore-gitleaks-allow --redact=100 --source . --log-opts="-m --branches --remotes --tags HEAD"
 
   workflow-lint:
     name: workflow-lint
