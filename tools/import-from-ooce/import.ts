@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -18,34 +19,46 @@ type Brand<T, Name extends string> = T & { readonly __brand: Name };
 export type Sha40 = Brand<string, 'Sha40'>;
 type RepoPath = Brand<string, 'RepoPath'>;
 type OocePath = Brand<string, 'OocePath'>;
+type PackageDir = Brand<string, 'PackageDir'>;
+type PackageFile = Brand<string, 'PackageFile'>;
+type SuppliedSource = Brand<string, 'SuppliedSource'>;
+type PackageName = Brand<string, 'PackageName'>;
+/** A `./` path inside the package, as package.json `exports` needs. */
+type ExportTarget = Brand<string, 'ExportTarget'>;
+type Exports = Record<string, ExportTarget | Record<string, ExportTarget>>;
 
 interface Drop {
-  path: string;
+  path: PackageFile;
   reason: string;
 }
 interface TextEdit {
-  path: string;
+  path: PackageFile;
   find: string;
   replace: string;
   wholeLine: boolean;
 }
+interface Move {
+  from: string;
+  to: PackageFile;
+  directory: boolean;
+}
 interface SourceSpec {
   from: OocePath;
-  moves: Record<string, string>;
+  moves: Move[];
   drop: Drop[];
 }
 interface SuppliedFile {
-  from: RepoPath;
-  to: string;
+  from: SuppliedSource;
+  to: PackageFile;
 }
 interface PackageSpec {
-  name: string;
-  to: RepoPath;
+  name: PackageName;
+  to: PackageDir;
   sources: SourceSpec[];
   drop: Drop[];
   edits: TextEdit[];
   supplied: SuppliedFile[];
-  exports: Record<string, unknown>;
+  exports: Exports;
   removeDependencies: string[];
 }
 interface Manifest {
@@ -60,6 +73,7 @@ interface Manifest {
 }
 
 export interface OoceSource {
+  sha: Sha40;
   list(dir: OocePath): OocePath[];
   read(path: OocePath): Buffer;
 }
@@ -67,7 +81,7 @@ export interface OoceSource {
 type PlannedFile = { path: RepoPath; bytes: Buffer } & (
   | { kind: 'copied'; source: OocePath }
   | { kind: 'modified'; source: OocePath }
-  | { kind: 'supplied'; source: RepoPath }
+  | { kind: 'supplied'; source: SuppliedSource }
 );
 interface PackagePlan {
   spec: PackageSpec;
@@ -75,6 +89,7 @@ interface PackagePlan {
   dropped: { source: OocePath; reason: string }[];
 }
 type LockedVersions = Map<string, Record<string, string>>;
+type SuppliedContents = ReadonlyMap<SuppliedSource, Buffer>;
 export interface TestCount {
   tests: number;
   skipped: number;
@@ -84,6 +99,9 @@ type CountTests = (directory: string) => TestCount;
 const MANIFEST_PATH = 'tools/import-from-ooce/manifest.json';
 const IMPORTED_PATH = 'tools/import-from-ooce/imported.json';
 const COUNTS_PATH = 'tools/import-from-ooce/expected-counts.json';
+const SUPPLIED_PREFIX = 'tools/import-from-ooce/supplied/';
+const PACKAGE_ROOTS = new Set(['packages', 'apps']);
+const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const PROVENANCE_PATH = 'PROVENANCE.md';
 const PIN_PREFIX = 'Pinned OOCE import SHA: `';
 const ENTRIES_HEADING = '## Entries';
@@ -96,6 +114,15 @@ function fail(message: string): never {
 
 function parseSha(value: string): Sha40 {
   return /^[0-9a-f]{40}$/.test(value) ? (value as Sha40) : fail(`not a 40 character SHA: ${value}`);
+}
+
+export function resolveSha(requested: string | undefined, pin: Sha40): Sha40 {
+  if (requested !== undefined && parseSha(requested) !== pin) {
+    fail(
+      `--sha ${requested} differs from the pin ${pin} in ${PROVENANCE_PATH}. Change the pin by editing that line.`,
+    );
+  }
+  return pin;
 }
 
 function parsePath(value: string): string {
@@ -114,12 +141,77 @@ export function oocePath(value: string): OocePath {
   return parsePath(value) as OocePath;
 }
 
+function packageFile(value: string): PackageFile {
+  return parsePath(value) as PackageFile;
+}
+
+function packageDir(value: string, where: string): PackageDir {
+  const [root, name, ...rest] = value.split('/');
+  return root !== undefined &&
+    PACKAGE_ROOTS.has(root) &&
+    name !== undefined &&
+    NAME_PATTERN.test(name) &&
+    rest.length === 0
+    ? (value as PackageDir)
+    : fail(`${where} must be packages/<name> or apps/<name>, not ${value}`);
+}
+
+function suppliedSource(value: string, where: string): SuppliedSource {
+  return value.startsWith(SUPPLIED_PREFIX) && parsePath(value) === value
+    ? (value as SuppliedSource)
+    : fail(`${where} must be a file under ${SUPPLIED_PREFIX}, not ${value}`);
+}
+
+function packageNameSegment(value: string, where: string): PackageName {
+  return NAME_PATTERN.test(value)
+    ? (value as PackageName)
+    : fail(`${where} must match ${String(NAME_PATTERN)}, not ${value}`);
+}
+
+function dotPath(value: string, where: string): string {
+  if (!value.startsWith('./')) {
+    fail(`${where} must be a ./ path inside the package, not ${value}`);
+  }
+  parsePath(value.slice(2));
+  return value;
+}
+
+function exportTarget(value: unknown, where: string): ExportTarget {
+  return dotPath(asString(value, where), where) as ExportTarget;
+}
+
+function parseExports(value: unknown, where: string): Exports {
+  const record = asRecord(value ?? {}, where);
+  return Object.fromEntries(
+    Object.entries(record).map(([key, entry]) => {
+      const at = `${where}.${key}`;
+      if (key !== '.') {
+        dotPath(key, `${at} key`);
+      }
+      return [
+        key,
+        typeof entry === 'string'
+          ? exportTarget(entry, at)
+          : Object.fromEntries(
+              Object.entries(asRecord(entry, at)).map(([condition, target]) => [
+                condition,
+                exportTarget(target, `${at}.${condition}`),
+              ]),
+            ),
+      ];
+    }),
+  );
+}
+
 type Json = Record<string, unknown>;
 
-function asRecord(value: unknown, where: string): Json {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Json)
-    : fail(`${where} must be an object`);
+function asRecord(value: unknown, where: string, keys?: readonly string[]): Json {
+  const record =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Json)
+      : fail(`${where} must be an object`);
+  const unknown = keys === undefined ? [] : Object.keys(record).filter((k) => !keys.includes(k));
+  return unknown.length === 0 ? record : fail(`${where} has an unknown key: ${unknown.join(', ')}`);
 }
 
 function asString(value: unknown, where: string): string {
@@ -136,58 +228,77 @@ function asList<T>(value: unknown, where: string, parse: (item: unknown, at: str
 }
 
 function parseDrop(value: unknown, where: string): Drop {
-  const record = asRecord(value, where);
+  const record = asRecord(value, where, ['path', 'reason']);
   const reason = asString(record['reason'], `${where}.reason`);
   return reason.trim() === ''
     ? fail(`${where}.reason must explain the drop`)
-    : { path: parsePath(asString(record['path'], `${where}.path`)), reason };
+    : { path: packageFile(asString(record['path'], `${where}.path`)), reason };
 }
 
 function parseEdit(value: unknown, where: string): TextEdit {
-  const record = asRecord(value, where);
+  const record = asRecord(value, where, ['path', 'find', 'replace', 'wholeLine']);
   const find = asString(record['find'], `${where}.find`);
   return find === ''
     ? fail(`${where}.find must not be empty`)
     : {
-        path: parsePath(asString(record['path'], `${where}.path`)),
+        path: packageFile(asString(record['path'], `${where}.path`)),
         find,
         replace: asString(record['replace'], `${where}.replace`),
         wholeLine: record['wholeLine'] === true,
       };
 }
 
+function parseMove(from: string, to: unknown, where: string): Move {
+  const target = asString(to, where);
+  const directory = from.endsWith('/');
+  if (target.endsWith('/') !== directory) {
+    fail(`${where}: a directory move needs a trailing slash on both sides`);
+  }
+  const strip = (path: string): string => (directory ? path.slice(0, -1) : path);
+  return { from: parsePath(strip(from)), to: packageFile(strip(target)), directory };
+}
+
 function parseSource(value: unknown, where: string): SourceSpec {
-  const record = asRecord(value, where);
+  const record = asRecord(value, where, ['from', 'moves', 'drop']);
   const moves = asRecord(record['moves'] ?? {}, `${where}.moves`);
   return {
     from: oocePath(asString(record['from'], `${where}.from`)),
-    moves: Object.fromEntries(
-      Object.entries(moves).map(([from, to]) => [from, asString(to, `${where}.moves.${from}`)]),
-    ),
+    moves: Object.entries(moves).map(([from, to]) => parseMove(from, to, `${where}.moves.${from}`)),
     drop: asList(record['drop'], `${where}.drop`, parseDrop),
   };
 }
 
+function parseSupplied(value: unknown, where: string): SuppliedFile {
+  const record = asRecord(value, where, ['from', 'to']);
+  return {
+    from: suppliedSource(asString(record['from'], `${where}.from`), `${where}.from`),
+    to: packageFile(asString(record['to'], `${where}.to`)),
+  };
+}
+
 function parsePackage(value: unknown, where: string): PackageSpec {
-  const record = asRecord(value, where);
+  const record = asRecord(value, where, [
+    'name',
+    'to',
+    'sources',
+    'drop',
+    'edits',
+    'supplied',
+    'exports',
+    'removeDependencies',
+  ]);
   const sources = asList(record['sources'], `${where}.sources`, parseSource);
   if (sources.length === 0) {
     fail(`${where}.sources needs at least one source`);
   }
   return {
-    name: asString(record['name'], `${where}.name`),
-    to: repoPath(asString(record['to'], `${where}.to`)),
+    name: packageNameSegment(asString(record['name'], `${where}.name`), `${where}.name`),
+    to: packageDir(asString(record['to'], `${where}.to`), `${where}.to`),
     sources,
     drop: asList(record['drop'], `${where}.drop`, parseDrop),
     edits: asList(record['edits'], `${where}.edits`, parseEdit),
-    supplied: asList(record['supplied'], `${where}.supplied`, (item, at) => {
-      const supplied = asRecord(item, at);
-      return {
-        from: repoPath(asString(supplied['from'], `${at}.from`)),
-        to: parsePath(asString(supplied['to'], `${at}.to`)),
-      };
-    }),
-    exports: asRecord(record['exports'] ?? {}, `${where}.exports`),
+    supplied: asList(record['supplied'], `${where}.supplied`, parseSupplied),
+    exports: parseExports(record['exports'], `${where}.exports`),
     removeDependencies: asList(
       record['removeDependencies'],
       `${where}.removeDependencies`,
@@ -197,8 +308,17 @@ function parsePackage(value: unknown, where: string): PackageSpec {
 }
 
 export function parseManifest(raw: unknown): Manifest {
-  const record = asRecord(raw, 'manifest');
-  const scope = asRecord(record['scope'], 'manifest.scope');
+  const record = asRecord(raw, 'manifest', [
+    'scope',
+    'repository',
+    'dropEverywhere',
+    'removeScripts',
+    'removeDependencies',
+    'textRewrites',
+    'edits',
+    'packages',
+  ]);
+  const scope = asRecord(record['scope'], 'manifest.scope', ['from', 'to']);
   const manifest: Manifest = {
     scope: {
       from: asString(scope['from'], 'manifest.scope.from'),
@@ -213,7 +333,7 @@ export function parseManifest(raw: unknown): Manifest {
       asString,
     ),
     textRewrites: asList(record['textRewrites'], 'manifest.textRewrites', (item, at) => {
-      const rewrite = asRecord(item, at);
+      const rewrite = asRecord(item, at, ['find', 'replace']);
       return {
         find: asString(rewrite['find'], `${at}.find`),
         replace: asString(rewrite['replace'], `${at}.replace`),
@@ -235,6 +355,11 @@ function isText(bytes: Buffer): boolean {
 
 function replaceAll(text: string, find: string, replace: string): string {
   return text.split(find).join(replace);
+}
+
+function rewriteUnlessAfterParentDir(text: string, find: string, replace: string): string {
+  const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(?<!\\.\\./)${escaped}`, 'g'), () => replace);
 }
 
 function applyEdit(text: string, edit: TextEdit, where: string): string {
@@ -370,10 +495,13 @@ function transformPackageJson(
   return out;
 }
 
-function movedPath(relative: string, moves: Record<string, string>): string | undefined {
-  for (const [from, to] of Object.entries(moves)) {
-    if (from.endsWith('/') ? relative.startsWith(from) : relative === from) {
-      return from.endsWith('/') ? to + relative.slice(from.length) : to;
+function movedPath(relative: string, moves: Move[]): string | undefined {
+  for (const move of moves) {
+    if (move.directory && relative.startsWith(`${move.from}/`)) {
+      return `${move.to}${relative.slice(move.from.length)}`;
+    }
+    if (!move.directory && relative === move.from) {
+      return move.to;
     }
   }
   return undefined;
@@ -437,7 +565,11 @@ function transformText(manifest: Manifest, spec: PackageSpec, item: Gathered, sh
     }
   }
   for (const rewrite of manifest.textRewrites) {
-    text = replaceAll(text, rewrite.find, replaceAll(rewrite.replace, '{sha}', sha));
+    text = rewriteUnlessAfterParentDir(
+      text,
+      rewrite.find,
+      replaceAll(rewrite.replace, '{sha}', sha),
+    );
   }
   if (manifest.scope.from !== manifest.scope.to) {
     text = replaceAll(text, manifest.scope.from, manifest.scope.to);
@@ -449,7 +581,7 @@ function planPackage(
   manifest: Manifest,
   spec: PackageSpec,
   source: OoceSource,
-  repoRoot: string,
+  supplied: SuppliedContents,
   locked: LockedVersions,
   sha: Sha40,
 ): PackagePlan {
@@ -493,16 +625,15 @@ function planPackage(
       fail(`${spec.name} edits ${edit.path}, which it does not write`);
     }
   }
-  for (const supplied of spec.supplied) {
-    const path = repoPath(`${spec.to}/${supplied.to}`);
-    if (seen.has(supplied.to)) {
-      fail(`${spec.name} supplies ${supplied.to}, which is also imported`);
+  for (const file of spec.supplied) {
+    if (seen.has(file.to)) {
+      fail(`${spec.name} supplies ${file.to}, which is also imported`);
     }
     files.push({
       kind: 'supplied',
-      path,
-      source: supplied.from,
-      bytes: readFileSync(join(repoRoot, supplied.from)),
+      path: repoPath(`${spec.to}/${file.to}`),
+      source: file.from,
+      bytes: supplied.get(file.from) ?? fail(`${file.from} was not read`),
     });
   }
   files.sort((a, b) => a.path.localeCompare(b.path));
@@ -588,12 +719,29 @@ interface ImportReport {
   removed: string[];
 }
 
+function refuseSymlinks(root: string, path: string): void {
+  const segments = path.split('/');
+  for (let depth = 1; depth <= segments.length; depth++) {
+    const prefix = segments.slice(0, depth).join('/');
+    const stat = lstatSync(join(root, prefix), { throwIfNoEntry: false });
+    if (stat === undefined) {
+      return;
+    }
+    if (stat.isSymbolicLink()) {
+      fail(`${prefix} is a symlink. The import tool never writes or deletes through one.`);
+    }
+  }
+}
+
 function writeOutputs(
   root: string,
   outputs: Map<string, Buffer>,
-  ownedDirectories: string[],
+  ownedDirectories: PackageDir[],
 ): ImportReport {
   const report: ImportReport = { written: [], removed: [] };
+  for (const path of [...outputs.keys(), ...ownedDirectories]) {
+    refuseSymlinks(root, path);
+  }
   for (const [path, bytes] of outputs) {
     const target = join(root, path);
     if (existsSync(target) && readFileSync(target).equals(bytes)) {
@@ -607,6 +755,7 @@ function writeOutputs(
     for (const file of walk(join(root, directory))) {
       const path = `${directory}/${file}`;
       if (!outputs.has(path)) {
+        refuseSymlinks(root, path);
         rmSync(join(root, path));
         report.removed.push(path);
       }
@@ -622,42 +771,99 @@ function gitOutput(repo: string, args: string[]): Buffer {
     : fail(`git ${args.join(' ')} failed: ${result.stderr.toString('utf8').trim()}`);
 }
 
-function gitSource(repo: string, sha: Sha40): OoceSource {
-  gitOutput(repo, ['cat-file', '-e', `${sha}^{commit}`]);
+export function openOoce(repo: string, sha: Sha40): OoceSource {
+  const head = gitOutput(repo, ['rev-parse', 'HEAD']).toString('utf8').trim();
+  if (head !== sha) {
+    fail(`${repo} is at ${head}. Check out ${sha} there and build its packages.`);
+  }
+  const dirty = gitOutput(repo, ['status', '--porcelain']).toString('utf8').trim();
+  if (dirty !== '') {
+    fail(`${repo} has uncommitted changes. Import from a clean checkout:\n${dirty}`);
+  }
   return {
+    sha,
     list: (dir) =>
-      gitOutput(repo, ['ls-tree', '-r', '-z', '--name-only', sha, '--', `${dir}/`])
+      gitOutput(repo, ['ls-tree', '-r', '-z', sha, '--', `${dir}/`])
         .toString('utf8')
         .split('\0')
         .filter(Boolean)
-        .map(oocePath),
+        .map((entry) => {
+          const [meta = '', path = ''] = entry.split('\t');
+          const [mode, type] = meta.split(' ');
+          if (mode === '120000') {
+            fail(`${path} is a symlink in OOCE. The import tool copies only regular files.`);
+          }
+          return type === 'blob'
+            ? oocePath(path)
+            : fail(`${path} is a ${String(type)}, not a file`);
+        }),
     read: (path) => gitOutput(repo, ['cat-file', 'blob', `${sha}:${path}`]),
   };
+}
+
+interface VitestRun {
+  status: number | null;
+  output: string;
+  report: string | undefined;
+}
+
+export function countFromVitestRun(directory: string, run: VitestRun): TestCount {
+  const output = run.output.trimEnd().split('\n').slice(-60).join('\n');
+  if (run.report === undefined) {
+    return fail(`${directory}: vitest wrote no report. Its output:\n${output}`);
+  }
+  const report = asRecord(JSON.parse(run.report), `${directory} report`);
+  const number = (key: string): number =>
+    typeof report[key] === 'number' ? report[key] : fail(`${directory}: report lacks ${key}`);
+  const failedFiles = number('numFailedTestSuites');
+  const failedTests = number('numFailedTests');
+  if (failedFiles > 0 || failedTests > 0) {
+    const messages = asList(report['testResults'], `${directory} testResults`, (item, at) =>
+      asRecord(item, at),
+    )
+      .filter((result) => result['status'] === 'failed')
+      .map((result) => `${String(result['name'])}: ${String(result['message'])}`);
+    fail(
+      `${directory}: ${String(failedFiles)} test files failed and ${String(failedTests)} tests failed. Build OOCE's packages first.\n${[...messages, output].join('\n')}`,
+    );
+  }
+  if (report['success'] !== true || run.status !== 0) {
+    fail(`${directory}: the vitest run did not pass. Vitest output:\n${output}`);
+  }
+  return { tests: number('numTotalTests'), skipped: number('numPendingTests') };
 }
 
 function vitestCount(directory: string): TestCount {
   const out = mkdtempSync(join(tmpdir(), 'import-counts-'));
   const outputFile = join(out, 'report.json');
   try {
-    spawnSync('pnpm', ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${outputFile}`], {
-      cwd: directory,
-      stdio: 'ignore',
+    const result = spawnSync(
+      'pnpm',
+      ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${outputFile}`],
+      { cwd: directory, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+    );
+    return countFromVitestRun(directory, {
+      status: result.status,
+      output: `${result.stdout}${result.stderr}`,
+      report: existsSync(outputFile) ? readFileSync(outputFile, 'utf8') : undefined,
     });
-    const report = asRecord(JSON.parse(readFileSync(outputFile, 'utf8')), `${directory} report`);
-    const number = (key: string): number =>
-      typeof report[key] === 'number' ? report[key] : fail(`${directory}: report lacks ${key}`);
-    if (number('numFailedTests') > 0) {
-      fail(`${directory}: ${String(number('numFailedTests'))} tests failed`);
-    }
-    return { tests: number('numTotalTests'), skipped: number('numPendingTests') };
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
 }
 
+function readSupplied(root: string, manifest: Manifest): SuppliedContents {
+  const paths = manifest.packages.flatMap((spec) => spec.supplied.map((file) => file.from));
+  return new Map(
+    paths.map((path) => {
+      refuseSymlinks(root, path);
+      return [path, readFileSync(join(root, path))];
+    }),
+  );
+}
+
 interface ImportInput {
   root: string;
-  sha: Sha40;
   source: OoceSource;
   ooceRoot: string;
   countTests: CountTests;
@@ -665,14 +871,15 @@ interface ImportInput {
 
 export function runImport(input: ImportInput): ImportReport {
   const manifest = parseManifest(JSON.parse(readFileSync(join(input.root, MANIFEST_PATH), 'utf8')));
-  const provenancePath = join(input.root, PROVENANCE_PATH);
-  const provenance = readFileSync(provenancePath, 'utf8');
-  if (pinnedSha(provenance) !== input.sha) {
-    fail(`--sha differs from the pin in ${PROVENANCE_PATH}. Change the pin by editing that line.`);
+  const provenance = readFileSync(join(input.root, PROVENANCE_PATH), 'utf8');
+  const sha = pinnedSha(provenance);
+  if (input.source.sha !== sha) {
+    fail(`the OOCE source is at ${input.source.sha}, not the pin ${sha}`);
   }
   const locked = lockedVersions(input.source);
+  const supplied = readSupplied(input.root, manifest);
   const plans = manifest.packages.map((spec) =>
-    planPackage(manifest, spec, input.source, input.root, locked, input.sha),
+    planPackage(manifest, spec, input.source, supplied, locked, sha),
   );
   const counts = new Map<string, TestCount>();
   for (const plan of plans) {
@@ -688,12 +895,12 @@ export function runImport(input: ImportInput): ImportReport {
       outputs.set(file.path, file.bytes);
     }
   }
-  const owned = plans.map((plan) => plan.spec.to as string);
+  const owned = plans.map((plan) => plan.spec.to);
   const report = writeOutputs(input.root, outputs, owned);
   const extras = new Map<string, Buffer>([
-    [PROVENANCE_PATH, Buffer.from(renderProvenance(provenance, plans, input.sha))],
+    [PROVENANCE_PATH, Buffer.from(renderProvenance(provenance, plans, sha))],
     [IMPORTED_PATH, renderImported(plans)],
-    [COUNTS_PATH, renderCounts(manifest, input.sha, counts)],
+    [COUNTS_PATH, renderCounts(manifest, sha, counts)],
   ]);
   const extraReport = writeOutputs(input.root, extras, []);
   report.written.push(...extraReport.written);
@@ -723,7 +930,11 @@ export function checkCounts(root: string, countTests: CountTests): string[] {
 
 function flag(args: string[], name: string): string | undefined {
   const at = args.indexOf(name);
-  return at === -1 ? undefined : args[at + 1];
+  if (at === -1) {
+    return undefined;
+  }
+  const value = args[at + 1];
+  return value === undefined || value.startsWith('--') ? fail(`${name} needs a value`) : value;
 }
 
 function main(): void {
@@ -738,16 +949,11 @@ function main(): void {
     fail('usage: import --sha <sha> --ooce <path to an OOCE checkout at that SHA>');
   }
   const pin = pinnedSha(readFileSync(join(root, PROVENANCE_PATH), 'utf8'));
-  const sha = parseSha(flag(args, '--sha') ?? pin);
-  const head = gitOutput(ooceRoot, ['rev-parse', 'HEAD']).toString('utf8').trim();
-  if (head !== sha) {
-    fail(`${ooceRoot} is at ${head}. Check out ${sha} there and build its packages.`);
-  }
+  const sha = resolveSha(flag(args, '--sha'), pin);
   const report = runImport({
     root,
-    sha,
     ooceRoot,
-    source: gitSource(ooceRoot, sha),
+    source: openOoce(ooceRoot, sha),
     countTests: vitestCount,
   });
   const changed = report.written.length + report.removed.length;

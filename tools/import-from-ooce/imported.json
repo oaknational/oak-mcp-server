@@ -91,7 +91,6 @@
     "packages/posthog-node/src/automatic-event-policy.unit.test.ts": "sha256:63a28d509d8147defd6ccbf003b2de1495cc09d1632814fc2ce5c9bddb584e8d",
     "packages/posthog-node/src/client-categories.ts": "sha256:b7c806565284f1b752aae8e4cddf9b91d2fd1801daadfc462691d3123ae9e768",
     "packages/posthog-node/src/client-categories.unit.test.ts": "sha256:1759b1f4ba2c43c2b3624a8bfa5b3ffff4016f5930505b54adf10b0e3213295e",
-    "packages/posthog-node/src/client-product-selection.ts": "sha256:0faca38fc31f36cadfa94461f7f0f7e3df17b5875d48b896c4423bf4b8ff5d62",
     "packages/posthog-node/src/client-user-agent.ts": "sha256:16734a1292da3be27ca0cfe98543373d84499733cd9630143bd4cdcf9ab4fe94",
     "packages/posthog-node/src/client-user-agent.unit.test.ts": "sha256:cee7504795e2d50617e98f8ff8f98f80b15b6a35b021a490b6d0c94a3e498c8d",
     "packages/posthog-node/src/event-policy-canonical-values.integration.test.ts": "sha256:3fc8c86c520a0d1769e56394f7bccdf54b36c05a760662d9a2a67ba9d556922b",

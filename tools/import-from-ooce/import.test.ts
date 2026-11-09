@@ -1,13 +1,26 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
-import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   checkCounts,
+  countFromVitestRun,
   oocePath,
+  openOoce,
   parseManifest,
+  resolveSha,
   runImport,
   type OoceSource,
   type Sha40,
@@ -25,6 +38,7 @@ function walk(directory: string): string[] {
 }
 
 const fixtureSource: OoceSource = {
+  sha: SHA,
   list: (directory) =>
     walk(join(FIXTURES, directory))
       .map((file) => relative(FIXTURES, file).slice(0, -SUFFIX.length))
@@ -95,11 +109,10 @@ function readJson(path: string): Record<string, unknown> {
   return JSON.parse(read(path)) as Record<string, unknown>;
 }
 
-function run(manifest: unknown = manifestJson, sha: Sha40 = SHA): ReturnType<typeof runImport> {
+function run(manifest: unknown = manifestJson): ReturnType<typeof runImport> {
   write('tools/import-from-ooce/manifest.json', JSON.stringify(manifest));
   return runImport({
     root,
-    sha,
     source: fixtureSource,
     ooceRoot: 'ooce',
     countTests: (directory) =>
@@ -247,9 +260,24 @@ describe('import from OOCE', () => {
       textRewrites: [{ find: '../../../docs/', replace: 'https://example.test/blob/{sha}/docs/' }],
     };
     run(manifest);
-    expect(read('packages/alpha/README.md')).toContain(
-      `https://example.test/blob/${SHA}/docs/guide.md`,
-    );
+    const readme = read('packages/alpha/README.md');
+    expect(readme).toContain(`(https://example.test/blob/${SHA}/docs/guide.md)`);
+    expect(readme).toContain('(../../../../docs/deep.md)');
+  });
+
+  it('rewrites each link depth by its own rule, whatever the rule order', () => {
+    const manifest = {
+      ...manifestJson,
+      textRewrites: [
+        { find: '../../../docs/', replace: 'https://example.test/blob/{sha}/docs/' },
+        { find: '../../../../docs/', replace: 'https://example.test/blob/{sha}/docs/' },
+      ],
+    };
+    run(manifest);
+    const readme = read('packages/alpha/README.md');
+    expect(readme).toContain(`(https://example.test/blob/${SHA}/docs/guide.md)`);
+    expect(readme).toContain(`(https://example.test/blob/${SHA}/docs/deep.md)`);
+    expect(readme).not.toContain('../https');
   });
 
   it('lists modified and supplied files in PROVENANCE.md with the source path and SHA', () => {
@@ -290,8 +318,18 @@ describe('import from OOCE', () => {
     expect(read('packages/alpha/dist/index.js')).toBe('built\n');
   });
 
+  it('refuses a source at another SHA than the pin', () => {
+    write('tools/import-from-ooce/manifest.json', JSON.stringify(manifestJson));
+    const source = { ...fixtureSource, sha: 'b'.repeat(40) as Sha40 };
+    expect(() =>
+      runImport({ root, source, ooceRoot: 'ooce', countTests: () => ({ tests: 0, skipped: 0 }) }),
+    ).toThrow(/not the pin/);
+  });
+
   it('refuses a SHA that differs from the pin', () => {
-    expect(() => run(manifestJson, 'b'.repeat(40) as Sha40)).toThrow(/differs from the pin/);
+    expect(() => resolveSha('b'.repeat(40), SHA)).toThrow(/differs from the pin/);
+    expect(resolveSha(undefined, SHA)).toBe(SHA);
+    expect(resolveSha(SHA, SHA)).toBe(SHA);
   });
 
   it('reports a test count that differs from the recorded one', () => {
@@ -301,5 +339,189 @@ describe('import from OOCE', () => {
     );
     expect(same).toHaveLength(2);
     expect(() => checkCounts(root, () => ({ tests: 1, skipped: 0 }))).toThrow(/MISMATCH/);
+  });
+});
+
+describe('manifest boundary', () => {
+  const withPackage = (change: Record<string, unknown>): unknown => ({
+    ...manifestJson,
+    packages: [{ ...alpha, ...change }, beta],
+  });
+
+  it.each([
+    '.github/workflows',
+    'tools/repo-checks',
+    'tools/import-from-ooce',
+    'packages/a/b',
+    'packages',
+    'packages/A.b',
+  ])('rejects the destination %s', (to) => {
+    expect(() => parseManifest(withPackage({ to }))).toThrow(/packages\/<name> or apps\/<name>/);
+  });
+
+  it('accepts an apps destination', () => {
+    expect(parseManifest(withPackage({ to: 'apps/alpha' })).packages[0]?.to).toBe('apps/alpha');
+  });
+
+  it('rejects a supplied file outside the supplied directory', () => {
+    const supplied = [{ from: '.env', to: 'src/env.ts' }];
+    expect(() => parseManifest(withPackage({ supplied }))).toThrow(
+      /tools\/import-from-ooce\/supplied\//,
+    );
+  });
+
+  it.each([
+    ['the manifest', { ...manifestJson, extra: true }, /manifest has an unknown key: extra/],
+    ['a package', withPackage({ edit: [] }), /unknown key: edit/],
+    [
+      'a source',
+      withPackage({ sources: [{ from: 'packages/libs/alpha', move: {} }] }),
+      /unknown key: move/,
+    ],
+    [
+      'an edit',
+      withPackage({ edits: [{ path: 'a.ts', find: 'a', replace: 'b', whole: true }] }),
+      /unknown key: whole/,
+    ],
+    ['a drop', withPackage({ drop: [{ path: 'a', reason: 'b', why: 'c' }] }), /unknown key: why/],
+  ])('rejects an unknown key in %s', (_where, manifest, message) => {
+    expect(() => parseManifest(manifest)).toThrow(message);
+  });
+
+  it.each([
+    ['a package name', { name: '../../evil' }],
+    ['an export target', { exports: { './x': 42 } }],
+    ['an export path', { exports: { './x': '../outside.js' } }],
+    ['an export key', { exports: { x: './dist/x.js' } }],
+    [
+      'a supplied destination',
+      { supplied: [{ from: 'tools/import-from-ooce/supplied/h.ts', to: '../h.ts' }] },
+    ],
+    ['an edit path', { edits: [{ path: '../a.ts', find: 'a', replace: 'b' }] }],
+    ['a drop path', { drop: [{ path: 'a/../../b', reason: 'r' }] }],
+    [
+      'a move destination',
+      { sources: [{ from: 'packages/libs/alpha', moves: { 'src/': '../src/' } }] },
+    ],
+  ])('rejects a malformed %s', (_what, change) => {
+    expect(() => parseManifest(withPackage(change))).toThrow();
+  });
+});
+
+describe('file system boundary', () => {
+  it('refuses to write or delete through a symlinked package directory', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'import-outside-'));
+    try {
+      writeFileSync(join(outside, 'victim.txt'), 'keep\n');
+      mkdirSync(join(root, 'packages'), { recursive: true });
+      symlinkSync(outside, join(root, 'packages', 'alpha'));
+      expect(() => run()).toThrow(/symlink/);
+      expect(readdirSync(outside)).toEqual(['victim.txt']);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to delete a symlink inside a package', () => {
+    run();
+    symlinkSync('/nonexistent', join(root, 'packages/alpha/src/link.ts'));
+    expect(() => run()).toThrow(/symlink/);
+  });
+});
+
+describe('OOCE checkout', () => {
+  let repo: string;
+
+  function git(...args: string[]): string {
+    return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+  }
+
+  function commit(): string {
+    git('add', '-A');
+    git('-c', 'user.name=t', '-c', 'user.email=t@localhost', 'commit', '-qm', 'c');
+    return git('rev-parse', 'HEAD');
+  }
+
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'import-ooce-'));
+    git('init', '-q');
+    mkdirSync(join(repo, 'packages/x/src'), { recursive: true });
+    writeFileSync(join(repo, 'packages/x/src/a.ts'), 'export {};\n');
+  });
+
+  afterEach(() => {
+    rmSync(repo, { recursive: true, force: true });
+  });
+
+  it('lists the files of a clean checkout at the SHA', () => {
+    const sha = commit() as Sha40;
+    expect(openOoce(repo, sha).list(oocePath('packages/x'))).toEqual(['packages/x/src/a.ts']);
+  });
+
+  it('refuses a dirty checkout', () => {
+    const sha = commit() as Sha40;
+    writeFileSync(join(repo, 'packages/x/src/a.ts'), 'export const changed = 1;\n');
+    expect(() => openOoce(repo, sha)).toThrow(/uncommitted changes/);
+  });
+
+  it('refuses a checkout at another SHA', () => {
+    commit();
+    expect(() => openOoce(repo, 'c'.repeat(40) as Sha40)).toThrow(/is at/);
+  });
+
+  it('refuses a symlink in the source tree', () => {
+    symlinkSync('/etc/hosts', join(repo, 'packages/x/src/link.ts'));
+    const sha = commit() as Sha40;
+    expect(() => openOoce(repo, sha).list(oocePath('packages/x'))).toThrow(
+      /packages\/x\/src\/link.ts is a symlink/,
+    );
+    expect(existsSync(join(repo, 'packages/x/src/link.ts'))).toBe(true);
+  });
+});
+
+describe('OOCE test counts', () => {
+  const report = (fields: Record<string, unknown>): string =>
+    JSON.stringify({
+      success: true,
+      numFailedTestSuites: 0,
+      numFailedTests: 0,
+      numTotalTests: 5,
+      numPendingTests: 1,
+      ...fields,
+    });
+
+  it('reads the totals from a passing run', () => {
+    expect(countFromVitestRun('pkg', { status: 0, output: '', report: report({}) })).toEqual({
+      tests: 5,
+      skipped: 1,
+    });
+  });
+
+  it('fails when a test file could not load, even with no failed test', () => {
+    const run = {
+      status: 1,
+      output: 'Failed to resolve import "@oaknational/result"',
+      report: report({
+        success: false,
+        numFailedTestSuites: 3,
+        testResults: [
+          { name: 'a.test.ts', status: 'failed', message: 'Cannot find package "dist"' },
+          { name: 'b.test.ts', status: 'passed', message: '' },
+        ],
+      }),
+    };
+    expect(() => countFromVitestRun('pkg', run)).toThrow(
+      /3 test files failed[\s\S]*a.test.ts: Cannot find package "dist"[\s\S]*Failed to resolve/,
+    );
+  });
+
+  it('fails when the run reports no success', () => {
+    const run = { status: 0, output: '', report: report({ success: false }) };
+    expect(() => countFromVitestRun('pkg', run)).toThrow(/did not pass/);
+  });
+
+  it('shows the vitest output when no report was written', () => {
+    const run = { status: 1, output: 'Command "vitest" not found', report: undefined };
+    expect(() => countFromVitestRun('pkg', run)).toThrow(/wrote no report[\s\S]*not found/);
   });
 });

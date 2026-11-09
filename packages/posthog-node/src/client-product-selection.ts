@@ -9,7 +9,7 @@
  * `Claude-User` (10,045 requests), `claude-code/2.1.x (cli)` (~3,100) and
  * `codex-mcp-client/0.14x (…)` (~230). The `openai-mcp` row is the one stated
  * exception: it was added ahead of Oak's OpenAI launch (week of 2026-09-07,
- * Luke Arnold's direction) from PostHog's published resolver and its fixtures
+ * as a product decision) from PostHog's published resolver and its fixtures
  * (`openai-mcp/1.0.0`, with `(ChatGPT)`, `(Codex)`, `(Agent Builder)` and
  * `(Responses API)` surfaces), which record that client's shape from PostHog's
  * own traffic. Its check is the first live OpenAI user agent Oak observes

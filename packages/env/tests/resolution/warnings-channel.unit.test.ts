@@ -24,7 +24,7 @@
  * `resolveEnv`. The carrier is reserved here; the population mechanism
  * is WS3's responsibility.
  *
- * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 
 import { describe, expect, it } from 'vitest';

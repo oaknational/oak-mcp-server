@@ -31,16 +31,32 @@
       "replace": "@localhost"
     },
     {
-      "find": "../../../docs/architecture/architectural-decisions/",
-      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/architecture/architectural-decisions/"
+      "find": "../../../docs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/"
     },
     {
-      "find": "../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md",
-      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/apps/oak-curriculum-mcp-streamable-http/docs/observability.md"
+      "find": "../../../../docs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/"
+    },
+    {
+      "find": "../../../../../docs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/"
     },
     {
       "find": "../../../.agent/",
       "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/.agent/"
+    },
+    {
+      "find": "../../../../.agent/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/.agent/"
+    },
+    {
+      "find": "../../../../../.agent/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/.agent/"
+    },
+    {
+      "find": "../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/apps/oak-curriculum-mcp-streamable-http/docs/observability.md"
     }
   ],
   "edits": [
@@ -280,6 +296,14 @@
       "sources": [
         {
           "from": "packages/libs/posthog-node"
+        }
+      ],
+      "edits": [
+        {
+          "path": "src/client-product-selection.ts",
+          "find": "s direction) from PostHog's published resolver and its fixtures",
+          "replace": " * as a product decision) from PostHog's published resolver and its fixtures",
+          "wholeLine": true
         }
       ]
     }

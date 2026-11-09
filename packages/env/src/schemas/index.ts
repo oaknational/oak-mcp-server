@@ -17,7 +17,7 @@ export type { LoggingEnv } from './logging';
  * the WS1 RED-phase tree compile-clean while WS3 atomically renames the
  * remaining consumers and removes this file.
  *
- * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 export { SentryEnvSchema, SENTRY_MODES } from './sentry';
 export type { SentryEnv } from './sentry';

@@ -16,7 +16,7 @@
  * the boundary between schema-level cross-field rules (e.g. preview-with-
  * empty-sinks) and the operator-facing surface that displays the warnings.
  *
- * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  *
  * @packageDocumentation
  */

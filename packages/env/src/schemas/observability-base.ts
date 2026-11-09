@@ -8,7 +8,7 @@
  * can be dropped from this shape entirely. Not exported from the package
  * barrel — implementation detail of `observability.ts`.
  *
- * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  *
  * @packageDocumentation
  */
