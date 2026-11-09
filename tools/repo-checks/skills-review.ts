@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-export interface Pin {
+interface Pin {
   name: string;
   ref: string;
 }
@@ -8,7 +8,7 @@ export interface Pin {
 const REVIEW_HEADING = /^### (\S+)\s*$/;
 const SHA_LINE = /^- SHA: `([0-9a-f]{40})`\s*$/;
 
-export function parsePins(lockText: string): Pin[] {
+function parsePins(lockText: string): Pin[] {
   const lock = JSON.parse(lockText) as { skills?: Record<string, { ref?: unknown }> };
   return Object.entries(lock.skills ?? {}).map(([name, pin]) => ({
     name,
@@ -16,7 +16,7 @@ export function parsePins(lockText: string): Pin[] {
   }));
 }
 
-export function reviewedShas(reviewText: string): Map<string, Set<string>> {
+function reviewedShas(reviewText: string): Map<string, Set<string>> {
   const reviewed = new Map<string, Set<string>>();
   let current: string | undefined;
   for (const line of reviewText.split(/\r?\n/)) {
