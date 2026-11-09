@@ -27,7 +27,7 @@
     "lint:fix": "eslint --fix .",
     "lint:workflows": "sh -c 'status=0; actionlint || status=1; zizmor --offline .github/workflows/ || status=1; exit $status'",
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
-    "prepare": "husky",
+    "prepare": "git config core.hooksPath .husky",
     "skills:check": "node tools/repo-checks/skills-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.base.json --noEmit"
@@ -41,7 +41,6 @@
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "github-slugger": "^2.0.0",
-    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "knip": "^6.32.1",
     "markdownlint-cli2": "^0.23.2",

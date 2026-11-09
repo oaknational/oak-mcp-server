@@ -7,7 +7,7 @@ import { parse, parseAllDocuments } from 'yaml';
 
 const LOCKFILE = 'pnpm-lock.yaml';
 
-const REPAIR_COMMAND = `rm -rf node_modules ${LOCKFILE} && pnpm install`;
+export const REPAIR_COMMAND = `rm -rf node_modules && rm ${LOCKFILE} && pnpm install`;
 
 export function overrideName(key: string): string {
   const target = key.split('>').pop() ?? key;
