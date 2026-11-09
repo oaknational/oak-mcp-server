@@ -65,6 +65,28 @@ describe('pr-title', () => {
     expect(check('MCP-1: fix: x', '## Linear\n\n<!<!-- -->-- Fixes MCP-9 -->\n')).not.toBe('');
   });
 
+  it('ignores a closing keyword after a nested opener inside one comment', () => {
+    expect(check('MCP-1: fix: x', '## Linear\n\n<!-- <!-- Fixes MCP-1 -->\n')).not.toBe('');
+  });
+
+  it('counts a closing keyword that follows a closed comment', () => {
+    expect(check('MCP-1: fix: x', '## Linear\n\n<!-- note -->\nFixes MCP-1\n')).toBe('');
+  });
+
+  it('ignores a closing keyword inside an unclosed comment', () => {
+    expect(check('MCP-1: fix: x', '## Linear\n\n<!-- Fixes MCP-1\n')).not.toBe('');
+  });
+
+  it('ignores a section heading inside an unclosed comment', () => {
+    expect(check('MCP-1: fix: x', '<!--\n## Linear\n\nFixes MCP-1\n')).toContain(
+      "no '## Linear' section",
+    );
+  });
+
+  it('keeps text around a closer that has no opener', () => {
+    expect(check('MCP-1: fix: x', '## Linear\n\n--> Fixes MCP-1\n')).toBe('');
+  });
+
   it.each(['dependabot[bot]', INVENTED_APP])(
     'exempts %s from the id and the Linear section',
     (author) => {

@@ -10,8 +10,22 @@ const REFERENCES = /\breferences\s+[A-Z][A-Z0-9]*-\d+[ \t]*(.*)$/im;
 const MIN_REASON_WORDS = 3;
 
 function stripComments(text: string): string {
-  const stripped = text.replace(/<!--[\s\S]*?-->/g, '');
-  return stripped === text ? text : stripComments(stripped);
+  let kept = '';
+  let cursor = 0;
+  for (;;) {
+    const open = text.indexOf('<!--', cursor);
+    if (open === -1) {
+      kept += text.slice(cursor);
+      break;
+    }
+    kept += text.slice(cursor, open);
+    const close = text.indexOf('-->', open + '<!--'.length);
+    if (close === -1) {
+      break;
+    }
+    cursor = close + '-->'.length;
+  }
+  return kept === text ? text : stripComments(kept);
 }
 
 export function section(body: string, heading: string): string | undefined {
