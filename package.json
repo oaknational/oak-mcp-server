@@ -28,7 +28,7 @@
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "husky",
     "test": "vitest run",
-    "typecheck": "tsc --project tsconfig.base.json --noEmit"
+    "typecheck": "tsc --project tsconfig.base.json --noEmit && tsc --project apps/docs/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",

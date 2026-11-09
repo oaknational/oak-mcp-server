@@ -40,5 +40,5 @@
     "apps/**/*.mts",
     "apps/**/*.cts"
   ],
-  "exclude": ["**/node_modules", "**/dist", "**/coverage"]
+  "exclude": ["**/node_modules", "**/dist", "**/coverage", "apps/docs"]
 }
