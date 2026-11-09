@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import process from 'node:process';
 
 class Refusal extends Error {}
@@ -61,7 +61,23 @@ const COMMIT_VALUE_OPTIONS = new Set([
   '--squash',
 ]);
 const shellQuote = (word) => `'${word.replaceAll("'", "'\\''")}'`;
-const SHORT_FLAGS = (letter) => new RegExp(`^-[a-zA-Z]*${letter}[a-zA-Z]*$`);
+const COMMIT_VALUE_LETTERS = 'mFCct';
+const SHORT_FLAGS = (letter, valueLetters = '') => ({
+  test(word) {
+    if (!/^-[a-zA-Z]/.test(word)) {
+      return false;
+    }
+    for (const char of word.slice(1)) {
+      if (char === letter) {
+        return true;
+      }
+      if (valueLetters.includes(char) || !/[a-zA-Z]/.test(char)) {
+        return false;
+      }
+    }
+    return false;
+  },
+});
 
 function tokenize(text) {
   const segments = [];
@@ -97,6 +113,10 @@ function tokenize(text) {
       endToken();
     } else if (SEPARATORS.has(char)) {
       endSegment();
+    } else if ((char === '>' || char === '<') && !/^\d*$/.test(token)) {
+      endToken();
+      token = char;
+      hasToken = true;
     } else {
       token += char;
       hasToken = true;
@@ -109,14 +129,16 @@ function tokenize(text) {
 const ENV_TEMPLATE = /^\.env\.(?:example|sample|template)$/;
 const isEnvPath = (path) => {
   const name = path.split('/').pop() ?? '';
-  return (/^\.env(?:\.|$)/.test(name) && !ENV_TEMPLATE.test(name)) || /^\.env[*?[]/.test(name);
+  return name.startsWith('.env') && !ENV_TEMPLATE.test(name);
 };
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
 const HUSKY_PATH = /(?:^|\/)\.husky(?:\/|$)/;
 
 function worktree(dir) {
-  const status = spawnSync('git', ['-C', dir, 'status', '--porcelain'], { encoding: 'utf8' });
+  const status = spawnSync('git', ['-C', dir, 'status', '--porcelain', '--untracked-files=all'], {
+    encoding: 'utf8',
+  });
   if (status.status !== 0) {
     return { tracked: 1, untracked: 1 };
   }
@@ -229,7 +251,10 @@ function checkGit(args, callDir) {
       if (['--no-verify', '--no-pre-commit', '--no-commit-msg'].includes(word)) {
         refuseSkip(`${word} is a hook-skip switch`);
       }
-      if ((sub === 'commit' || sub === 'push') && SHORT_FLAGS('n').test(word)) {
+      if (
+        (sub === 'commit' || sub === 'push') &&
+        SHORT_FLAGS('n', COMMIT_VALUE_LETTERS).test(word)
+      ) {
         refuseSkip(`-n on git ${sub} skips the repository's hooks`);
       }
     }
@@ -252,7 +277,7 @@ function checkGit(args, callDir) {
       break;
     case 'commit':
       for (const word of options) {
-        if (word === '--all' || SHORT_FLAGS('a').test(word)) {
+        if (word === '--all' || SHORT_FLAGS('a', COMMIT_VALUE_LETTERS).test(word)) {
           refuse(
             `git commit ${word} stages every tracked edit. Stage by explicit pathspec, then commit.`,
           );
@@ -531,9 +556,23 @@ function checkCommand(text, callDir, depth = 0) {
   if (depth > 4) {
     return;
   }
+  const dirs = [callDir];
   for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
-    checkSegment(segment, callDir, depth);
+    if (segment[0] === 'cd') {
+      dirs.push(cdTarget(dirs.at(-1), segment[1]));
+    }
+    for (const dir of dirs) {
+      checkSegment(segment, dir, depth);
+    }
   }
+}
+
+const UNKNOWN_DIR = join(process.cwd(), '.git-guard-unknown-directory', 'x');
+function cdTarget(dir, target) {
+  if (target === undefined || target === '-' || /[$~`*?[]/.test(target)) {
+    return UNKNOWN_DIR;
+  }
+  return resolve(dir, target);
 }
 
 function decide(call) {

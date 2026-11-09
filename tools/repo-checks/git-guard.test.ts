@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { REPAIR_COMMAND } from './lockfile-rebuild.ts';
 
 const hook =
   process.env.GIT_GUARD_HOOK ?? join(import.meta.dirname, '../../.claude/hooks/git-guard.sh');
@@ -420,5 +422,64 @@ describe('git-guard refusals', () => {
   it('refuses input it cannot parse', () => {
     const { status } = spawnSync('bash', [hook], { input: 'not json', encoding: 'utf8' });
     expect(status).toBe(2);
+  });
+});
+
+describe('git-guard review fixes', () => {
+  it.each([
+    'git commit -am"fix: a b"',
+    'git commit -nm"fix: a b"',
+    'echo x>.husky/pre-commit',
+    'cat x>>.husky/pre-commit',
+    'cat<.env',
+    'cat .envrc',
+    'cat .env-prod',
+  ])('refuses %s', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    ['Read', { file_path: '/work/.envrc' }],
+    ['Grep', { pattern: 'SECRET', path: '/work/.env-prod' }],
+  ] as const)('refuses %s on an env-like file', (tool, input) => {
+    expect(decide(clean, tool, { ...input }).status).toBe(2);
+  });
+
+  it.each(['git commit -m"fix a b"', 'cat .env.example'])('allows %s', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it('counts untracked files when status.showUntrackedFiles is no', () => {
+    const repo = makeRepo();
+    try {
+      writeFileSync(join(repo, 'scratch.txt'), 'new\n');
+      git(repo, 'config', 'status.showUntrackedFiles', 'no');
+      expect(bash(repo, 'git clean -f').status).toBe(2);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('checks a stash against the directory a literal cd moves into', () => {
+    const parent = makeRepo();
+    try {
+      const inner = join(parent, 'inner');
+      mkdirSync(inner);
+      git(inner, 'init', '--quiet', '--initial-branch=main');
+      git(inner, 'config', 'user.name', 'Test');
+      git(inner, 'config', 'user.email', '');
+      writeFileSync(join(inner, 'f.txt'), 'one\n');
+      git(inner, 'add', 'f.txt');
+      git(inner, 'commit', '--quiet', '--message', 'seed');
+      writeFileSync(join(inner, 'f.txt'), 'two\n');
+      expect(bash(parent, 'cd inner && git stash').status).toBe(2);
+      expect(bash(parent, 'cd "$SOMEWHERE" && git stash').status).toBe(2);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('allows the lockfile repair command', () => {
+    expect(bash(clean, REPAIR_COMMAND).status).toBe(0);
   });
 });
