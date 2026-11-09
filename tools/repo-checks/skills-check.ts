@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 interface Manifest {
@@ -11,13 +11,22 @@ const SOURCE = '.agents/skills';
 const MIRROR = '.claude/skills';
 const ROOTS = [SOURCE, MIRROR];
 
-function listFiles(dir: string): string[] {
+function listFiles(dir: string, symlinks: string[]): string[] {
+  if (lstatSync(dir, { throwIfNoEntry: false })?.isSymbolicLink() === true) {
+    symlinks.push(dir);
+    return [];
+  }
   if (!existsSync(dir)) {
     return [];
   }
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => join(entry.parentPath, entry.name));
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      symlinks.push(path);
+      return [];
+    }
+    return entry.isDirectory() ? listFiles(path, symlinks) : [path];
+  });
 }
 
 const root = resolve(process.argv[2] ?? join(import.meta.dirname, '../..'));
@@ -35,11 +44,16 @@ for (const [path, expected] of Object.entries(manifest.files)) {
 
 for (const base of ROOTS) {
   for (const skill of manifest.skills) {
-    for (const file of listFiles(join(root, base, skill))) {
+    const symlinks: string[] = [];
+    for (const file of listFiles(join(root, base, skill), symlinks)) {
       const path = relative(root, file).split('\\').join('/');
       if (!(path in manifest.files)) {
         problems.push(`${path}: not in oak-skills.json, remove it or add the skill upstream`);
       }
+    }
+    for (const link of symlinks) {
+      const path = relative(root, link).split('\\').join('/');
+      problems.push(`${path}: symlink, vendored skills hold regular files only, remove it`);
     }
   }
   const known = new Set(manifest.skills);
@@ -56,7 +70,8 @@ for (const entry of existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTyp
   if (!entry.isDirectory() || entry.name.startsWith('oak-')) {
     continue;
   }
-  for (const file of listFiles(join(sourceDir, entry.name))) {
+  const symlinks: string[] = [];
+  for (const file of listFiles(join(sourceDir, entry.name), symlinks)) {
     const rel = relative(sourceDir, file).split('\\').join('/');
     const copy = join(root, MIRROR, rel);
     if (!existsSync(copy)) {
@@ -64,6 +79,10 @@ for (const entry of existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTyp
     } else if (!readFileSync(copy).equals(readFileSync(file))) {
       problems.push(`${MIRROR}/${rel}: differs from ${SOURCE}/${rel}, recopy it`);
     }
+  }
+  for (const link of symlinks) {
+    const path = relative(root, link).split('\\').join('/');
+    problems.push(`${path}: symlink, local skills hold regular files only, remove it`);
   }
 }
 

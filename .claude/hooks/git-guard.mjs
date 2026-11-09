@@ -657,8 +657,10 @@ function checkCommand(text, callDir, depth = 0) {
     checkCommand(inner ?? '', callDir, depth + 1);
   }
   for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
-    if (segment[0] === 'cd') {
-      dirs.push(cdTarget(dirs.at(-1), segment[1]));
+    const words = segment.filter((word, at) => at > 0 || !['builtin', 'command'].includes(word));
+    if (words[0] === 'cd' || words[0] === 'pushd') {
+      const target = words.slice(1).find((word) => !CD_FLAGS.has(word));
+      dirs.push(cdTarget(dirs.at(-1), target));
     }
     for (const dir of dirs) {
       checkSegment(segment, dir, depth);
@@ -666,6 +668,7 @@ function checkCommand(text, callDir, depth = 0) {
   }
 }
 
+const CD_FLAGS = new Set(['-L', '-P', '-e', '-@', '--']);
 const UNKNOWN_DIR = join(process.cwd(), '.git-guard-unknown-directory', 'x');
 function cdTarget(dir, target) {
   if (target === undefined || target === '-' || /[$~`*?[]/.test(target)) {
