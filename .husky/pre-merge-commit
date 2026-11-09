@@ -4,3 +4,5 @@ export GUARD_BRANCH=""
 export GUARD_HINT="Abort the merge (git merge --abort), then merge on a branch and land via PR."
 # shellcheck source=refuse-commit-on-main.sh
 . .husky/refuse-commit-on-main.sh
+
+exec .husky/pre-commit

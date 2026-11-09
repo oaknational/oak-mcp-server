@@ -19,15 +19,24 @@ function git(...args: string[]): string {
 }
 
 function commit(message: string): void {
-  git('-c', 'user.name=fixture', '-c', 'user.email=fixture', 'commit', '-q', '-m', message);
+  git('commit', '-q', '-m', message);
 }
 
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'hooks-'));
   git('init', '-q', '-b', 'main');
+  git('config', 'user.name', 'fixture');
+  git('config', 'user.email', 'fixture');
   mkdirSync(join(repo, '.husky'));
   mkdirSync(join(repo, 'tools'));
-  for (const file of ['applypatch-msg', 'commit-msg', 'pre-push', 'refuse-commit-on-main.sh']) {
+  for (const file of [
+    'applypatch-msg',
+    'commit-msg',
+    'pre-applypatch',
+    'pre-merge-commit',
+    'pre-push',
+    'refuse-commit-on-main.sh',
+  ]) {
     copyFileSync(join(root, '.husky', file), join(repo, '.husky', file));
   }
   for (const file of ['commitlint.config.mjs', 'package.json', '.gitleaks.toml']) {
@@ -43,29 +52,73 @@ afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
 });
 
-describe('applypatch-msg', () => {
-  function apply(message: string): number | null {
-    git('switch', '-q', '-c', 'topic');
-    writeFileSync(join(repo, 'file.txt'), 'content\n');
-    git('add', 'file.txt');
-    commit(message);
-    const patch = join(repo, '..', `${String(Date.now())}.patch`);
-    writeFileSync(patch, git('format-patch', '-1', '--stdout') + '\n');
-    git('reset', '-q', '--hard', 'HEAD~1');
-    const { status } = spawnSync('git', ['-c', 'core.hooksPath=.husky', 'am', patch], {
-      cwd: repo,
-      encoding: 'utf8',
-    });
-    rmSync(patch);
-    return status;
-  }
+function stubPreCommit(exitCode: number): void {
+  writeFileSync(
+    join(repo, '.husky', 'pre-commit'),
+    `#!/usr/bin/env sh\nexit ${String(exitCode)}\n`,
+    { mode: 0o755 },
+  );
+}
 
+function apply(message: string, preCommitExit = 0): number | null {
+  stubPreCommit(preCommitExit);
+  git('switch', '-q', '-c', 'topic');
+  writeFileSync(join(repo, 'file.txt'), 'content\n');
+  git('add', 'file.txt');
+  commit(message);
+  const patch = join(repo, '..', `${String(Date.now())}.patch`);
+  writeFileSync(patch, git('format-patch', '-1', '--stdout') + '\n');
+  git('reset', '-q', '--hard', 'HEAD~1');
+  const { status } = spawnSync('git', ['-c', 'core.hooksPath=.husky', 'am', patch], {
+    cwd: repo,
+    encoding: 'utf8',
+  });
+  rmSync(patch);
+  return status;
+}
+
+function merge(preCommitExit: number): number | null {
+  stubPreCommit(preCommitExit);
+  git('switch', '-q', '-c', 'topic');
+  writeFileSync(join(repo, 'topic.txt'), 'topic\n');
+  git('add', 'topic.txt');
+  commit('feat(repo): add topic');
+  git('switch', '-q', 'main');
+  git('switch', '-q', '-c', 'other');
+  writeFileSync(join(repo, 'other.txt'), 'other\n');
+  git('add', 'other.txt');
+  commit('feat(repo): add other');
+  const { status } = spawnSync(
+    'git',
+    ['-c', 'core.hooksPath=.husky', 'merge', '--no-ff', '-m', 'chore(repo): merge topic', 'topic'],
+    { cwd: repo, encoding: 'utf8' },
+  );
+  return status;
+}
+
+describe('applypatch-msg', () => {
   it('refuses a patch whose message is not conventional', () => {
     expect(apply('not conventional')).not.toBe(0);
   });
 
   it('accepts a patch whose message is conventional', () => {
     expect(apply('feat(repo): add file')).toBe(0);
+  });
+});
+
+describe('pre-applypatch', () => {
+  it('refuses a conventional patch when the pre-commit gate fails', () => {
+    expect(apply('feat(repo): add file', 1)).not.toBe(0);
+  });
+});
+
+describe('pre-merge-commit', () => {
+  it('refuses a merge commit when the pre-commit gate fails', () => {
+    expect(merge(1)).not.toBe(0);
+  });
+
+  it('allows a merge commit when the pre-commit gate passes', () => {
+    expect(merge(0)).toBe(0);
   });
 });
 
