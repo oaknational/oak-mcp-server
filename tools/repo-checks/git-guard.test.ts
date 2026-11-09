@@ -531,6 +531,15 @@ describe('git-guard tripwire forms agents emit', () => {
     'cd .husky && echo x > pre-commit',
     'cd .husky; echo x 2>pre-commit',
     'cd .husky && sed -i s/a/b/ pre-commit',
+    'cd .husky && cp /tmp/x pre-commit',
+    'cd .husky && cp -t . /tmp/x',
+    'cd .husky && install /tmp/x pre-commit',
+    'cd .husky && rsync /tmp/x pre-commit',
+    'cd .husky && mv /tmp/x pre-commit',
+    'cd .husky && tee pre-commit',
+    'cd .husky && ln -sf /tmp/x pre-commit',
+    'cd .git && cp /tmp/x config',
+    'cd .git && tee config',
     'cd /etc && rm -rf dist',
     'cd /usr/local && rm -rf node_modules',
   ])('refuses %s', (command) => {
@@ -542,6 +551,14 @@ describe('git-guard tripwire forms agents emit', () => {
     ['Write', { file_path: '/work/.git/config' }],
   ] as const)('refuses %s of git config', (tool, input) => {
     expect(decide(parent, tool, { ...input }).status).toBe(2);
+  });
+
+  it.each([
+    ['Edit', 'pre-commit'],
+    ['Write', 'config'],
+  ] as const)('refuses %s of a bare name from inside a hook directory', (tool, name) => {
+    const dir = name === 'config' ? '.git' : '.husky';
+    expect(decide(join(parent, dir), tool, { file_path: name }).status).toBe(2);
   });
 
   it.each([
@@ -557,6 +574,9 @@ describe('git-guard tripwire forms agents emit', () => {
     'env --chdir inner git stash',
     'env -iCinner git stash',
     'env -iC inner git stash',
+    'env -C./inner git stash',
+    'env -iC./inner git stash',
+    'env -C../parent/inner git stash',
   ])('checks %s against the dirty nested repository', (command) => {
     expect(bash(parent, command).status).toBe(2);
   });
@@ -581,6 +601,8 @@ describe('git-guard tripwire forms agents emit', () => {
     'echo "$(<README.md)"',
     'git config --get include.path',
     'cd .husky && ls',
+    'cd .husky && cp pre-commit /tmp/bak',
+    'cd .git && cp config /tmp/bak',
     'cd /tmp && rm -rf dist',
     'cd packages && rm -rf dist',
     'env -u FOO git status',

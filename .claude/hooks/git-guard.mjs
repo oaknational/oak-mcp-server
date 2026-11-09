@@ -521,17 +521,20 @@ function wrapperOption(word, next) {
       chdir: name === '--chdir',
     };
   }
-  const cluster = /^-[a-zA-Z]+$/.test(word) ? word.slice(1) : '';
-  const at = [...cluster].findIndex((char) => WRAPPER_VALUE_LETTERS.includes(char));
-  if (at === -1) {
+  if (!/^-[a-zA-Z]/.test(word)) {
     return undefined;
   }
-  const rest = cluster.slice(at + 1);
-  return {
-    value: rest === '' ? next : rest,
-    consumesNext: rest === '',
-    chdir: cluster[at] === 'C',
-  };
+  for (let at = 1; at < word.length && /[a-zA-Z]/.test(word[at]); at += 1) {
+    if (WRAPPER_VALUE_LETTERS.includes(word[at])) {
+      const rest = word.slice(at + 1);
+      return {
+        value: rest === '' ? next : rest,
+        consumesNext: rest === '',
+        chdir: word[at] === 'C',
+      };
+    }
+  }
+  return undefined;
 }
 
 function checkSegment(words, startDir, depth) {
@@ -594,7 +597,7 @@ function checkSegment(words, startDir, depth) {
   }
   const hookFile = (word) => HOOK_FILES.test(resolve(callDir, word));
   if (
-    (args.some(hookFile) && touchesHooks(command, args)) ||
+    (args.some(hookFile) && touchesHooks(command, args, hookFile)) ||
     words.some((word, index) => OUTPUT_REDIRECT.test(word) && hookFile(words[index + 1] ?? ''))
   ) {
     refuseSkip(SKIP_MESSAGE);
@@ -616,7 +619,7 @@ const HOOK_EDITORS = new Set([
 const COPIERS = new Set(['cp', 'install', 'rsync']);
 const GIT_HOOK_EDITS = new Set(['rm', 'mv', 'checkout', 'restore', 'apply', 'clean']);
 
-function touchesHooks(command, args) {
+function touchesHooks(command, args, hookFile) {
   if (command === 'sed') {
     return args.some((word) => word === '--in-place' || /^-[a-zA-Z]*i/.test(word));
   }
@@ -626,11 +629,14 @@ function touchesHooks(command, args) {
   if (COPIERS.has(command)) {
     const operands = args.filter((word) => !word.startsWith('-'));
     return (
-      HOOK_FILES.test(operands.at(-1) ?? '') ||
-      args.some(
-        (word, index) =>
-          /^(?:-t|--target-directory)/.test(word) && HOOK_FILES.test(args[index + 1] ?? word),
-      )
+      hookFile(operands.at(-1) ?? '') ||
+      args.some((word, index) => {
+        const flag = /^(?:-t|--target-directory=?)/.exec(word)?.[0];
+        return (
+          flag !== undefined &&
+          hookFile(word.length > flag.length ? word.slice(flag.length) : (args[index + 1] ?? ''))
+        );
+      })
     );
   }
   if (command !== 'git') {
@@ -704,7 +710,7 @@ function decide(call) {
       if (isEnvPath(filePath)) {
         refuse(`${call.tool_name} on ${filePath} is refused. Environment files hold secrets.`);
       }
-      if (call.tool_name !== 'Read' && HOOK_FILES.test(filePath)) {
+      if (call.tool_name !== 'Read' && HOOK_FILES.test(resolve(callDir, filePath))) {
         refuseSkip(SKIP_MESSAGE);
       }
       break;
