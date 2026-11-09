@@ -9,7 +9,7 @@ A rule below links to the check that enforces it, or says `prose-only` when no c
 - `apps/` and `packages/` hold the server, its widgets and its libraries. They arrive in later PRs, so check they exist before you rely on them.
 - `tools/repo-checks/` holds the repository's own checks and their tests. Each runs in CI.
 - `.github/workflows/` holds CI. [ci.yml](.github/workflows/ci.yml) ends in the required `ci-gate`.
-- `.agents/skills/` and `.claude/skills/` hold Oak's shared agent skills, vendored from oak-agent-skills at the commit pinned in [oak-skills.json](oak-skills.json). Never edit them by hand.
+- `.agents/skills/` and `.claude/skills/` hold Oak's shared agent skills, vendored from oak-agent-skills at the commit pinned in [oak-skills.json](oak-skills.json). Never edit the vendored ones by hand. This repository's own skills, `mcp-tool-design` and `update-upstream-api-schema`, sit beside them and are edited normally.
 - `.claude/settings.json` holds the deny rules. [git-guard.sh](.claude/hooks/git-guard.sh) is the PreToolUse hook beside them.
 - [PROVENANCE.md](PROVENANCE.md) records the OOCE commit the imported code comes from.
 
@@ -40,6 +40,10 @@ A rule below links to the check that enforces it, or says `prose-only` when no c
 - Never skip a hook. `--no-verify`, `-n` on commit or push, `HUSKY=0`, `SKIP_HOOKS=1`, `LEFTHOOK=0`, `core.hooksPath` overrides and edits to `.husky/` are refused. A refused skip means stop and ask the operator, never try another form (`no-verify-requires-fresh-authorisation`). [git-guard.sh](.claude/hooks/git-guard.sh) enforces it.
 - Force-push only your own branch, and only with `--force-with-lease`. A plain `--force` is denied in [settings.json](.claude/settings.json) and refused by the hook. `gh stack` rebases are allowed.
 - Never run `git clean -fdx`, `rm -rf` outside the scratch area (`.cache`, `node_modules`, `dist`, `coverage`, a temp directory), or read `.env*` files. [settings.json](.claude/settings.json) denies them and the hook refuses them.
+- Touching tool, resource, prompt or transport definitions, use the [mcp-expert](.claude/agents/mcp-expert.md) agent, and follow the [mcp-tool-design](.agents/skills/mcp-tool-design/SKILL.md) skill. `prose-only`.
+- Touching auth, use the [clerk-expert](.claude/agents/clerk-expert.md) agent. `prose-only`.
+- Touching telemetry, use the [sentry-expert](.claude/agents/sentry-expert.md) agent. `prose-only`.
+- Review a third-party skill before you pin it in [skills-lock.json](skills-lock.json), and record the review at the pinned SHA in [third-party-skills.md](docs/security/third-party-skills.md). [skills-review.ts](tools/repo-checks/skills-review.ts) enforces it in [agent-skills.yml](.github/workflows/agent-skills.yml).
 - Never edit the vendored skills by hand. [agent-skills.yml](.github/workflows/agent-skills.yml) runs [skills-check.ts](tools/repo-checks/skills-check.ts), and `ci-gate` needs it. Send an improvement upstream as a PR to oak-agent-skills.
 - Pin every GitHub Action by full commit SHA. [actions-pinned.test.ts](tools/repo-checks/actions-pinned.test.ts) enforces it.
 - Record each deliberate dependency version hold with its reason in [docs/dependency-holds.md](docs/dependency-holds.md). `prose-only`.
