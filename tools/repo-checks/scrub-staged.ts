@@ -66,12 +66,16 @@ function stagedDiffs(files: string[]): string[] {
     '--no-ext-diff',
     '--no-textconv',
     '--text',
+    '--submodule=short',
     '-U0',
   )
-    .split(/^diff --git /m)
+    .split(/(?:^|\n)diff --git /)
     .slice(1);
   if (chunks.length !== files.length) {
-    throw new Error('scrub-staged: staged diff does not match the staged file list');
+    process.stderr.write(
+      'scrub-staged: refused, staged diff does not match the staged file list\n',
+    );
+    process.exit(1);
   }
   return chunks;
 }

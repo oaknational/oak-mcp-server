@@ -202,6 +202,46 @@ describe('scrub-staged', () => {
     expect(result.stderr).not.toContain('alpha-term');
   });
 
+  describe('with a staged submodule and line-break characters in file content', () => {
+    const innerSha = '1'.repeat(40);
+
+    function stageGitlink(): void {
+      git('update-index', '--add', '--cacheinfo', `160000,${innerSha},zsub`);
+    }
+
+    it.each([
+      ['a carriage return', '\r'],
+      ['a line separator', '\u2028'],
+      ['a paragraph separator', '\u2029'],
+    ])('finds an email after %s that precedes a fake diff header', (_name, separator) => {
+      git('config', 'diff.submodule', 'log');
+      stageGitlink();
+      stage('a.txt', `x${separator}diff --git a/q b/q\n${email('jane.doe', 'example.org')}\n`);
+      const result = scrub();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('a.txt:2 contains an email address');
+      expect(result.stderr).not.toContain('    at ');
+    });
+
+    it.each(['log', 'diff', 'short'])('finds an email when diff.submodule is %s', (mode) => {
+      git('config', 'diff.submodule', mode);
+      stageGitlink();
+      stage('a.txt', `${email('jane.doe', 'example.org')}\n`);
+      const result = scrub();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('a.txt:1 contains an email address');
+      expect(result.stderr).not.toContain('    at ');
+    });
+
+    it('finds an email after a carriage return that precedes a fake diff header, without a submodule', () => {
+      stage('a.txt', `x\rdiff --git a/q b/q\n${email('jane.doe', 'example.org')}\n`);
+      const result = scrub();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('a.txt:2 contains an email address');
+      expect(result.stderr).not.toContain('    at ');
+    });
+  });
+
   it('scans 2,000 staged files in under one second', () => {
     const count = 2000;
     mkdirSync(join(repo, 'bulk'));
