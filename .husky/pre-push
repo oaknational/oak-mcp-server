@@ -22,9 +22,9 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-remotes_opt="--remotes"
+known_remote=0
 if git remote | grep -qx -- "$1"; then
-  remotes_opt="--remotes=$1"
+  known_remote=1
 fi
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
@@ -40,9 +40,12 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
   if [ "$remote_known" = 1 ]; then
     range="$remote_sha..$local_sha"
     git rev-list "$range" > /dev/null
+  elif [ "$known_remote" = 1 ]; then
+    range="$local_sha --not --remotes=$1"
+    git rev-list "$local_sha" --not "--remotes=$1" > /dev/null
   else
-    range="$local_sha --not $remotes_opt"
-    git rev-list "$local_sha" --not "$remotes_opt" > /dev/null
+    range="$local_sha"
+    git rev-list "$local_sha" > /dev/null
   fi || {
     echo "❌ Cannot list the commits being pushed ($range)."
     scan_status=1

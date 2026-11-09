@@ -46,6 +46,7 @@ function addedLines(file: string): { line: number; text: string }[] {
     '--no-ext-diff',
     '--no-textconv',
     '--no-renames',
+    '--no-relative',
     '--text',
     '-U0',
     '--',
@@ -75,7 +76,15 @@ if (scrubList === undefined) {
   );
 }
 const terms = scrubList ?? [];
-const staged = git('diff', '--cached', '--name-only', '-z', '--no-renames', '--diff-filter=ACMR')
+const staged = git(
+  'diff',
+  '--cached',
+  '--name-only',
+  '-z',
+  '--no-renames',
+  '--no-relative',
+  '--diff-filter=ACMR',
+)
   .split('\0')
   .filter((file) => file !== '' && !SKIPPED_FILES.has(file));
 

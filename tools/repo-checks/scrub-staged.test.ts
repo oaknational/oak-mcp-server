@@ -148,6 +148,15 @@ describe('scrub-staged', () => {
     expect(result.stderr).toContain('sub/notes.md:1 contains an email address');
   });
 
+  it('scans staged content from a subdirectory when diff.relative is set', () => {
+    git('config', 'diff.relative', 'true');
+    mkdirSync(join(repo, 'sub'));
+    stage('sub/notes.md', `contact: ${email('jane.doe', 'example.org')}\n`);
+    const result = scrub(join(repo, 'sub'));
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('sub/notes.md:1 contains an email address');
+  });
+
   it('says when no scrub list is found, without printing paths or terms', () => {
     stage('doc.md', 'nothing personal here\n');
     const result = scrub();

@@ -7,6 +7,7 @@ const config: KnipConfig = {
       includeEntryExports: true,
       project: ['*.{ts,mts,cts,mjs}', 'tools/**/*.{ts,tsx,mts,cts}'],
       ignoreDependencies: ['shellcheck'],
+      ignoreBinaries: ['gitleaks'],
     },
   },
 };
