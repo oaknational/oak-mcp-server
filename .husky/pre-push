@@ -28,10 +28,8 @@ trap 'rm -f "$refs_file" "$tips_file"' EXIT
 printf '%s\n' "$remote_refs" | cut -f1 | sed -n 's/^\(..*\)$/\1^{commit}/p' |
   git cat-file --batch-check='%(objecttype) %(objectname)' 2> /dev/null |
   sed -n 's/^commit //p' > "$tips_file"
-set --
-while read -r tip; do
-  set -- "$@" "$tip"
-done < "$tips_file"
+# shellcheck disable=SC2046
+set -- $(cat "$tips_file")
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
 while read -r _local_ref local_sha _remote_ref remote_sha; do
@@ -45,19 +43,19 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
   esac
   if [ "$remote_known" = 1 ]; then
     range="$remote_sha..$local_sha"
-    git rev-list "$range" > /dev/null
+    git rev-list "$range" -- > /dev/null
   elif [ "$#" -gt 0 ]; then
     range="$local_sha --not $*"
-    git rev-list "$local_sha" --not "$@" > /dev/null
+    git rev-list "$local_sha" --not "$@" -- > /dev/null
   else
     range="$local_sha"
-    git rev-list "$local_sha" > /dev/null
+    git rev-list "$local_sha" -- > /dev/null
   fi || {
     echo "❌ Cannot list the commits being pushed ($range)."
     scan_status=1
     continue
   }
-  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range" . || scan_status=1
+  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range --" . || scan_status=1
 done < "$refs_file"
 if [ "$scan_status" -ne 0 ]; then
   echo "❌ Secret scan failed."

@@ -250,6 +250,21 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
       expect(push()).toBe(0);
     });
 
+    it('finishes within a second when the remote has 3,000 heads', () => {
+      const heads = Array.from(
+        { length: 3000 },
+        (_, i) =>
+          `commit refs/heads/b${String(i)}\ncommitter f <f> 1700000000 +0000\ndata ${String(String(i).length)}\n${String(i)}\n`,
+      ).join('\n');
+      execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, input: heads });
+      git('push', '-q', 'origin', 'refs/heads/b*:refs/heads/b*');
+      const started = performance.now();
+      const status = push();
+      const elapsed = performance.now() - started;
+      expect(status).toBe(0);
+      expect(elapsed).toBeLessThan(1000);
+    }, 30_000);
+
     it('scans a commit the fetch URL holds but the push target does not', () => {
       const upstream = mkdtempSync(join(tmpdir(), 'upstream-'));
       try {
