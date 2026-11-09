@@ -160,6 +160,20 @@ describe('skills-review', () => {
       expect(error).toContain(SKILL_PATH);
     });
 
+    it('refuses two review sections at the pinned SHA', () => {
+      const errors = refused(review(OLD, OLD));
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain(`more than one review at ${OLD}`);
+    });
+
+    it('refuses a conflicting-source section kept beside the review at the pinned SHA', () => {
+      const text = reviewWith([
+        ...section(OLD),
+        ...section(OLD, 'example-skill', `- Source: \`other/skills\`, path \`${SKILL_PATH}\``),
+      ]);
+      expect(refused(text)).toHaveLength(1);
+    });
+
     it('refuses a review with no source line', () => {
       const text = reviewWith(['', '### example-skill', '', `- SHA: \`${OLD}\``]);
       expect(refused(text)).toHaveLength(1);

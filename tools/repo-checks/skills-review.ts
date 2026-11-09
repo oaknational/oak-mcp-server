@@ -113,7 +113,13 @@ export function checkSkillsReview(lockText: string, reviewText: string): string[
       ];
     }
     const atRef = own.filter((review) => review.shas.includes(ref));
-    if (atRef.length === 0) {
+    if (atRef.length > 1) {
+      return [
+        `${name}: there is more than one review at ${ref}. Keep one '### ${name}' section per SHA.`,
+      ];
+    }
+    const [review] = atRef;
+    if (review === undefined) {
       const seen = own.flatMap((review) => review.shas);
       const history =
         seen.length === 0 ? 'has no review' : `is reviewed only at ${seen.join(', ')}`;
@@ -122,7 +128,7 @@ export function checkSkillsReview(lockText: string, reviewText: string): string[
       ];
     }
     const expected = [source, skillPath].join('\n');
-    if (atRef.some((review) => review.sources.includes(expected))) {
+    if (review.sources.includes(expected)) {
       return [];
     }
     return [

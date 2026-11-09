@@ -14,7 +14,7 @@ No third-party skill enters this repository without a recorded security review o
 
 ## How the check works
 
-`tools/repo-checks/skills-review.ts` reads `skills-lock.json` and this file. It parses this file as Markdown, so HTML comments and code fences count for nothing. A pin passes only when a level-3 section headed exactly `### <skill name>` holds two list items. One is `- SHA:` followed by the pin's `ref` in a code span and nothing else. The other is `- Source:` followed by the pin's `source` in a code span, then `path` and the pin's `skillPath` in a code span. A section with more than one `- SHA:` line fails, so an old review cannot be reused for a new SHA. The `agent-skills.yml` workflow runs it.
+`tools/repo-checks/skills-review.ts` reads `skills-lock.json` and this file. It parses this file as Markdown, so HTML comments and code fences count for nothing. A pin passes only when a level-3 section headed exactly `### <skill name>` holds two list items. One is `- SHA:` followed by the pin's `ref` in a code span and nothing else. The other is `- Source:` followed by the pin's `source` in a code span, then `path` and the pin's `skillPath` in a code span. A section with more than one `- SHA:` line fails, so an old review cannot be reused for a new SHA. Two sections at the pinned SHA also fail, so each pin has exactly one review. The `agent-skills.yml` workflow runs it.
 
 ## Reviews
 
