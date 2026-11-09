@@ -22,6 +22,11 @@ run_on_staged() {
   return "$status"
 }
 
+echo "🧼 Scrubbing staged content for personal data..."
+if ! node tools/repo-checks/scrub-staged.ts; then
+  exit 1
+fi
+
 echo "📝 Checking formatting on staged files..."
 if ! run_on_staged '*' pnpm exec prettier --check --ignore-unknown; then
   echo "❌ Formatting issues found!"
@@ -40,11 +45,6 @@ echo "🐚 Linting staged shell scripts..."
 if ! run_on_staged '*.sh' pnpm exec shellcheck --external-sources --source-path=SCRIPTDIR --shell=sh \
   || ! run_on_staged '.husky/*' pnpm exec shellcheck --external-sources --source-path=SCRIPTDIR --shell=sh; then
   echo "❌ Shell lint failed!"
-  exit 1
-fi
-
-echo "🧼 Scrubbing staged content for personal data..."
-if ! node tools/repo-checks/scrub-staged.ts; then
   exit 1
 fi
 
