@@ -28,8 +28,34 @@ describe('resolveScanConfig', () => {
     ['a table', '[extend]\npath = "extra.toml"\n'],
     ['an inline table', 'extend = { path = "extra.toml", useDefault = true }\n'],
     ['a dotted key', 'extend.path = "/abs/extra.toml"\n'],
+    [
+      'Path beside a custom rule',
+      '[extend]\nPath = "extra.toml"\n\n[[rules]]\nid = "a"\nregex = "x"\n',
+    ],
+    ['PATH with the defaults on', '[extend]\nPATH = "extra.toml"\nuseDefault = true\n'],
+    ['a mixed-case dotted key', 'Extend.Path = "extra.toml"\n\n[[rules]]\nid = "a"\nregex = "x"\n'],
+    ['an [EXTEND] table', '[EXTEND]\npath = "extra.toml"\nUseDefault = true\n'],
   ])('refuses an [extend] path set as %s', (_form, toml) => {
     expect(() => resolveScanConfig(toml)).toThrow(/\[extend\] path/);
+  });
+
+  it.each([
+    ['UseDefault', '[extend]\nUseDefault = true\n'],
+    ['[EXTEND] with USEDEFAULT', '[EXTEND]\nUSEDEFAULT = true\n'],
+  ])('counts %s as the default rules on', (_form, toml) => {
+    expect(resolveScanConfig(toml).source).toContain('default rules on');
+  });
+
+  it('counts custom rules under any key case', () => {
+    expect(resolveScanConfig('[[Rules]]\nid = "a"\nregex = "x"\n').source).toContain(
+      '1 custom rule',
+    );
+  });
+
+  it('treats the defaults as off when any case variant of useDefault is not true', () => {
+    expect(() => resolveScanConfig('[extend]\nuseDefault = true\nUseDefault = false\n')).toThrow(
+      /zero rules/,
+    );
   });
 
   it.each([

@@ -19,14 +19,21 @@ export function resolveScanConfig(baseConfig: string | undefined): ScanConfig {
     };
   }
   const config = parse(baseConfig);
-  const extend = typeof config['extend'] === 'object' ? config['extend'] : {};
-  if ('path' in extend) {
+  const extendTables = fields(config, 'extend').filter(
+    (value): value is Record<string, unknown> => typeof value === 'object' && !Array.isArray(value),
+  );
+  if (extendTables.some((table) => fields(table, 'path').length > 0)) {
     throw new Error(
       `${CONFIG_PATH} at the base sets [extend] path. gitleaks reads that file from the PR's working tree, so a PR could supply its own allowlist. Inline the rules instead.`,
     );
   }
-  const useDefault = 'useDefault' in extend && extend['useDefault'] === true;
-  const customRules = Array.isArray(config['rules']) ? config['rules'].length : 0;
+  const defaults = extendTables.flatMap((table) => fields(table, 'usedefault'));
+  const useDefault = defaults.length > 0 && defaults.every((value) => value === true);
+  const ruleLists = fields(config, 'rules');
+  const customRules =
+    ruleLists.length === 0
+      ? 0
+      : Math.min(...ruleLists.map((value) => (Array.isArray(value) ? value.length : 0)));
   if (!useDefault && customRules === 0) {
     throw new Error(
       `${CONFIG_PATH} at the base has zero rules: no [[rules]] and no [extend] useDefault = true. The scan would pass without checking anything.`,
@@ -37,6 +44,13 @@ export function resolveScanConfig(baseConfig: string | undefined): ScanConfig {
     source: `${CONFIG_PATH} at the base, ${rules}, default rules ${useDefault ? 'on' : 'off'}`,
     toml: baseConfig,
   };
+}
+
+// gitleaks loads its config through viper, which matches keys without regard to case.
+function fields(table: Readonly<Record<string, unknown>>, lowerKey: string): unknown[] {
+  return Object.entries(table)
+    .filter(([key]) => key.toLowerCase() === lowerKey)
+    .map(([, value]) => value);
 }
 
 function git(args: string[]): { ok: boolean; stdout: string } {
