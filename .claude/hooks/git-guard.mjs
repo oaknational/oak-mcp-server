@@ -83,10 +83,18 @@ function withoutValues(words) {
   const kept = [];
   for (let index = 0; index < words.length; index += 1) {
     const word = words[index];
-    kept.push(word);
-    const cluster = /^-[a-zA-Z]+$/.test(word) ? word.slice(1) : '';
+    const cluster = /^-[a-zA-Z]/.test(word) ? word.slice(1) : '';
     const valueAt = [...cluster].findIndex((char) => COMMIT_VALUE_LETTERS.includes(char));
-    if (COMMIT_VALUE_OPTIONS.has(word) || (valueAt !== -1 && valueAt === cluster.length - 1)) {
+    const longName = word.startsWith('--') ? word.split('=')[0] : '';
+    if (valueAt !== -1) {
+      kept.push(`-${cluster.slice(0, valueAt + 1)}`);
+    } else if (COMMIT_VALUE_OPTIONS.has(longName)) {
+      kept.push(longName);
+    } else {
+      kept.push(word);
+    }
+    const separated = valueAt === cluster.length - 1 || word === longName;
+    if (COMMIT_VALUE_OPTIONS.has(word) || (valueAt !== -1 && separated && !word.includes('='))) {
       index += 1;
     }
   }
@@ -276,7 +284,8 @@ function checkGit(args, callDir) {
   const readsConfig = sub === 'config' && rest.some((word) => CONFIG_READS.has(word));
   if (
     args.slice(0, index).some((word) => HOOKS_PATH.test(word)) ||
-    (!readsConfig && rest.some((word) => HOOKS_PATH.test(word)))
+    (!readsConfig &&
+      (sub === 'commit' ? withoutValues(rest) : rest).some((word) => HOOKS_PATH.test(word)))
   ) {
     refuseSkip("overriding core.hooksPath skips the repository's hooks");
   }
@@ -500,7 +509,30 @@ function unwrap(command, args) {
   return undefined;
 }
 
-const WRAPPER_VALUE_OPTIONS = new Set(['-u', '-C', '-n', '-g', '-U', '-S', '--unset', '--chdir']);
+const WRAPPER_VALUE_LETTERS = 'uCngUS';
+const WRAPPER_LONG_OPTIONS = new Set(['--unset', '--chdir']);
+
+function wrapperOption(word, next) {
+  const [name, attached] = word.split(/=(.*)/s);
+  if (WRAPPER_LONG_OPTIONS.has(name)) {
+    return {
+      value: attached ?? next,
+      consumesNext: attached === undefined,
+      chdir: name === '--chdir',
+    };
+  }
+  const cluster = /^-[a-zA-Z]+$/.test(word) ? word.slice(1) : '';
+  const at = [...cluster].findIndex((char) => WRAPPER_VALUE_LETTERS.includes(char));
+  if (at === -1) {
+    return undefined;
+  }
+  const rest = cluster.slice(at + 1);
+  return {
+    value: rest === '' ? next : rest,
+    consumesNext: rest === '',
+    chdir: cluster[at] === 'C',
+  };
+}
 
 function checkSegment(words, startDir, depth) {
   if (depth > 4) {
@@ -515,11 +547,12 @@ function checkSegment(words, startDir, depth) {
       callDir = UNKNOWN_DIR;
     }
     wrapped ||= PREFIXES.has(word);
-    if (wrapped && WRAPPER_VALUE_OPTIONS.has(word)) {
-      if (word === '-C' || word === '--chdir') {
-        callDir = cdTarget(callDir, words[start + 1]);
+    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
+    if (option !== undefined) {
+      if (option.chdir) {
+        callDir = cdTarget(callDir, option.value);
       }
-      start += 1;
+      start += option.consumesNext ? 1 : 0;
       continue;
     }
     if (HOOK_SKIP_ENV.has(word)) {

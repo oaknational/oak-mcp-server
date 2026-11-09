@@ -552,16 +552,25 @@ describe('git-guard tripwire forms agents emit', () => {
     'GIT_DIR=inner/.git GIT_WORK_TREE=inner git stash',
     'env GIT_WORK_TREE=inner git stash',
     'env -u FOO git -C inner stash',
+    'env -Cinner git stash',
+    'env --chdir=inner git stash',
+    'env --chdir inner git stash',
+    'env -iCinner git stash',
+    'env -iC inner git stash',
   ])('checks %s against the dirty nested repository', (command) => {
     expect(bash(parent, command).status).toBe(2);
   });
 
-  it.each(['env -u FOO git stash', 'env -i -u FOO -u BAR git stash', 'env -C inner git stash'])(
-    'unwraps %s in a dirty tree',
-    (command) => {
-      expect(bash(dirty, command).status).toBe(2);
-    },
-  );
+  it.each([
+    'env -u FOO git stash',
+    'env -uFOO git stash',
+    'env --unset=FOO git stash',
+    'env --unset FOO git stash',
+    'env -i -u FOO -u BAR git stash',
+    'env -C inner git stash',
+  ])('unwraps %s in a dirty tree', (command) => {
+    expect(bash(dirty, command).status).toBe(2);
+  });
 
   it.each([
     'git commit -m "-am fix"',
@@ -576,6 +585,12 @@ describe('git-guard tripwire forms agents emit', () => {
     'cd packages && rm -rf dist',
     'env -u FOO git status',
     'git commit --no-edit',
+    'git commit -m "docs: core.hooksPath is set by prepare"',
+    'git commit -m"docs: core.hooksPath is set by prepare"',
+    'git commit --message="docs: core.hooksPath is set by prepare"',
+    'git commit --message "docs: core.hooksPath is set by prepare"',
+    'git commit -F core.hooksPath.txt',
+    'env -u core.hooksPath git status',
   ])('allows %s', (command) => {
     expect(bash(clean, command).status).toBe(0);
   });
