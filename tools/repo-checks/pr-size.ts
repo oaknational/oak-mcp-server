@@ -9,6 +9,7 @@ const BAND_LIMIT = 20;
 const INDIVISIBILITY_PROOFS = ['import cycle', 'unreviewable', 'tool-generated'] as const;
 
 const IMPORTED_PATH = 'tools/import-from-ooce/imported.json';
+const PROVENANCE_PATH = 'PROVENANCE.md';
 
 export interface SizeResult {
   outcome: 'pass' | 'note' | 'fail';
@@ -86,6 +87,25 @@ export function parseImported(raw: string): Record<string, string> {
   return hashes;
 }
 
+function vouchedImports(base: string, hashes: Record<string, string>): Record<string, string> {
+  const provenance = git(['show', `${base}:${PROVENANCE_PATH}`]);
+  const directories = provenance.ok
+    ? [...provenance.stdout.toString('utf8').matchAll(/^### `([^`]+)`$/gm)].flatMap(([, dir]) =>
+        dir === undefined ? [] : [`${dir}/`],
+      )
+    : [];
+  const tree = git(['ls-tree', '-r', '--name-only', '-z', base]);
+  if (!tree.ok) {
+    throw new Error('git ls-tree failed');
+  }
+  const held = new Set(tree.stdout.toString('utf8').split('\0'));
+  return Object.fromEntries(
+    Object.entries(hashes).filter(
+      ([path]) => held.has(path) && directories.some((dir) => path.startsWith(dir)),
+    ),
+  );
+}
+
 function markedPaths(base: string, paths: readonly string[]): Set<string> {
   if (paths.length === 0) {
     return new Set();
@@ -119,7 +139,9 @@ function main(): void {
   }
   const changed = diff.stdout.toString('utf8').split('\0').filter(Boolean);
   const importedFile = git(['show', `${base}:${IMPORTED_PATH}`]);
-  const importedHashes = importedFile.ok ? parseImported(importedFile.stdout.toString('utf8')) : {};
+  const importedHashes = importedFile.ok
+    ? vouchedImports(base, parseImported(importedFile.stdout.toString('utf8')))
+    : {};
   const marked = markedPaths(base, changed);
   const { authored, excluded } = countAuthored({
     changed,

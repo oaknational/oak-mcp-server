@@ -159,9 +159,18 @@ describe('pr-size against a real repository', () => {
 
   git('init', '-q');
   put('.gitattributes', 'docs/archive/** oak-archival\ngen/** linguist-generated\n');
+  put('PROVENANCE.md', '# Provenance\n\n## Entries\n\n### `packages/m`\n\n- Source: x.\n');
+  put('packages/m/held.ts', 'old');
+  put('tools/held.ts', 'old');
   put(
     'tools/import-from-ooce/imported.json',
-    JSON.stringify({ files: { 'packages/m.ts': `sha256:${sha('m')}` } }),
+    JSON.stringify({
+      files: {
+        'packages/m/held.ts': `sha256:${sha('m')}`,
+        'packages/m/later.ts': `sha256:${sha('later')}`,
+        'tools/held.ts': `sha256:${sha('m')}`,
+      },
+    }),
   );
   const base = commit('base');
 
@@ -171,7 +180,7 @@ describe('pr-size against a real repository', () => {
     }
     put('docs/archive/note.md', 'x');
     put('gen/out.ts', 'x');
-    put('packages/m.ts', 'm');
+    put('packages/m/held.ts', 'm');
     commit('many');
     const result = size(base);
     expect(result.status).toBe(1);
@@ -184,6 +193,16 @@ describe('pr-size against a real repository', () => {
     put('.gitattributes', 'src/** oak-archival\n');
     commit('self-exempt');
     expect(size(base).status).toBe(1);
+  });
+
+  it('counts a file whose imported.json entry the base does not hold or PROVENANCE.md does not list', () => {
+    git('checkout', '-q', '--detach', base);
+    put('packages/m/later.ts', 'later');
+    put('tools/held.ts', 'm');
+    commit('laundered');
+    const result = size(base);
+    expect(result.stdout).toContain('2 authored files');
+    expect(result.stdout).toContain('Excluded as generated, archival or imported: 0');
   });
 });
 
