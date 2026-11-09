@@ -2,6 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
+import GithubSlugger from 'github-slugger';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { gfmFromMarkdown } from 'mdast-util-gfm';
+import { gfm } from 'micromark-extension-gfm';
+import { visit } from 'unist-util-visit';
+
 export const root = join(import.meta.dirname, '..', '..');
 
 export function trackedMarkdownFiles(): string[] {
@@ -17,45 +23,36 @@ export function trackedMarkdownFiles(): string[] {
     .sort();
 }
 
-function slug(heading: string): string {
-  return heading
-    .toLowerCase()
-    .replace(/`/g, '')
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .trim()
-    .replace(/\s/g, '-');
-}
-
-function withoutFences(text: string): string {
-  return text.replace(/^```[\s\S]*?^```/gm, '');
+function parse(text: string) {
+  return fromMarkdown(text, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
 }
 
 function headingSlugs(text: string): Set<string> {
+  const slugger = new GithubSlugger();
   const slugs = new Set<string>();
-  const seen = new Map<string, number>();
-  for (const match of withoutFences(text).matchAll(/^#{1,6}\s+(.+?)\s*#*$/gm)) {
-    const base = slug(match[1] ?? '');
-    const count = seen.get(base) ?? 0;
-    seen.set(base, count + 1);
-    slugs.add(count === 0 ? base : `${base}-${String(count)}`);
-  }
+  visit(parse(text), 'heading', (heading) => {
+    let title = '';
+    visit(heading, (node) => {
+      if (node.type === 'text' || node.type === 'inlineCode') title += node.value;
+    });
+    slugs.add(slugger.slug(title));
+  });
   return slugs;
 }
 
-function withoutCode(text: string): string {
-  return withoutFences(text).replace(/`[^`\n]*`/g, '');
-}
-
 function linkTargets(text: string): string[] {
-  const inline = text.matchAll(/\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g);
-  const definitions = text.matchAll(/^ {0,3}\[[^\]^][^\]]*\]:\s*<?(\S+?)>?(?:\s.*)?$/gm);
-  return [...inline, ...definitions].map((match) => match[1] ?? '');
+  const targets: string[] = [];
+  visit(parse(text), (node) => {
+    if (node.type === 'link' || node.type === 'image' || node.type === 'definition') {
+      targets.push(node.url);
+    }
+  });
+  return targets;
 }
 
 export function brokenLinks(file: string): string[] {
-  const text = withoutCode(readFileSync(file, 'utf8'));
   const broken: string[] = [];
-  for (const target of linkTargets(text)) {
+  for (const target of linkTargets(readFileSync(file, 'utf8'))) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
     const [path = '', fragment] = target.split('#');
     const resolved = path === '' ? file : resolve(dirname(file), path);

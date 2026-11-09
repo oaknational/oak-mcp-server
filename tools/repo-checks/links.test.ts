@@ -53,4 +53,35 @@ describe('markdown links', () => {
       'tools/repo-checks/fixtures/titled-and-reference-links.md -> missing-reference.md',
     ]);
   });
+
+  it('reports every one of consecutive reference definitions', () => {
+    expect(brokenLinks(join(fixtures, 'consecutive-definitions.md'))).toEqual([
+      'tools/repo-checks/fixtures/consecutive-definitions.md -> gone-first.md',
+      'tools/repo-checks/fixtures/consecutive-definitions.md -> gone-second.md',
+    ]);
+  });
+
+  it('ignores headings inside tilde fences', () => {
+    expect(brokenLinks(join(fixtures, 'tilde-fence-heading.md'))).toEqual([
+      'tools/repo-checks/fixtures/tilde-fence-heading.md -> #shown-only-in-fence',
+    ]);
+  });
+
+  it('ignores headings inside a four-backtick fence that holds a fence', () => {
+    expect(brokenLinks(join(fixtures, 'long-fence.md'))).toEqual([
+      'tools/repo-checks/fixtures/long-fence.md -> #inside-long-fence',
+    ]);
+  });
+
+  it('checks an angle-bracket target with a space', () => {
+    expect(brokenLinks(join(fixtures, 'angle-target.md'))).toEqual([
+      'tools/repo-checks/fixtures/angle-target.md -> gone with space.md',
+    ]);
+  });
+
+  it('checks a target that contains parentheses', () => {
+    expect(brokenLinks(join(fixtures, 'parenthesised-target.md'))).toEqual([
+      'tools/repo-checks/fixtures/parenthesised-target.md -> missing(1).md',
+    ]);
+  });
 });

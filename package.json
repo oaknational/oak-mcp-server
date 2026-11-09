@@ -38,14 +38,19 @@
     "@types/node": "^24.13.3",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
+    "github-slugger": "^2.0.0",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "knip": "^6.32.1",
     "markdownlint-cli2": "^0.23.2",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0",
     "prettier": "~3.9.6",
     "shellcheck": "^4.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.66.0",
+    "unist-util-visit": "^5.2.0",
     "vitest": "^5.0.5"
   }
 }
