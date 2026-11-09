@@ -227,7 +227,7 @@ function checkGit(args, callDir) {
   if (['commit', 'push', 'merge', 'rebase', 'cherry-pick', 'am', 'revert', 'pull'].includes(sub)) {
     for (const word of options) {
       if (['--no-verify', '--no-pre-commit', '--no-commit-msg'].includes(word)) {
-        refuseSkip(`${word} skips the repository's hooks`);
+        refuseSkip(`${word} is a hook-skip switch`);
       }
       if ((sub === 'commit' || sub === 'push') && SHORT_FLAGS('n').test(word)) {
         refuseSkip(`-n on git ${sub} skips the repository's hooks`);
@@ -435,7 +435,7 @@ function checkSegment(words, callDir, depth) {
   for (; start < words.length; start += 1) {
     const word = words[start];
     if (HOOK_SKIP_ENV.has(word)) {
-      refuseSkip(`${word} skips the repository's hooks`);
+      refuseSkip(`${word} is a hook-skip switch`);
     }
     if (/^GIT_CONFIG\w*=.*core\.hookspath/i.test(word)) {
       refuseSkip("overriding core.hooksPath skips the repository's hooks");
