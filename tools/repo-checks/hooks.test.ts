@@ -3,10 +3,8 @@ import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -162,14 +160,17 @@ describe('hook installation', () => {
   });
 
   it('ships every hook executable and independent of the husky helper directory', () => {
-    const hooks = readdirSync(join(root, '.husky'), { withFileTypes: true }).filter((entry) =>
-      entry.isFile(),
-    );
-    expect(hooks.length).toBeGreaterThan(0);
-    for (const { name } of hooks) {
-      const path = join(root, '.husky', name);
-      expect(statSync(path).mode & 0o111, name).not.toBe(0);
-      expect(readFileSync(path, 'utf8'), name).not.toContain('_/');
+    const tracked = execFileSync('git', ['ls-files', '--stage', '--', '.husky'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .map((row) => ({ mode: row.slice(0, 6), path: row.slice(row.indexOf('\t') + 1) }));
+    expect(tracked.length).toBeGreaterThan(0);
+    for (const { mode, path } of tracked) {
+      expect(mode, path).toBe('100755');
+      expect(readFileSync(join(root, path), 'utf8'), path).not.toContain('_/');
     }
   });
 });
