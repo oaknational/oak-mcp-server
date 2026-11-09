@@ -32,6 +32,7 @@ describe('createFileSink', () => {
   const mockStream: SimpleWriteStream = {
     write: mockWrite,
     end: mockEnd,
+    on: vi.fn(),
   };
 
   const mockFs = {

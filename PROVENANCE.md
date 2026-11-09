@@ -63,9 +63,12 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 ### `packages/logger`
 
 - Source: `packages/libs/logger` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 33 files.
-- Modified by the tool: `package.json`, `README.md`, `src/error-normalisation-fields.ts`, `src/error-normalisation.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
-- Supplied from this repository: `src/type-safe.ts`.
+- Copied unchanged: 30 files.
+- Modified by the tool: `package.json`, `README.md`, `src/error-normalisation-fields.ts`, `src/error-normalisation.unit.test.ts`, `src/file-sink.ts`, `src/file-sink.unit.test.ts`, `src/node.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Modified `src/file-sink.ts`. A write stream error, such as a log path that is a directory or cannot be written, is reported through console.error instead of crashing the process. OOCE has the same bug. MCP-853.
+- Modified `src/file-sink.unit.test.ts`. The stream fake gains the on method that the stream interface now requires. MCP-853.
+- Modified `src/node.ts`. The Node stream adapter passes the stream's error event to the file sink. MCP-853.
+- Supplied from this repository: `src/file-sink-stream-errors.unit.test.ts`, `src/type-safe.ts`.
 - Dropped `packages/libs/logger/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
 ### `packages/sentry-node`
