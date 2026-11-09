@@ -26,23 +26,36 @@ function slug(heading: string): string {
     .replace(/\s/g, '-');
 }
 
+function withoutFences(text: string): string {
+  return text.replace(/^```[\s\S]*?^```/gm, '');
+}
+
 function headingSlugs(text: string): Set<string> {
   const slugs = new Set<string>();
-  for (const match of text.matchAll(/^#{1,6}\s+(.+?)\s*#*$/gm)) {
-    slugs.add(slug(match[1] ?? ''));
+  const seen = new Map<string, number>();
+  for (const match of withoutFences(text).matchAll(/^#{1,6}\s+(.+?)\s*#*$/gm)) {
+    const base = slug(match[1] ?? '');
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    slugs.add(count === 0 ? base : `${base}-${String(count)}`);
   }
   return slugs;
 }
 
 function withoutCode(text: string): string {
-  return text.replace(/^```[\s\S]*?^```/gm, '').replace(/`[^`\n]*`/g, '');
+  return withoutFences(text).replace(/`[^`\n]*`/g, '');
+}
+
+function linkTargets(text: string): string[] {
+  const inline = text.matchAll(/\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g);
+  const definitions = text.matchAll(/^ {0,3}\[[^\]^][^\]]*\]:\s*<?(\S+?)>?(?:\s.*)?$/gm);
+  return [...inline, ...definitions].map((match) => match[1] ?? '');
 }
 
 export function brokenLinks(file: string): string[] {
   const text = withoutCode(readFileSync(file, 'utf8'));
   const broken: string[] = [];
-  for (const match of text.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
-    const target = match[1] ?? '';
+  for (const target of linkTargets(text)) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
     const [path = '', fragment] = target.split('#');
     const resolved = path === '' ? file : resolve(dirname(file), path);
