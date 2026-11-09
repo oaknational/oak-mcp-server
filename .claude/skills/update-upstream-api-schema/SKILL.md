@@ -12,18 +12,18 @@ description: >-
 
 # Update the upstream API schema
 
-Generated types, Zod schemas and MCP tool definitions come from the committed OpenAPI snapshot. `pnpm codegen` regenerates them. Never edit generated files by hand. Change the generator or its templates instead.
+Generated types, Zod schemas and MCP tool definitions come from the committed OpenAPI snapshot. `pnpm codegen` (arrives in P09) regenerates them. Never edit generated files by hand. Change the generator or its templates instead.
 
-Follow `docs/engineering/openapi-pipeline.md` for the pipeline and `packages/codegen` for the generator. This skill adds the order of work and the traps.
+Follow `docs/engineering/openapi-pipeline.md` for the pipeline and `packages/codegen` (P09) for the generator. This skill adds the order of work and the traps. Several paths and commands below arrive in later PRs, each marked with its PR. Until one lands, skip that step and say so.
 
 ## Steps
 
 1. **Characterise before regenerating.** Diff the live schema against the committed snapshot. Separate documentation-only changes from structural ones. Classify each structural change as additive or breaking for consumers. Do not start from the generator output.
-2. **Refresh on purpose.** Run codegen in online mode, the mode the `schema-drift.yml` workflow uses. Read that workflow for the exact invocation. Cached mode (`pnpm codegen`) never fetches, so it cannot pick up a change.
+2. **Refresh on purpose.** Run codegen in online mode, the mode the `schema-drift.yml` workflow (P09) uses. Read that workflow for the exact invocation. Cached mode (`pnpm codegen`) never fetches, so it cannot pick up a change.
 3. **Expect red guard tests.** Tests over the description and parameter override layers fail when upstream rewords a claim the layer corrects. That failure is the signal to re-ground or retire the override entry. Never re-pin the expected text to turn the test green.
 4. **Route upstream errors out.** Correct a wrong upstream description locally through the override layer, and report it upstream in plain words. Never loosen local validation to let drift pass.
-5. **Check the served surface.** Run `pnpm surface:diff` and read at least one changed tool descriptor end to end. Confirm the generated reference under `apps/docs` reflects the change.
-6. **Prove the tree is current.** Run `pnpm codegen && git diff --exit-code`, then `pnpm check` and `pnpm test`.
+5. **Check the served surface.** Run `pnpm surface:diff` (arrives in P13) and read at least one changed tool descriptor end to end. Confirm the generated reference under `apps/docs` (P17) reflects the change.
+6. **Prove the tree is current.** Run `pnpm codegen && git diff --exit-code` (P09), then `pnpm check` and `pnpm test`.
 7. **Record breaking changes.** State each consumer-breaking change in the PR body with a one-line migration note, even when no code here is affected.
 
 ## Do not

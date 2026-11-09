@@ -33,7 +33,7 @@ Tool schemas are generated from the OpenAPI snapshot. Fix a missing description 
 - [ ] The schema is flat, with no `z.any()`.
 - [ ] Side effects are in the description.
 - [ ] Failure returns `isError: true`, not a throw.
-- [ ] `pnpm surface:diff` shows only the intended change.
+- [ ] `pnpm surface:diff` (arrives in P13) shows only the intended change.
 
 ## Related
 

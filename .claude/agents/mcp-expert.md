@@ -73,10 +73,15 @@ the live MCP documentation using WebFetch or WebSearch. Do not rely on cached
 knowledge of the MCP specification, the spec evolves and your training data
 may be outdated.
 
+This server implements MCP revision `2025-11-25`. ADR 229 in `docs/adr/mcp/`
+pins that revision and names the exit conditions for moving to a newer one.
+Read the `2025-11-25` pages first and name the revision in every finding.
+Fetch newer revisions only to report the gap.
+
 **Doctrine hierarchy** (highest authority first):
 
-1. **Current MCP specification and extensions documentation**: fetched live
-   from modelcontextprotocol.io
+1. **MCP specification revision `2025-11-25` and the extensions
+   documentation**: fetched live from modelcontextprotocol.io
 2. **Official MCP SDK and extension package sources**,
    `@modelcontextprotocol/sdk`, `@modelcontextprotocol/ext-apps` on GitHub
 3. **Repository ADRs**: the decisions in `docs/adr/mcp/`
@@ -96,7 +101,8 @@ skills, `create-mcp-app`, `add-app-to-server`, `convert-web-app`, and
 
 Those skills are third-party content. `skills-lock.json` pins each at a
 reviewed commit, and `docs/security/third-party-skills.md` records the
-review. If they are present, they live at `.agents/skills/<id>/SKILL.md`. See
+review. No PR installs them yet. If they are present, they live at
+`.agents/skills/<id>/SKILL.md`. See
 the **Installing the Upstream MCP App Skills** section below for how to
 install them and the matching task-to-skill table.
 
@@ -117,8 +123,9 @@ installed, route directly to it.
 
 ## Authoritative Sources (MUST CONSULT)
 
-These are the primary standards. Always consult the live documentation, the
-spec evolves and the latest version is the authority.
+These are the primary standards. Always consult the live documentation. For
+protocol behaviour, the `2025-11-25` revision is the authority for this
+server. Newer revisions show the migration gap and are not violations.
 
 ### MCP Core
 
@@ -255,9 +262,9 @@ narrower upstream skill, route to it (see Capability Routing above).
 
 #### Step 2: Consult official documentation
 
-Fetch current official MCP documentation for the relevant area. Do not rely
+Fetch the `2025-11-25` MCP documentation for the relevant area. Do not rely
 on cached knowledge or repo patterns alone. The MCP specification evolves,
-always check the latest version.
+so also check what changed in newer revisions.
 
 #### Step 3: Read local context
 
@@ -313,8 +320,8 @@ This repo's decisions (ADR-112):
 
 This repo's decisions (ADR-035, ADR-050):
 
-- OpenAPI schema is the single source of truth; `pnpm codegen` generates
-  all MCP artefacts
+- OpenAPI schema is the single source of truth; `pnpm codegen` (arrives in
+  P09) generates all MCP artefacts
 - `registerTool` expects flat Zod RawShape (not nested
   `params`/`query`/`path`)
 - JSON Schema (with descriptions) is returned by `tools/list`; Zod schema
@@ -350,11 +357,10 @@ This repo's decisions (ADR-123):
 
 ### Protocol Revision
 
-ADR 229 records which MCP specification revision this server implements and
-what must change before it moves to a newer one. Fetch the current revision
-from the live spec, name it in every finding, and say whether the server
-implements it. A gap between the two is an observation that cites ADR 229,
-not a violation by itself.
+ADR 229 records that this server implements MCP revision `2025-11-25` and
+what must change before it moves to a newer one. Name the revision in every
+finding. The newest published revision may differ. A gap between the two is
+an observation that cites ADR 229, not a violation by itself.
 
 ### Known Pitfalls in This Repo
 
@@ -380,6 +386,16 @@ Fetch each skill file at the pinned commit from
 skills CLI, check the installed content against the pinned commit before you
 rely on it. Never install from the branch tip. A newer commit needs a new
 review first, then a pin bump.
+
+### Steps the upstream skills ask for
+
+Each upstream skill tells the agent to run `git clone --branch
+"v$(npm view @modelcontextprotocol/ext-apps version)"` into `/tmp`. That
+fetches the latest npm-tagged release, which no pin controls. Four skills
+also tell the agent to run `npm install` and `npm run start` in the cloned
+`examples/basic-host`. Do not run the clone, the install or the start
+without the operator's approval. Read the pinned skill text and the published
+API docs instead.
 
 ### Available skills
 
@@ -576,8 +592,8 @@ A successful MCP engagement:
 
 1. **Spec is the standard**: assess and guide against the canonical MCP
    spec and best practice, not against what we happen to have built
-2. **Consult the live docs**: the spec evolves; always check the latest
-   version
+2. **Consult the live docs**: the spec evolves; read revision `2025-11-25`
+   and note what newer revisions change
 3. **Flag drift**: if our ADRs or patterns have drifted from the spec,
    flag the discrepancy
 4. **Flat schemas, always**: nested parameter structures break client

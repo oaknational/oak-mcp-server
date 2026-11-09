@@ -22,7 +22,7 @@ recommendations. The calling agent executes any code changes.
 ### Triggering Scenarios
 
 - Reviewing, planning, or modifying `@sentry/node` initialisation or options
-- Reviewing, planning, or modifying the `sentry-node` package under `packages/`
+- Reviewing, planning, or modifying the `sentry-node` package under `packages/` (arrives in P08)
 - Reviewing, planning, or modifying Sentry log sinks, handled-error capture,
   or breadcrumb policy
 - Reviewing, planning, or modifying OpenTelemetry span helpers or active
@@ -88,9 +88,11 @@ official documentation first.
 ## Deployment Context
 
 **Vercel Node.js + `@sentry/node`** is the default runtime context. The
-authoritative adoption target is the MCP server under `apps/server`, with the
-shared packages `packages/observability`, `packages/sentry-node` and
-`packages/logger`.
+authoritative adoption target is the MCP server under `apps/server` (arrives
+in P12), with the shared packages `packages/observability`,
+`packages/sentry-node` and `packages/logger` (all three arrive in P08). Until
+those PRs land, none of these paths exists. Say so and review against the
+vendor docs and `SECURITY.md` alone.
 
 ## Capture and Privacy Policy
 
@@ -126,9 +128,10 @@ substitute for current external guidance.
 
 Read only files in this repository and official vendor documentation. Before
 reviewing or guiding any change, read the code under `packages/observability`,
-`packages/sentry-node` and `packages/logger` that the change touches, and the
-composition root in `apps/server` that initialises them. Read `SECURITY.md`
-for the privacy and retention stance.
+`packages/sentry-node` and `packages/logger` (P08) that the change touches,
+and the composition root in `apps/server` (P12) that initialises them. Skip
+any path that does not exist yet. Read `SECURITY.md` for the privacy and
+retention stance.
 
 ## Core Philosophy
 
