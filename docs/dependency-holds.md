@@ -6,4 +6,6 @@ The `lockfile-rebuild` check reads this list. It fails when a held package resol
 
 ## Holds
 
-No holds yet.
+- `typescript`: held below major 7 (Dependabot ignores major updates). typescript-eslint 8.72.1 supports TypeScript below 6.1 only, so TypeScript 7 breaks lint. Lift when a typescript-eslint release supports TypeScript 7, then raise the range in `package.json`.
+- `@types/node`: held at major 24 (Dependabot ignores `>=25`). The runtime is Node 24, so newer types allow APIs that do not exist at runtime. Lift when the runtime and `engines.node` move to Node 25 or later.
+- `markdownlint-cli2`: held below 0.24.0 (Dependabot ignores that version). It pulls in markdownlint 0.42.0 and re2js 2.8.6, which carries advisory GHSA-gg6h-894w-4m9c (high severity), and dependency review blocks it. Lift when a markdownlint-cli2 release depends on markdownlint 0.42.1 or later.
