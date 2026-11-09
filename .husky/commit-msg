@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+pnpm exec commitlint --edit "$1" || exit 1
+
+node tools/repo-checks/no-accidental-major.ts "$1"

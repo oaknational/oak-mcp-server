@@ -1,0 +1,67 @@
+#!/usr/bin/env sh
+
+export GUARD_BRANCH=""
+export GUARD_HINT="Move to a branch first: git switch -c <branch> (staged changes travel with you)."
+# shellcheck source=refuse-commit-on-main.sh
+. .husky/refuse-commit-on-main.sh
+
+echo "🔍 Running pre-commit checks..."
+
+run_on_staged() {
+  pathspec="$1"
+  shift
+  staged_list="$(mktemp)"
+  git diff --cached --name-only -z --diff-filter=ACMR -- "$pathspec" > "$staged_list"
+  if [ -s "$staged_list" ]; then
+    xargs -0 "$@" < "$staged_list"
+    status=$?
+  else
+    status=0
+  fi
+  rm -f "$staged_list"
+  return "$status"
+}
+
+echo "📝 Checking formatting on staged files..."
+if ! run_on_staged '*' pnpm exec prettier --check --ignore-unknown; then
+  echo "❌ Formatting issues found!"
+  echo "💡 Run 'pnpm format:fix' to fix formatting issues, then stage the changes"
+  exit 1
+fi
+
+echo "🔍 Running markdownlint on staged Markdown files..."
+if ! run_on_staged '*.md' pnpm exec markdownlint-cli2; then
+  echo "❌ Markdownlint issues found!"
+  echo "💡 Fix the Markdown issues above, then stage the changes"
+  exit 1
+fi
+
+echo "🐚 Linting staged shell scripts..."
+if ! run_on_staged '*.sh' pnpm exec shellcheck --external-sources --source-path=SCRIPTDIR --shell=sh \
+  || ! run_on_staged '.husky/*' pnpm exec shellcheck --external-sources --source-path=SCRIPTDIR --shell=sh; then
+  echo "❌ Shell lint failed!"
+  exit 1
+fi
+
+echo "🧼 Scrubbing staged content for personal data..."
+if ! node tools/repo-checks/scrub-staged.ts; then
+  exit 1
+fi
+
+echo "🧪 Running build, typecheck, lint and tests..."
+# Git exports GIT_DIR, GIT_INDEX_FILE and GIT_WORK_TREE to hooks (githooks(5)); the gate's child processes must not inherit them.
+mkdir -p .cache
+: > .cache/last-gate.status
+{
+  env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE \
+    sh -c 'pnpm build && pnpm typecheck && pnpm lint && pnpm test' \
+    && echo 0 > .cache/last-gate.status \
+    || echo 1 > .cache/last-gate.status
+} 2>&1 | tee .cache/last-gate.log
+gate_status="$(cat .cache/last-gate.status 2>/dev/null || echo 1)"
+if [ "$gate_status" != "0" ]; then
+  echo "❌ Build, typecheck, lint or tests failed! (full output: .cache/last-gate.log)"
+  exit 1
+fi
+
+echo "✅ Pre-commit checks completed!"

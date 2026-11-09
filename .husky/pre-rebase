@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+export GUARD_BRANCH="${2:-}"
+export GUARD_HINT="Rebase on a branch instead — main advances only via pull requests."
+# shellcheck source=refuse-commit-on-main.sh
+. .husky/refuse-commit-on-main.sh
+
+rebased_tip="${2:-HEAD}"
+if git rev-parse --verify --quiet refs/heads/main >/dev/null 2>&1 \
+  && git merge-base --is-ancestor refs/heads/main "$rebased_tip" 2>/dev/null \
+  && ! git merge-base --is-ancestor refs/heads/main "$1" 2>/dev/null; then
+  echo "❌ Refusing this rebase — local 'main' points into the range being rewritten, so the rebase could move 'main' (e.g. via --update-refs)."
+  echo "💡 If main carries unpushed commits, preserve then re-home it first: git switch -c <branch> main && git fetch origin && git branch -f main origin/main. If your range simply reaches past the branch point, rebase from the branch point instead (e.g. git rebase -i main)."
+  exit 1
+fi

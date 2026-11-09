@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+engineStrict: true
+minimumReleaseAge: 1440
+
+allowBuilds:
+  shellcheck: true

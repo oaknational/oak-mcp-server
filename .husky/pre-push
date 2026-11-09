@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+
+echo "🚀 Running pre-push checks..."
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "❌ gitleaks is not installed."
+  echo "Install it before pushing:"
+  echo "  - macOS: brew install gitleaks"
+  echo "  - Go: go install github.com/zricethezav/gitleaks/v8@latest"
+  echo "Then retry your push."
+  exit 1
+fi
+
+refs_file="$(mktemp)"
+trap 'rm -f "$refs_file"' EXIT
+cat > "$refs_file"
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "❌ Refusing to push to 'main' — main advances only via pull requests."
+    echo "💡 Push a branch and open a pull request."
+    exit 1
+  fi
+done < "$refs_file"
+
+known_remote=0
+if git remote | grep -qx -- "$1"; then
+  known_remote=1
+fi
+echo "🛡️ Running secret scan on the pushed commits..."
+scan_status=0
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  case "$local_sha" in
+    *[!0]*) ;;
+    *) continue ;;
+  esac
+  remote_known=0
+  case "$remote_sha" in
+    *[!0]*) git cat-file -e "$remote_sha^{commit}" 2> /dev/null && remote_known=1 ;;
+  esac
+  if [ "$remote_known" = 1 ]; then
+    range="$remote_sha..$local_sha"
+    git rev-list "$range" > /dev/null
+  elif [ "$known_remote" = 1 ]; then
+    range="$local_sha --not --remotes=$1"
+    git rev-list "$local_sha" --not "--remotes=$1" > /dev/null
+  else
+    range="$local_sha"
+    git rev-list "$local_sha" > /dev/null
+  fi || {
+    echo "❌ Cannot list the commits being pushed ($range)."
+    scan_status=1
+    continue
+  }
+  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range" . || scan_status=1
+done < "$refs_file"
+if [ "$scan_status" -ne 0 ]; then
+  echo "❌ Secret scan failed."
+  echo "Remove or scrub secret-like values before pushing."
+  exit 1
+fi
+
+echo "✅ Pre-push checks completed!"

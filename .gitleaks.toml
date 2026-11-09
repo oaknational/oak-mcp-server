@@ -1,0 +1,5 @@
+title = "oak-mcp-server gitleaks config"
+minVersion = "8.30.0"
+
+[extend]
+useDefault = true
