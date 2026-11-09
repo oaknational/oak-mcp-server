@@ -19,7 +19,7 @@
   "packageManager": "pnpm@12.17.0",
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
+    "check": "pnpm --silent build >/dev/null && echo 'build ok' && pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "import:ooce": "node tools/import-from-ooce/import.ts",
