@@ -5,7 +5,7 @@ Oak National Academy's canonical external Model Context Protocol (MCP) server fo
 ## Where to find it
 
 - MCP endpoint: `https://mcp.thenational.academy/mcp`
-- Developer documentation: <https://mcp.thenational.academy/>
+- Developer documentation: will be served at <https://mcp.thenational.academy/> once the documentation site is built.
 - Repository: <https://github.com/oaknational/oak-mcp-server>
 
 The server is being moved here from the `oak-open-curriculum-ecosystem` repository. The served MCP surface stays the same through the move. Until the code lands, this repository holds the workspace, the governance documents and the decision records.

@@ -7,7 +7,7 @@
 
 OOCE ADR-227 planned for the Oak MCP product to be built in its own repository from packages published to the public `@oaknational` npm scope. OOCE would publish its shared toolkit first, and the new repository would depend on the published versions.
 
-[ADR 0001](0001-repository-topology.md) changes the ground for that plan. The repositories that Oak now plans for do not include OOCE, so a published toolkit there would have no long-term owner. No second consumer of those packages exists today. Oak's other web application uses vendor SDKs directly and has no Oak logger or environment wrapper to share.
+[ADR 0001](0001-repository-topology.md) changes the ground for that plan. No second consumer of those packages exists today. Oak's other web application uses vendor SDKs directly and has no Oak logger or environment wrapper to share.
 
 ## Decision
 

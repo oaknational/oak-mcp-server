@@ -15,7 +15,9 @@ Static documentation owns `/` on `mcp.thenational.academy`. The server owns thes
 
 - `/mcp` and `/mcp/*`
 - `/oauth/*`
-- the two OAuth `/.well-known` paths
+- `/.well-known/oauth-protected-resource`
+- `/.well-known/oauth-protected-resource/mcp`
+- `/.well-known/oauth-authorization-server`
 - `/healthz`
 
 The server process still renders no HTML. The documentation is built as static files and served by the host's routing, never by the server.

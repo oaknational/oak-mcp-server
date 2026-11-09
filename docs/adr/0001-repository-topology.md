@@ -2,7 +2,7 @@
 
 - **Status:** Accepted (2026-10-28)
 - **Date:** 2026-10-28
-- **Source:** Oak's engineering ADR record ADR-231, as accepted.
+- **Source:** Oak's engineering ADR record ADR-46, "Use a standalone `oak-mcp-server` repository, split from the OOCE monorepo", as accepted.
 
 ## Context
 

@@ -1,12 +1,19 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 export const root = join(import.meta.dirname, '..', '..');
 
-export function markdownFilesUnder(directory: string): string[] {
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => join(entry.parentPath, entry.name))
+export function trackedMarkdownFiles(): string[] {
+  const listed = spawnSync('git', ['ls-files', '-z', '--', '*.md'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  if (listed.status !== 0) throw new Error(`git ls-files failed: ${listed.stderr}`);
+  return listed.stdout
+    .split('\0')
+    .filter((path) => path !== '' && !path.split('/').includes('node_modules'))
+    .map((path) => join(root, path))
     .sort();
 }
 
