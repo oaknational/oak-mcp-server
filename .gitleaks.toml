@@ -3,3 +3,7 @@ minVersion = "8.30.0"
 
 [extend]
 useDefault = true
+
+[[allowlists]]
+description = "Import manifest: repository paths mapped to SHA-256 hashes. tools/repo-checks/imported-manifest.test.ts fails on any other content."
+paths = ['''(^|/)tools/import-from-ooce/imported\.json$''']
