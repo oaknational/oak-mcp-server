@@ -1,0 +1,51 @@
+{
+  "name": "oak-mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Oak National Academy's Model Context Protocol server for the Oak Curriculum API.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "pnpm@12.17.0",
+  "scripts": {
+    "build": "pnpm --recursive --if-present build",
+    "check": "pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "knip": "knip --treat-config-hints-as-errors",
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint --fix .",
+    "markdownlint": "markdownlint-cli2",
+    "prepare": "husky",
+    "test": "vitest run",
+    "typecheck": "tsc --project tsconfig.base.json --noEmit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "knip": "^6.32.1",
+    "markdownlint-cli2": "^0.23.2",
+    "prettier": "~3.9.6",
+    "shellcheck": "^4.1.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^5.0.5"
+  }
+}

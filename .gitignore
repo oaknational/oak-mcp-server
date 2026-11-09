@@ -4,3 +4,6 @@ AGENTS.local.md
 .claude/settings.local.json
 
 .cache/
+node_modules/
+dist/
+coverage/
