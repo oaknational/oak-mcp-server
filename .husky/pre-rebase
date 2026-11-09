@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+
+# Refuse a rebase that would rewrite main. Git fires this hook before any
+# rewrite. $1 is the upstream, and $2 names the branch being rebased and is
+# absent when rebasing the checked-out branch.
+export GUARD_BRANCH="${2:-}"
+export GUARD_HINT="Rebase on a branch instead — main advances only via pull requests."
+# shellcheck source=refuse-commit-on-main.sh
+. .husky/refuse-commit-on-main.sh
+
+# Also refuse when main points into the range being rewritten ($1..tip).
+# --update-refs (or rebase.updateRefs=true) force-moves every branch whose tip
+# sits inside that range, main included, without main being the branch under
+# rebase. Main inside a topic's range also means local main carries commits
+# that are not on the upstream. The flag is invisible to this hook, so the
+# state is refused rather than the flag detected.
+rebased_tip="${2:-HEAD}"
+if git rev-parse --verify --quiet refs/heads/main >/dev/null 2>&1 \
+  && git merge-base --is-ancestor refs/heads/main "$rebased_tip" 2>/dev/null \
+  && ! git merge-base --is-ancestor refs/heads/main "$1" 2>/dev/null; then
+  echo "❌ Refusing this rebase — local 'main' points into the range being rewritten, so the rebase could move 'main' (e.g. via --update-refs)."
+  echo "💡 If main carries unpushed commits, preserve then re-home it first: git switch -c <branch> main && git fetch origin && git branch -f main origin/main. If your range simply reaches past the branch point, rebase from the branch point instead (e.g. git rebase -i main)."
+  exit 1
+fi
