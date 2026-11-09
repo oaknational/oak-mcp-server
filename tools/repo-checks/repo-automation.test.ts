@@ -37,6 +37,35 @@ describe('CODEOWNERS and Dependabot', () => {
       'npm',
     ]);
   });
+
+  it('keeps the npm cooldown equal to pnpm minimumReleaseAge', () => {
+    const config = parse(readFileSync(join(root, '.github/dependabot.yml'), 'utf8')) as {
+      updates: { 'package-ecosystem': string; cooldown?: { 'default-days': number } }[];
+    };
+    const workspace = parse(readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8')) as {
+      minimumReleaseAge: number;
+    };
+    const npm = config.updates.find((u) => u['package-ecosystem'] === 'npm');
+    expect((npm?.cooldown?.['default-days'] ?? 0) * 1440).toBe(workspace.minimumReleaseAge);
+  });
+
+  it('holds back the bumps the toolchain cannot take', () => {
+    const config = parse(readFileSync(join(root, '.github/dependabot.yml'), 'utf8')) as {
+      updates: {
+        'package-ecosystem': string;
+        ignore?: { 'dependency-name': string; versions?: string[] }[];
+      }[];
+    };
+    const npm = config.updates.find((u) => u['package-ecosystem'] === 'npm');
+    expect(npm?.ignore?.map((i) => i['dependency-name']).sort()).toEqual([
+      '@types/node',
+      'markdownlint-cli2',
+      'typescript',
+    ]);
+    expect(npm?.ignore?.find((i) => i['dependency-name'] === 'typescript')?.versions).toEqual([
+      '>=6.1',
+    ]);
+  });
 });
 
 describe('pr-size bands', () => {

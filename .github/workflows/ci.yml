@@ -6,7 +6,7 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action == 'synchronize' }}
 
 permissions: {}
 
@@ -191,7 +191,7 @@ jobs:
       - secret-scan
       - workflow-lint
       - agent-skills
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
