@@ -15,6 +15,7 @@ const workflow = parse(
   readFileSync(join(import.meta.dirname, '../../.github/workflows/ci.yml'), 'utf8'),
 ) as {
   on: { pull_request: { types?: string[] } };
+  concurrency: { 'cancel-in-progress': string };
   jobs: Record<string, Job>;
 };
 const gate = workflow.jobs['ci-gate'];
@@ -33,13 +34,19 @@ describe('ci-gate', () => {
     expect(workflow.on.pull_request.types).toContain('edited');
   });
 
+  it('cancels an in-progress run only when a new head commit arrives', () => {
+    expect(workflow.concurrency['cancel-in-progress']).toBe(
+      "${{ github.event.action == 'synchronize' }}",
+    );
+  });
+
   it('needs every other job in ci.yml', () => {
     const others = Object.keys(workflow.jobs).filter((name) => name !== 'ci-gate');
     expect([...(gate?.needs ?? [])].sort()).toEqual(others.sort());
   });
 
-  it('runs even when a needed job fails or is skipped', () => {
-    expect(gate?.if).toBe('always()');
+  it('runs when a needed job fails or is skipped, but not in a cancelled run', () => {
+    expect(gate?.if).toBe('${{ !cancelled() }}');
   });
 
   it('declares an expected result count equal to its needs', () => {
