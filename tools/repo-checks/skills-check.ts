@@ -7,7 +7,9 @@ interface Manifest {
   files: Record<string, string>;
 }
 
-const ROOTS = ['.agents/skills', '.claude/skills'];
+const SOURCE = '.agents/skills';
+const MIRROR = '.claude/skills';
+const ROOTS = [SOURCE, MIRROR];
 
 function listFiles(dir: string): string[] {
   if (!existsSync(dir)) {
@@ -45,6 +47,22 @@ for (const base of ROOTS) {
   for (const entry of existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []) {
     if (entry.name.startsWith('oak-') && !known.has(entry.name)) {
       problems.push(`${base}/${entry.name}: skill is not selected in oak-skills.json`);
+    }
+  }
+}
+
+const sourceDir = join(root, SOURCE);
+for (const entry of existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTypes: true }) : []) {
+  if (!entry.isDirectory() || entry.name.startsWith('oak-')) {
+    continue;
+  }
+  for (const file of listFiles(join(sourceDir, entry.name))) {
+    const rel = relative(sourceDir, file).split('\\').join('/');
+    const copy = join(root, MIRROR, rel);
+    if (!existsSync(copy)) {
+      problems.push(`${MIRROR}/${rel}: missing, copy it from ${SOURCE}/${rel}`);
+    } else if (!readFileSync(copy).equals(readFileSync(file))) {
+      problems.push(`${MIRROR}/${rel}: differs from ${SOURCE}/${rel}, recopy it`);
     }
   }
 }
