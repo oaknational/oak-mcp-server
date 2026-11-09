@@ -2,12 +2,8 @@ packages:
   - apps/*
   - packages/*
 
-# Supply-chain hardening: refuse any version younger than 24 hours (1440
-# minutes), so a freshly published compromised release ages before it enters
-# the tree. Applies to transitive dependencies too.
 minimumReleaseAge: 1440
 
-# Only these dependencies may run install scripts.
 allowBuilds:
   esbuild: true
   shellcheck: true

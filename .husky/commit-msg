@@ -2,5 +2,4 @@
 
 pnpm exec commitlint --edit "$1" || exit 1
 
-# Only a person bumps the major version, by editing package.json in its own PR.
 node tools/repo-checks/no-accidental-major.ts "$1"

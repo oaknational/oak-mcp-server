@@ -7,8 +7,6 @@ export GUARD_HINT="Move to a branch first: git switch -c <branch> (staged change
 
 echo "🔍 Running pre-commit checks..."
 
-# Runs a command over the staged files that match one pathspec. The staged set
-# comes from the index git exports to this hook, so unstaged edits stay out.
 run_on_staged() {
   pathspec="$1"
   shift
@@ -51,12 +49,7 @@ if ! node tools/repo-checks/scrub-staged.ts; then
 fi
 
 echo "🧪 Running build, typecheck, lint and tests..."
-# The gate log is gitignored. The status file is fail-closed: it is truncated
-# first and a missing or empty read counts as failure. A pipeline reports only
-# tee's exit, so the gate's own status goes through the file. git exports
-# GIT_DIR, GIT_INDEX_FILE (a transient lock file during a commit) and
-# GIT_WORK_TREE to hooks, and the gate's child processes must not inherit them.
-# The staged-file checks above need them, so they are unset for the gate only.
+# Git exports GIT_DIR, GIT_INDEX_FILE and GIT_WORK_TREE to hooks (githooks(5)); the gate's child processes must not inherit them.
 mkdir -p .cache
 : > .cache/last-gate.status
 {

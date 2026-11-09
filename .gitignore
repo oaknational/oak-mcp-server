@@ -1,4 +1,3 @@
-# Operator-local agent instructions and settings. Never publish these.
 CLAUDE.local.md
 AGENTS.local.md
 .claude/settings.local.json

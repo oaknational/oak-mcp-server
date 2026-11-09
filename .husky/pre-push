@@ -11,9 +11,6 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
-# Git feeds this hook the destination as $1 and one
-# "<local_ref> <local_sha> <remote_ref> <remote_sha>" line per pushed ref on
-# stdin. Refusing main comes first, before any network call and before any scan.
 refs_file="$(mktemp)"
 trap 'rm -f "$refs_file"' EXIT
 cat > "$refs_file"
@@ -25,9 +22,6 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-# Scan only the commits being pushed. CI scans the full history. The exclusion
-# is scoped to the destination when it names a configured remote, so a first
-# push of existing commits to a second remote still scans them.
 if git remote | grep -qx -- "$1"; then
   not_pushed="--not --remotes=$1"
 else

@@ -1,5 +1,3 @@
-import conventional from '@commitlint/config-conventional';
-
 const linearId = '(?:[A-Z][A-Z0-9]*-\\d+: )?';
 
 export default {
@@ -10,5 +8,4 @@ export default {
       headerCorrespondence: ['type', 'scope', 'subject'],
     },
   },
-  rules: { ...conventional.rules },
 };

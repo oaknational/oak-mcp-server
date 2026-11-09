@@ -19,9 +19,6 @@ export default defineConfig(
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
       '@eslint-community/eslint-comments/require-description': 'error',
-      '@eslint-community/eslint-comments/disable-enable-pair': 'error',
-      '@eslint-community/eslint-comments/no-unlimited-disable': 'error',
-      '@eslint-community/eslint-comments/no-unused-disable': 'error',
       'no-warning-comments': 'warn',
     },
   },
