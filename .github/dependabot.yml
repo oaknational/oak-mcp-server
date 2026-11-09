@@ -15,7 +15,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # Keep equal to minimumReleaseAge in pnpm-workspace.yaml, in days. A repo check enforces it.
     cooldown:
       default-days: 1
     commit-message:
@@ -28,7 +27,6 @@ updates:
       # typescript-eslint release supports the newer range.
       - dependency-name: typescript
         versions: ['>=6.1']
-      # Lift when engines.node moves to 25 or later.
       - dependency-name: '@types/node'
         versions: ['>=25']
       # 0.24.0 pulls in re2js 2.8.6 (GHSA-gg6h-894w-4m9c, high severity). Lift when a
