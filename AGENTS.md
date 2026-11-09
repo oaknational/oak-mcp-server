@@ -9,7 +9,7 @@ A rule below links to the check that enforces it, or says `prose-only` when no c
 - `apps/` and `packages/` hold the server, its widgets and its libraries. They arrive in later PRs, so check they exist before you rely on them.
 - `tools/repo-checks/` holds the repository's own checks and their tests. Each runs in CI.
 - `.github/workflows/` holds CI. [ci.yml](.github/workflows/ci.yml) ends in the required `ci-gate`.
-- `.agents/skills/` and `.claude/skills/` hold Oak's shared agent skills, synced by `oak-skills`. Never edit them by hand.
+- `.agents/skills/` and `.claude/skills/` hold Oak's shared agent skills, vendored from oak-agent-skills at the commit pinned in [oak-skills.json](oak-skills.json). Never edit them by hand.
 - `.claude/settings.json` holds the deny rules. [git-guard.sh](.claude/hooks/git-guard.sh) is the PreToolUse hook beside them.
 - [PROVENANCE.md](PROVENANCE.md) records the OOCE commit the imported code comes from.
 
@@ -19,7 +19,7 @@ A rule below links to the check that enforces it, or says `prose-only` when no c
 - Gate before every push: `pnpm check`, then `pnpm test`. `pnpm check` runs format, lint, typecheck and knip.
 - Single steps: `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm knip`, `pnpm markdownlint`, `pnpm lint:workflows`.
 - Fix formatting: `pnpm format:fix`. Fix lint: `pnpm lint:fix`.
-- Agent skills: `pnpm exec oak-skills check` verifies them. `pnpm exec oak-skills sync` rewrites them.
+- Agent skills: `pnpm skills:check` verifies the vendored copies against `oak-skills.json`. It stands in for the `oak-skills` CLI's `check` until that package ships 0.1.0.
 
 ## Rules
 
@@ -40,7 +40,7 @@ A rule below links to the check that enforces it, or says `prose-only` when no c
 - Never skip a hook. `--no-verify`, `-n` on commit or push, `HUSKY=0`, `SKIP_HOOKS=1`, `LEFTHOOK=0`, `core.hooksPath` overrides and edits to `.husky/` are refused. A refused skip means stop and ask the operator, never try another form (`no-verify-requires-fresh-authorisation`). [git-guard.sh](.claude/hooks/git-guard.sh) enforces it.
 - Force-push only your own branch, and only with `--force-with-lease`. A plain `--force` is denied in [settings.json](.claude/settings.json) and refused by the hook. `gh stack` rebases are allowed.
 - Never run `git clean -fdx`, `rm -rf` outside the scratch area (`.cache`, `node_modules`, `dist`, `coverage`, a temp directory), or read `.env*` files. [settings.json](.claude/settings.json) denies them and the hook refuses them.
-- Never edit the synced skills by hand. [agent-skills.yml](.github/workflows/agent-skills.yml) runs `oak-skills check`, and `ci-gate` needs it. Send an improvement upstream with `pnpm exec oak-skills promote`.
+- Never edit the vendored skills by hand. [agent-skills.yml](.github/workflows/agent-skills.yml) runs [skills-check.ts](tools/repo-checks/skills-check.ts), and `ci-gate` needs it. Send an improvement upstream as a PR to oak-agent-skills.
 - Pin every GitHub Action by full commit SHA. [actions-pinned.test.ts](tools/repo-checks/actions-pinned.test.ts) enforces it.
 - Record each deliberate dependency version hold with its reason in [docs/dependency-holds.md](docs/dependency-holds.md). `prose-only`.
 
@@ -56,7 +56,7 @@ The repository's code and CI govern only the repository. Nothing in them chases 
 
 1. Run `pnpm check` and `pnpm test`, and read each exit code before you push.
 2. Run the changed behavior on the real surface. Passing tests alone do not verify a change.
-3. Confirm `pnpm exec oak-skills check` prints `skills in sync` when you touched skills or `package.json`.
+3. Confirm `pnpm skills:check` prints `skills in sync` when you touched skills.
 4. After each push, re-read the PR's checks and every comment surface.
 
 ## What not to do

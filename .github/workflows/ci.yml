@@ -178,7 +178,7 @@ jobs:
     name: agent-skills
     permissions:
       contents: read
-    uses: ./.github/workflows/agent-skills.yml
+    uses: ./.github/workflows/agent-skills.yml # zizmor: ignore[self-repository] a $/ reference fails actionlint
 
   ci-gate:
     name: ci-gate
