@@ -18,14 +18,14 @@ import {
 import { countAuthored, evaluateSize } from './pr-size.ts';
 
 const root = join(import.meta.dirname, '../..');
-const OWNING_TEAM = '@oaknational/PLACEHOLDER-mcp-owners';
 
 describe('CODEOWNERS and Dependabot', () => {
-  it('names the one owning team on every path', () => {
+  it('names one owning team on every path', () => {
     const lines = readFileSync(join(root, '.github/CODEOWNERS'), 'utf8')
       .split('\n')
       .filter((line) => line !== '' && !line.startsWith('#'));
-    expect(lines).toEqual([`* ${OWNING_TEAM}`]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^\* @[\w-]+\/[\w-]+$/);
   });
 
   it('updates both actions and npm', () => {

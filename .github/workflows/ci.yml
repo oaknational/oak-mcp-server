@@ -1,10 +1,5 @@
 name: CI
 
-# One required status check, `ci-gate`, fans in every other job in this file.
-# It fails unless each needed job succeeded, so a failed, cancelled or skipped
-# job all block the merge. The workflow runs on every pull request, whatever
-# its base, so a layer in a stack gets checked before its parent lands.
-
 on:
   pull_request:
 
@@ -99,9 +94,6 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: git diff --name-only --no-renames -z "$BASE_SHA" HEAD | node tools/repo-checks/version-rules.ts
 
-  # Scans every branch, tag and the checked-out head, so it also covers commits
-  # made through the GitHub API, the web editor or Dependabot, which never run
-  # local hooks. The binary is checksum-pinned because it is a security control.
   secret-scan:
     name: secret-scan
     permissions:

@@ -30,7 +30,7 @@ function linearErrors(body: string): string[] {
   if (CLOSING.test(linear)) {
     return [];
   }
-  const reason = REFERENCES.exec(linear)?.[1]?.replace(/^[\s:,.\-–—]+/, '') ?? undefined;
+  const reason = REFERENCES.exec(linear)?.[1]?.replace(/^[\s:,.\-–—]+/, '');
   if (reason === undefined) {
     return [
       "The '## Linear' section must close the leaf with 'Fixes MCP-123' (or Closes, Resolves), or use 'References MCP-123' with a stated reason.",

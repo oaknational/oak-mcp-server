@@ -1,8 +1,5 @@
 name: lockfile-rebuild
 
-# The lockfile is derived. Every override and every hold in
-# docs/dependency-holds.md must survive deleting it and installing again.
-
 on:
   pull_request:
     paths:
@@ -40,5 +37,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-      - name: Freeze, delete, rebuild and compare
+      - run: pnpm install --frozen-lockfile
+      - name: Rebuild the lockfile and compare
         run: node tools/repo-checks/lockfile-rebuild.ts

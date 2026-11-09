@@ -11,8 +11,6 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
-  # cooldown keeps Dependabot behind the 24 hour minimumReleaseAge in
-  # pnpm-workspace.yaml, so its lockfile does not trip the install.
   - package-ecosystem: npm
     directory: /
     schedule:
