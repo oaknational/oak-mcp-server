@@ -25,6 +25,7 @@
     "knip": "knip --treat-config-hints-as-errors",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
+    "lint:workflows": "sh -c 'status=0; actionlint || status=1; zizmor --offline .github/workflows/ || status=1; exit $status'",
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "git config core.hooksPath .husky",
     "test": "vitest run",
@@ -50,6 +51,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.66.0",
     "unist-util-visit": "^5.2.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "yaml": "^2.9.1"
   }
 }
