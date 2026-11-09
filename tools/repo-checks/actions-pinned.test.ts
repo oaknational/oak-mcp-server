@@ -50,4 +50,20 @@ describe('workflow and action files', () => {
     };
     expect(workflow.defaults?.run?.shell).toBe('bash');
   });
+
+  it.each(workflowFiles)(
+    '%s hands the npm shellcheck wrapper a pinned binary so it never downloads one',
+    (file) => {
+      const workflow = parse(readFileSync(join(root, file), 'utf8')) as {
+        jobs: Record<string, { steps?: { run?: string; env?: Record<string, unknown> }[] }>;
+      };
+      for (const [name, job] of Object.entries(workflow.jobs)) {
+        for (const { run = '', env } of job.steps ?? []) {
+          if (/pnpm (?:lint:workflows|exec shellcheck)/.test(run)) {
+            expect(env?.SHELLCHECKJS_BIN, `${file} job ${name}: ${run}`).toBeTruthy();
+          }
+        }
+      }
+    },
+  );
 });
