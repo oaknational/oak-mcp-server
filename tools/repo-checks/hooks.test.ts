@@ -17,8 +17,6 @@ const root = join(import.meta.dirname, '..', '..');
 const hasGitleaks = spawnSync('gitleaks', ['version']).status === 0;
 const NULL_SHA = '0'.repeat(40);
 
-process.env['pnpm_config_verify_deps_before_run'] = 'false';
-
 let repo = '';
 
 function git(...args: string[]): string {
@@ -250,6 +248,20 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
 
     it('skips commits the remote still holds', () => {
       expect(push()).toBe(0);
+    });
+
+    it('scans a commit the fetch URL holds but the push target does not', () => {
+      const upstream = mkdtempSync(join(tmpdir(), 'upstream-'));
+      try {
+        execFileSync('git', ['init', '-q', '--bare', '-b', 'main', upstream]);
+        git('push', '-q', upstream, 'topic');
+        execFileSync('git', ['-C', remote, 'branch', '-q', '-D', 'topic']);
+        git('remote', 'set-url', 'origin', upstream);
+        git('remote', 'set-url', '--push', 'origin', remote);
+        expect(push()).toBe(1);
+      } finally {
+        rmSync(upstream, { recursive: true, force: true });
+      }
     });
   });
 });

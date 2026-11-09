@@ -22,13 +22,15 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-remote_refs="$(git ls-remote --heads "$1" 2> /dev/null)" || remote_refs=""
+remote_refs="$(git ls-remote --heads "$2" 2> /dev/null)" || remote_refs=""
 tips_file="$(mktemp)"
 trap 'rm -f "$refs_file" "$tips_file"' EXIT
-printf '%s\n' "$remote_refs" | cut -f1 > "$tips_file"
+printf '%s\n' "$remote_refs" | cut -f1 | sed -n 's/^\(..*\)$/\1^{commit}/p' |
+  git cat-file --batch-check='%(objecttype) %(objectname)' 2> /dev/null |
+  sed -n 's/^commit //p' > "$tips_file"
 set --
 while read -r tip; do
-  [ -n "$tip" ] && git cat-file -e "$tip^{commit}" 2> /dev/null && set -- "$@" "$tip"
+  set -- "$@" "$tip"
 done < "$tips_file"
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
