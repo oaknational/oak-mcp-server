@@ -10,7 +10,7 @@ description: >-
 
 # MCP tool design
 
-The MCP specification is the standard, and it moves. Check the current revision at `https://modelcontextprotocol.io/specification` before you rely on a rule here. Where this file and the live spec disagree, the spec wins. Say so in the PR.
+This server implements MCP revision `2025-11-25`, which ADR 229 in `docs/adr/mcp/` pins. Check a rule here against the live `2025-11-25` specification at `https://modelcontextprotocol.io/specification/2025-11-25` before you rely on it. Where this file and that revision disagree, the spec wins. Say so in the PR. Report a requirement that only a newer revision adds as a migration gap, not a defect.
 
 Tool schemas are generated from the OpenAPI snapshot. Fix a missing description or annotation in the generator or its override layer, never in the output. See `update-upstream-api-schema`.
 

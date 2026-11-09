@@ -292,10 +292,13 @@ Used in review mode; informative for active-workflow mode.
 
 - [ ] OAuth proxy correctly forwards to Clerk's upstream endpoints without
       modification
-- [ ] PRM endpoint advertises correct `authorization_servers` pointing to
-      self-origin (proxy context)
-- [ ] AS metadata rewriting preserves all Clerk capability fields
-      (object-spread pattern)
+- [ ] PRM endpoint's `authorization_servers` names the validated upstream
+      Clerk `issuer`, not self-origin. ADR 115 records that self-origin
+      broke clients that check the authorisation response's `iss`
+      (RFC 9207)
+- [ ] AS metadata rewriting sets `scopes_supported` to the PRM's advertised
+      set, not Clerk's full list (ADR 113, Resolution 3), and passes every
+      other Clerk capability field through (object-spread pattern)
 - [ ] DCR proxy passes JSON body to Clerk verbatim
 - [ ] Token exchange proxy passes raw body to Clerk verbatim
 - [ ] Clerk's OIDC discovery URL is used correctly for metadata derivation
