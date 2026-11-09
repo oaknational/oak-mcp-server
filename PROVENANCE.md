@@ -6,9 +6,21 @@ Pinned OOCE import SHA: `d5846cf6f37270c73291640a526124429369ee97`
 
 ## What an entry records
 
-Each entry records one import from OOCE. It names the destination path in this repository, the source path in OOCE, the pinned SHA the file was read at, and a hash of the imported content.
+Each entry covers one package directory in this repository. It records:
+
+- the OOCE source directories and the pinned SHA they were read at;
+- how many files were copied unchanged;
+- each file the tool modified, such as `package.json` or a file with a manifest edit;
+- each file supplied from this repository instead of OOCE;
+- each OOCE file the tool dropped, with the reason.
+
+`tools/import-from-ooce/imported.json` holds the SHA-256 hash of each file copied unchanged. Modified and supplied files have no hash there.
 
 Only the import tool writes entries. Nobody edits the entries by hand. A pull request that changes an entry without running the tool fails review.
+
+## Package directories belong to the tool
+
+The tool owns each package directory named in `tools/import-from-ooce/manifest.json`. A re-import deletes every file in that directory that the import does not write, tracked or not. Only `node_modules`, `dist`, `coverage` and `.turbo` are left alone. To change an imported package, change the manifest and re-import. The tool refuses to write or delete through a symlink.
 
 ## Entries
 
@@ -68,6 +80,6 @@ Only the import tool writes entries. Nobody edits the entries by hand. A pull re
 ### `packages/posthog-node`
 
 - Source: `packages/libs/posthog-node` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 34 files.
-- Modified by the tool: `package.json`, `src/event-policy.integration.test.ts`, `src/mcp-transport-observer-collaborator.integration.test.ts`, `src/product-analytics-sink.integration.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 33 files.
+- Modified by the tool: `package.json`, `src/client-product-selection.ts`, `src/event-policy.integration.test.ts`, `src/mcp-transport-observer-collaborator.integration.test.ts`, `src/product-analytics-sink.integration.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Dropped `packages/libs/posthog-node/eslint.config.ts`. The root eslint.config.ts lints packages/**.

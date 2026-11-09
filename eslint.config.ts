@@ -4,6 +4,21 @@ import prettier from 'eslint-config-prettier';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+const importedRuleGaps: Record<string, string[]> = {
+  env: ['no-confusing-void-expression', 'no-unnecessary-condition'],
+  logger: ['no-confusing-void-expression', 'no-unnecessary-condition'],
+  observability: ['no-confusing-void-expression', 'no-unnecessary-type-arguments', 'require-await'],
+  'posthog-node': [
+    'no-confusing-void-expression',
+    'no-unnecessary-condition',
+    'no-unnecessary-type-parameters',
+    'prefer-promise-reject-errors',
+    'require-await',
+    'unbound-method',
+  ],
+  'sentry-node': ['require-await', 'restrict-template-expressions', 'unbound-method'],
+};
+
 export default defineConfig(
   { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '.cache/**'] },
   eslint.configs.recommended,
@@ -28,19 +43,10 @@ export default defineConfig(
       parserOptions: { project: ['./packages/*/tsconfig.json', './tsconfig.base.json'] },
     },
   },
-  {
-    files: ['packages/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-confusing-void-expression': 'off',
-      '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/no-unnecessary-type-arguments': 'off',
-      '@typescript-eslint/no-unnecessary-type-parameters': 'off',
-      '@typescript-eslint/prefer-promise-reject-errors': 'off',
-      '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'off',
-      '@typescript-eslint/unbound-method': 'off',
-    },
-  },
+  ...Object.entries(importedRuleGaps).map(([name, rules]) => ({
+    files: [`packages/${name}/**/*.ts`],
+    rules: Object.fromEntries(rules.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const])),
+  })),
   { files: ['**/*.mjs'], extends: [tseslint.configs.disableTypeChecked] },
   prettier,
 );
