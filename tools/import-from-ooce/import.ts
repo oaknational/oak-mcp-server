@@ -426,7 +426,7 @@ function gather(
   return { gathered, dropped, secondaryJson };
 }
 
-function transformText(manifest: Manifest, spec: PackageSpec, item: Gathered): Buffer {
+function transformText(manifest: Manifest, spec: PackageSpec, item: Gathered, sha: Sha40): Buffer {
   if (item.destination === 'package.json' || !isText(item.bytes)) {
     return item.bytes;
   }
@@ -437,7 +437,7 @@ function transformText(manifest: Manifest, spec: PackageSpec, item: Gathered): B
     }
   }
   for (const rewrite of manifest.textRewrites) {
-    text = replaceAll(text, rewrite.find, rewrite.replace);
+    text = replaceAll(text, rewrite.find, replaceAll(rewrite.replace, '{sha}', sha));
   }
   if (manifest.scope.from !== manifest.scope.to) {
     text = replaceAll(text, manifest.scope.from, manifest.scope.to);
@@ -451,6 +451,7 @@ function planPackage(
   source: OoceSource,
   repoRoot: string,
   locked: LockedVersions,
+  sha: Sha40,
 ): PackagePlan {
   const { gathered, dropped, secondaryJson } = gather(manifest, spec, source);
   const pins: Record<string, string> = {};
@@ -479,7 +480,7 @@ function planPackage(
               2,
             )}\n`,
           )
-        : transformText(manifest, spec, item);
+        : transformText(manifest, spec, item, sha);
     files.push({
       kind: bytes.equals(item.bytes) ? 'copied' : 'modified',
       path: repoPath(`${spec.to}/${item.destination}`),
@@ -671,7 +672,7 @@ export function runImport(input: ImportInput): ImportReport {
   }
   const locked = lockedVersions(input.source);
   const plans = manifest.packages.map((spec) =>
-    planPackage(manifest, spec, input.source, input.root, locked),
+    planPackage(manifest, spec, input.source, input.root, locked, input.sha),
   );
   const counts = new Map<string, TestCount>();
   for (const plan of plans) {

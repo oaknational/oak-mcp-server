@@ -15,7 +15,7 @@ import {
  * E2E) where post-WS2/3/4 contracts are asserted before the rename
  * lands.
  *
- * @see ../../../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 
 const VALID_DSN = 'https://public@localhost/123';

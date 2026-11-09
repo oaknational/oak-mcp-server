@@ -14,9 +14,9 @@
  * selection tuple and diagnostic-only tuple derive from that one literal
  * source without widening the diagnostic registry.
  *
- * @see ../../../../docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md
- * @see ../../../../docs/architecture/architectural-decisions/162-observability-first.md
- * @see ../../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/162-observability-first.md
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  *
  * @packageDocumentation
  */

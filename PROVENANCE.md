@@ -22,16 +22,16 @@ Only the import tool writes entries. Nobody edits the entries by hand. A pull re
 ### `packages/observability`
 
 - Source: `packages/core/observability` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 16 files.
-- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 14 files.
+- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/primitives.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `src/sink-registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Supplied from this repository: `src/type-safe.ts`.
 - Dropped `packages/core/observability/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
 ### `packages/env`
 
 - Source: `packages/core/env`, `packages/libs/env-resolution` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 21 files.
-- Modified by the tool: `package.json`, `README.md`, `src/index.ts`, `src/resolution/README.md`, `src/root-package-version.ts`, `src/schemas/observability.ts`, `src/schemas/observability.unit.test.ts`, `tests/resolution/app-root.integration.test.ts`, `tests/resolution/repo-root.integration.test.ts`, `tests/resolution/resolve-env.integration.test.ts`, `tests/resolution/warnings-channel.unit.test.ts`, `tests/root-package-version.unit.test.ts`, `tests/schemas/sentry.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 15 files.
+- Modified by the tool: `package.json`, `README.md`, `src/index.ts`, `src/resolution/README.md`, `src/resolution/resolve-env.ts`, `src/resolution/types.ts`, `src/root-package-version.ts`, `src/schemas/index.ts`, `src/schemas/observability-axes.ts`, `src/schemas/observability-base.ts`, `src/schemas/observability-refinements.ts`, `src/schemas/observability.ts`, `src/schemas/observability.unit.test.ts`, `tests/resolution/app-root.integration.test.ts`, `tests/resolution/repo-root.integration.test.ts`, `tests/resolution/resolve-env.integration.test.ts`, `tests/resolution/warnings-channel.unit.test.ts`, `tests/root-package-version.unit.test.ts`, `tests/schemas/sentry.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Dropped `packages/core/env/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 - Dropped `packages/libs/env-resolution/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 - Dropped `packages/libs/env-resolution/package.json`. Dependencies merged into the env package.json.
@@ -51,8 +51,8 @@ Only the import tool writes entries. Nobody edits the entries by hand. A pull re
 ### `packages/logger`
 
 - Source: `packages/libs/logger` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 34 files.
-- Modified by the tool: `package.json`, `src/error-normalisation-fields.ts`, `src/error-normalisation.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 33 files.
+- Modified by the tool: `package.json`, `README.md`, `src/error-normalisation-fields.ts`, `src/error-normalisation.unit.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Supplied from this repository: `src/type-safe.ts`.
 - Dropped `packages/libs/logger/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 

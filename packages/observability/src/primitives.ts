@@ -14,7 +14,7 @@
  * (`docs/governance/typescript-practice.md` §Compiler-time Types and
  * Runtime Validation).
  *
- * @see ../../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
  * @see ../../../../docs/governance/typescript-practice.md
  *
  * @packageDocumentation

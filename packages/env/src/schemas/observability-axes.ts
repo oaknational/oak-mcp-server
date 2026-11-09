@@ -11,7 +11,7 @@
  * docs-adr-expert 2026-05-02 finding 2 (drop the misleading "internal"
  * framing on a public-symbol file).
  *
- * @see ../../../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  *
  * @packageDocumentation
  */

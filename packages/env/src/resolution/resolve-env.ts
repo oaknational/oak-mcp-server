@@ -11,7 +11,7 @@
  * via a Zod schema; this module owns loading, merging, validation, and
  * diagnostics.
  *
- * @see ../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -196,7 +196,7 @@ function buildEnvResolutionError(
  *   compatible with `Result<TEnv, EnvResolutionError>` for callers that
  *   access `result.ok` / `result.value` / `result.error`.
  *
- * @see ../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 export function resolveEnv<TSchema extends z.ZodType>(
   options: ResolveEnvOptions<TSchema>,

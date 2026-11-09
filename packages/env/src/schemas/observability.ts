@@ -22,10 +22,10 @@
  * legacy-rename rejection). The dedicated ADR is authored at WS8.6 of
  * that plan; until then the plan body is the canonical source.
  *
- * @see ../../../../../docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md
- * @see ../../../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
- * @see ../../../../../docs/architecture/architectural-decisions/162-observability-first.md
- * @see ../../../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/162-observability-first.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  *
  * @packageDocumentation
  */
@@ -77,7 +77,7 @@ export { OBSERVABILITY_FIXTURES_SCHEMA, OBSERVABILITY_SINKS_SCHEMA } from './obs
  * `@oaknational/env/resolution`'s `EnvWarning` discriminated union;
  * channel carrier reserved in WS1, populated in WS3).
  *
- * @see ../../../../../.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
+ * @see ../../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans/observability/current/observability-multi-sink-and-fixtures-shape.plan.md
  */
 export const ObservabilityEnvSchema = ObservabilityEnvBaseSchema.superRefine((data, ctx) => {
   refineLegacySentryMode(data, ctx);

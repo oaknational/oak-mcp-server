@@ -241,6 +241,17 @@ describe('import from OOCE', () => {
     );
   });
 
+  it('rewrites a relative link out of the package to the OOCE file at the pinned SHA', () => {
+    const manifest = {
+      ...manifestJson,
+      textRewrites: [{ find: '../../../docs/', replace: 'https://example.test/blob/{sha}/docs/' }],
+    };
+    run(manifest);
+    expect(read('packages/alpha/README.md')).toContain(
+      `https://example.test/blob/${SHA}/docs/guide.md`,
+    );
+  });
+
   it('lists modified and supplied files in PROVENANCE.md with the source path and SHA', () => {
     run();
     const provenance = read('PROVENANCE.md');

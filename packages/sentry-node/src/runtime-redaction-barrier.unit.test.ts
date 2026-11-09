@@ -23,8 +23,8 @@ import type {
 /**
  * ADR-160 conformance test file.
  *
- * @see ../../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
- * @see ../../../../docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md — §6 is superseded in part by ADR-160 and this conformance test is its successor enforcement edge.
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md
+ * @see ../https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md — §6 is superseded in part by ADR-160 and this conformance test is its successor enforcement edge.
  *
  * Enforces the three-part closure property for the shared redaction barrier:
  *

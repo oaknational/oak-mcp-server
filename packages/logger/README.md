@@ -185,7 +185,7 @@ From `@oaknational/logger/node`:
 
 ## JSON types and sanitisation live in `@oaknational/observability`
 
-As of 2026-04-19 (see [ADR-160 history entry](../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md#history)), `JsonValue`, `JsonObject`, `sanitiseForJson`, `sanitiseObject`, and `isJsonValue` are owned by `@oaknational/observability`. Consumers that previously imported these from `@oaknational/logger` now import them from `@oaknational/observability` directly. The logger re-export surface was removed — there is no backwards-compatibility shim.
+As of 2026-04-19 (see [ADR-160 history entry](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md#history)), `JsonValue`, `JsonObject`, `sanitiseForJson`, `sanitiseObject`, and `isJsonValue` are owned by `@oaknational/observability`. Consumers that previously imported these from `@oaknational/logger` now import them from `@oaknational/observability` directly. The logger re-export surface was removed — there is no backwards-compatibility shim.
 
 ## Notes
 

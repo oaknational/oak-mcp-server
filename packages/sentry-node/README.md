@@ -2,15 +2,15 @@
 
 Shared Sentry Node configuration, fixture capture, logger sink, and runtime
 initialisation helpers for Oak runtimes. Applies the invariants established by
-[ADR-143 Observability Boundary](../../../docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md),
-[ADR-160 Non-Bypassable Redaction Barrier](../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md),
-[ADR-078 Dependency Injection](../../../docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md),
-and [ADR-162 Observability-First](../../../docs/architecture/architectural-decisions/162-observability-first.md)
+[ADR-143 Observability Boundary](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md),
+[ADR-160 Non-Bypassable Redaction Barrier](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md),
+[ADR-078 Dependency Injection](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md),
+and [ADR-162 Observability-First](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/162-observability-first.md)
 to every consuming runtime.
 
 **Consuming apps**:
 
-- [`apps/oak-curriculum-mcp-streamable-http`](../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md)
+- [`apps/oak-curriculum-mcp-streamable-http`](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-curriculum-mcp-streamable-http/docs/observability.md)
   — MCP server observability guide (wiring, spans, redaction, modes).
 - `apps/oak-search-cli` — Search CLI observability. Docs pending a follow-up
   lane on the next branch.
@@ -89,7 +89,7 @@ semver (ADR-163 §1).
 
 ## DI seam (ADR-078)
 
-Per [ADR-078](../../../docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md)
+Per [ADR-078](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md)
 this package is a library: it **never** reads `process.env`, `process.cwd`,
 or any other ambient state. Every runtime value — `sentryMode`, DSN,
 environment, release, sample rates, redaction policy — is threaded in as a
@@ -106,7 +106,7 @@ configuration enforces the ban on `process.env` reads inside `src/**` at
 
 ## Redaction barrier (ADR-160)
 
-[ADR-160](../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md)
+[ADR-160](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md)
 establishes the non-bypassable redaction barrier as the single closure point
 for every payload that would otherwise leave the process. `sendDefaultPii:
 false` (ADR-143) is set as the floor; the barrier adds structural redaction
@@ -389,16 +389,16 @@ a compliance / cost concern.
 
 ## Related
 
-- [ADR-078 Dependency Injection](../../../docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md)
-- [ADR-143 Observability Boundary](../../../docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md)
-- [ADR-160 Non-Bypassable Redaction Barrier](../../../docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md)
-- [ADR-161 Network-Free PR-Check CI Boundary](../../../docs/architecture/architectural-decisions/161-network-free-pr-check-ci-boundary.md)
-- [ADR-162 Observability-First](../../../docs/architecture/architectural-decisions/162-observability-first.md)
-- [ADR-163 Sentry Release Identifier, Source-Map Attachment, and Vercel Production Attribution](../../../docs/architecture/architectural-decisions/163-sentry-release-identifier-and-vercel-production-attribution.md)
+- [ADR-078 Dependency Injection](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/078-dependency-injection-for-testability.md)
+- [ADR-143 Observability Boundary](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/143-coherent-structured-fan-out-for-observability.md)
+- [ADR-160 Non-Bypassable Redaction Barrier](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md)
+- [ADR-161 Network-Free PR-Check CI Boundary](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/161-network-free-pr-check-ci-boundary.md)
+- [ADR-162 Observability-First](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/162-observability-first.md)
+- [ADR-163 Sentry Release Identifier, Source-Map Attachment, and Vercel Production Attribution](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/163-sentry-release-identifier-and-vercel-production-attribution.md)
   — authoritative mechanism for release = semver, SHA as metadata,
   `VERCEL_ENV` + branch check for production attribution, and the
   deploy-time orchestrator sequence.
-- [`apps/oak-curriculum-mcp-streamable-http/docs/observability.md`](../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md)
+- [`apps/oak-curriculum-mcp-streamable-http/docs/observability.md`](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-curriculum-mcp-streamable-http/docs/observability.md)
   — app-level observability wiring and per-request span documentation.
-- [`what-the-system-emits-today.md`](../../../.agent/plans-backlog-2026-07/observability/what-the-system-emits-today.md)
+- [`what-the-system-emits-today.md`](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/plans-backlog-2026-07/observability/what-the-system-emits-today.md)
   — externally-verifiable observability-envelope snapshot.

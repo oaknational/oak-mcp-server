@@ -29,6 +29,18 @@
     {
       "find": "@example.test",
       "replace": "@localhost"
+    },
+    {
+      "find": "../../../docs/architecture/architectural-decisions/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/architecture/architectural-decisions/"
+    },
+    {
+      "find": "../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/apps/oak-curriculum-mcp-streamable-http/docs/observability.md"
+    },
+    {
+      "find": "../../../.agent/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/.agent/"
     }
   ],
   "edits": [
