@@ -62,20 +62,28 @@ function git(args: string[], input?: string): { ok: boolean; stdout: Buffer } {
   return { ok: result.status === 0, stdout: result.stdout };
 }
 
-function parseImported(raw: string): Record<string, string> {
+const IMPORTED_VALUE = /^sha256:([0-9a-f]{64})$/;
+
+export function parseImported(raw: string): Record<string, string> {
   const parsed: unknown = JSON.parse(raw);
   const files =
     typeof parsed === 'object' && parsed !== null
       ? (parsed as { files?: unknown }).files
       : undefined;
   if (typeof files !== 'object' || files === null || Array.isArray(files)) {
-    throw new Error(`${IMPORTED_PATH} must be {"files": {"<path>": "<sha256>"}}`);
+    throw new Error(`${IMPORTED_PATH} must be {"files": {"<path>": "sha256:<64 hex digits>"}}`);
   }
-  const entries = Object.entries(files);
-  if (!entries.every(([, hash]) => typeof hash === 'string')) {
-    throw new Error(`${IMPORTED_PATH} holds a non-string hash`);
+  const hashes: Record<string, string> = {};
+  for (const [path, value] of Object.entries(files)) {
+    const digest = typeof value === 'string' ? IMPORTED_VALUE.exec(value)?.[1] : undefined;
+    if (digest === undefined) {
+      throw new Error(
+        `${IMPORTED_PATH} holds a value that is not "sha256:<64 lowercase hex digits>"`,
+      );
+    }
+    hashes[path] = digest;
   }
-  return Object.fromEntries(entries as [string, string][]);
+  return hashes;
 }
 
 function markedPaths(base: string, paths: readonly string[]): Set<string> {

@@ -15,7 +15,7 @@ import {
   overrideName,
   resolvedVersions,
 } from './lockfile-rebuild.ts';
-import { countAuthored, evaluateSize } from './pr-size.ts';
+import { countAuthored, evaluateSize, parseImported } from './pr-size.ts';
 
 const root = join(import.meta.dirname, '../..');
 
@@ -77,6 +77,26 @@ describe('pr-size bands', () => {
   });
 });
 
+describe('imported.json values', () => {
+  const digest = 'ab'.repeat(32);
+  const parse = (value: unknown): Record<string, string> =>
+    parseImported(JSON.stringify({ files: { 'a.ts': value } }));
+
+  it('reads a sha256: value as its raw digest', () => {
+    expect(parse(`sha256:${digest}`)).toEqual({ 'a.ts': digest });
+  });
+
+  it.each([
+    ['a bare digest', digest],
+    ['an uppercase digest', `sha256:${digest.toUpperCase()}`],
+    ['a short digest', `sha256:${digest.slice(1)}`],
+    ['another algorithm', `sha1:${digest}`],
+    ['a number', 1],
+  ])('rejects %s', (_label, value) => {
+    expect(() => parse(value)).toThrow(/sha256:/);
+  });
+});
+
 describe('pr-size against a real repository', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pr-size-'));
   afterAll(() => {
@@ -112,7 +132,7 @@ describe('pr-size against a real repository', () => {
   put('.gitattributes', 'docs/archive/** oak-archival\ngen/** linguist-generated\n');
   put(
     'tools/import-from-ooce/imported.json',
-    JSON.stringify({ files: { 'packages/m.ts': sha('m') } }),
+    JSON.stringify({ files: { 'packages/m.ts': `sha256:${sha('m')}` } }),
   );
   const base = commit('base');
 
