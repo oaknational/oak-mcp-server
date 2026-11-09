@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { checkPrTitle, EXEMPT_AUTHORS, RELEASE_APP_LOGIN } from './pr-title.ts';
+import { checkPrTitle, EXEMPT_AUTHORS } from './pr-title.ts';
 
 const INVENTED_APP = 'example-release-app[bot]';
 const fixes = '## Linear\n\nFixes MCP-1\n';
@@ -106,7 +106,9 @@ describe('pr-title', () => {
     );
   });
 
-  it('keeps the release App login in the exempt list', () => {
-    expect(EXEMPT_AUTHORS).toContain(RELEASE_APP_LOGIN);
+  it('strips nested comments at the 65,536 character body cap', () => {
+    const pairs = Math.floor((65_536 - 30) / 8);
+    const nested = '<!'.repeat(pairs) + '<!-- -->' + '-- -->'.repeat(pairs);
+    expect(check('MCP-1: fix: x', `## Linear\nFixes MCP-1\n${nested}`)).toBe('');
   });
 });

@@ -25,7 +25,7 @@
     "knip": "knip --treat-config-hints-as-errors",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
-    "lint:workflows": "sh -c \"actionlint && zizmor --offline .github/workflows/\"",
+    "lint:workflows": "sh -c 'status=0; actionlint || status=1; zizmor --offline .github/workflows/ || status=1; exit $status'",
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "husky",
     "test": "vitest run",

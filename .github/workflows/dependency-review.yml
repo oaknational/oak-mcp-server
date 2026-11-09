@@ -9,6 +9,10 @@ concurrency:
 
 permissions: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   dependency-review:
     name: dependency-review

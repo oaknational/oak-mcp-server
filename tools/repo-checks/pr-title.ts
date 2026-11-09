@@ -1,6 +1,4 @@
-export const RELEASE_APP_LOGIN = 'release-app-login-not-set[bot]';
-
-export const EXEMPT_AUTHORS: readonly string[] = ['dependabot[bot]', RELEASE_APP_LOGIN];
+export const EXEMPT_AUTHORS: readonly string[] = ['dependabot[bot]'];
 
 const TYPES = 'feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert';
 const CONVENTIONAL = new RegExp(`^(?:[A-Z][A-Z0-9]*-\\d+: )?(?:${TYPES})(?:\\([^)]+\\))?!?: \\S`);
@@ -10,22 +8,24 @@ const REFERENCES = /\breferences\s+[A-Z][A-Z0-9]*-\d+[ \t]*(.*)$/im;
 const MIN_REASON_WORDS = 3;
 
 function stripComments(text: string): string {
-  let kept = '';
-  let cursor = 0;
-  for (;;) {
-    const open = text.indexOf('<!--', cursor);
+  const kept: string[] = [];
+  let open = -1;
+  for (const char of text) {
+    kept.push(char);
+    const end = kept.length;
     if (open === -1) {
-      kept += text.slice(cursor);
-      break;
+      if (char === '-' && kept.slice(end - 4).join('') === '<!--') {
+        open = end - 4;
+      }
+    } else if (char === '>' && end - open >= 7 && kept.slice(end - 3).join('') === '-->') {
+      kept.length = open;
+      open = -1;
     }
-    kept += text.slice(cursor, open);
-    const close = text.indexOf('-->', open + '<!--'.length);
-    if (close === -1) {
-      break;
-    }
-    cursor = close + '-->'.length;
   }
-  return kept === text ? text : stripComments(kept);
+  if (open !== -1) {
+    kept.length = open;
+  }
+  return kept.join('');
 }
 
 export function section(body: string, heading: string): string | undefined {

@@ -8,7 +8,7 @@ import { parse } from 'yaml';
 interface Job {
   needs?: string[];
   if?: string;
-  steps?: { run?: string }[];
+  steps?: { run?: string; env?: Record<string, string> }[];
 }
 
 const workflow = parse(
@@ -19,10 +19,13 @@ const workflow = parse(
 };
 const gate = workflow.jobs['ci-gate'];
 const gateScript = gate?.steps?.[0]?.run ?? '';
+const needCount = String(gate?.needs?.length);
+const allSuccess = Array.from({ length: Number(needCount) }, () => 'success').join(',');
 
-function runGate(results: string): number | null {
-  return spawnSync('bash', ['-c', gateScript], { env: { ...process.env, RESULTS: results } })
-    .status;
+function runGate(results: string, count = needCount): number | null {
+  return spawnSync('bash', ['-c', gateScript], {
+    env: { ...process.env, RESULTS: results, NEED_COUNT: count },
+  }).status;
 }
 
 describe('ci-gate', () => {
@@ -39,14 +42,26 @@ describe('ci-gate', () => {
     expect(gate?.if).toBe('always()');
   });
 
-  it('passes only when every result is success', () => {
-    expect(runGate('success,success,success')).toBe(0);
+  it('declares an expected result count equal to its needs', () => {
+    expect(gate?.steps?.[0]?.env?.['NEED_COUNT']).toBe(needCount);
   });
 
-  it.each(['success,failure', 'success,cancelled', 'success,skipped', 'skipped', 'future-result'])(
-    'blocks on %s',
+  it('passes only when every result is success', () => {
+    expect(runGate(allSuccess)).toBe(0);
+  });
+
+  it.each(['failure', 'cancelled', 'skipped', 'future-result'])('blocks on one %s', (result) => {
+    expect(runGate(allSuccess.replace('success', result))).toBe(1);
+  });
+
+  it.each(['', 'success', allSuccess.slice(0, -'success,'.length)])(
+    'blocks when %j holds fewer results than needs',
     (results) => {
       expect(runGate(results)).toBe(1);
     },
   );
+
+  it('blocks when there are more results than needs', () => {
+    expect(runGate(`${allSuccess},success`)).toBe(1);
+  });
 });

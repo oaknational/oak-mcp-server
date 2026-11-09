@@ -10,6 +10,10 @@ concurrency:
 
 permissions: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   checks:
     name: checks
@@ -118,10 +122,50 @@ jobs:
           gitleaks version
       - name: Scan for secrets
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           GIT_CONFIG_COUNT: '1'
           GIT_CONFIG_KEY_0: diff.renameLimit
           GIT_CONFIG_VALUE_0: '3000'
-        run: gitleaks detect --config .gitleaks.toml --redact=100 --source . --log-opts="--branches --remotes --tags HEAD"
+        run: |
+          git show "$BASE_SHA:.gitleaks.toml" > "$RUNNER_TEMP/gitleaks.toml"
+          gitleaks detect --config "$RUNNER_TEMP/gitleaks.toml" --redact=100 --source . --log-opts="-m --branches --remotes --tags HEAD"
+
+  workflow-lint:
+    name: workflow-lint
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - name: Download the shellcheck binary that actionlint calls
+        run: sh -c "pnpm exec shellcheck --version"
+      - name: Install pinned actionlint and zizmor
+        run: |
+          fetch() {
+            curl -sSfL --proto '=https' --proto-redir '=https' -o "$1" "$2"
+            echo "$3  $1" | sha256sum -c -
+          }
+          fetch actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          sudo tar -xz -C /usr/local/bin -f actionlint.tar.gz actionlint
+          fetch zizmor.tar.gz \
+            https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz \
+            bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+          sudo tar -xz -C /usr/local/bin -f zizmor.tar.gz
+          actionlint -version
+          zizmor --version
+      - run: pnpm lint:workflows
 
   ci-gate:
     name: ci-gate
@@ -132,6 +176,7 @@ jobs:
       - pr-size
       - version-check
       - secret-scan
+      - workflow-lint
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -139,9 +184,14 @@ jobs:
       - name: Require every needed job to succeed
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
+          NEED_COUNT: '6'
         run: |
           echo "Job results: $RESULTS"
           IFS=',' read -ra results <<< "$RESULTS"
+          if [ "${#results[@]}" -ne "$NEED_COUNT" ]; then
+            echo "::error::Expected $NEED_COUNT results, got ${#results[@]}. Blocking the merge."
+            exit 1
+          fi
           for result in "${results[@]}"; do
             if [ "$result" != "success" ]; then
               echo "::error::A needed job ended '$result', not 'success'. Blocking the merge."

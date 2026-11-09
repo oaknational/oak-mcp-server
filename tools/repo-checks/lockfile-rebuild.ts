@@ -7,6 +7,8 @@ import { parse, parseAllDocuments } from 'yaml';
 
 const LOCKFILE = 'pnpm-lock.yaml';
 
+const REPAIR_COMMAND = `rm -rf node_modules ${LOCKFILE} && pnpm install`;
+
 export function overrideName(key: string): string {
   const target = key.split('>').pop() ?? key;
   const at = target.indexOf('@', 1);
@@ -141,7 +143,7 @@ function main(): void {
       [
         'lockfile-rebuild: the lockfile does not survive a rebuild.',
         ...problems.map((p) => `- ${p}`),
-        'Declare the constraint in package.json or pnpm-workspace.yaml, then regenerate the lockfile with pnpm install.',
+        `Declare the constraint in package.json or pnpm-workspace.yaml, then run '${REPAIR_COMMAND}' and commit the new lockfile. Keep the rm: pnpm reuses node_modules and rebuilds the same drift without it.`,
         '',
       ].join('\n'),
     );
