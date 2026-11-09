@@ -36,6 +36,7 @@ interface TextEdit {
   find: string;
   replace: string;
   wholeLine: boolean;
+  reason: string | undefined;
 }
 interface Move {
   from: string;
@@ -94,7 +95,7 @@ export interface TestCount {
   tests: number;
   skipped: number;
 }
-type CountTests = (directory: string) => TestCount;
+type CountTests = (directory: string, exclude: readonly string[]) => TestCount;
 
 const MANIFEST_PATH = 'tools/import-from-ooce/manifest.json';
 const IMPORTED_PATH = 'tools/import-from-ooce/imported.json';
@@ -236,16 +237,23 @@ function parseDrop(value: unknown, where: string): Drop {
 }
 
 function parseEdit(value: unknown, where: string): TextEdit {
-  const record = asRecord(value, where, ['path', 'find', 'replace', 'wholeLine']);
+  const record = asRecord(value, where, ['path', 'find', 'replace', 'wholeLine', 'reason']);
   const find = asString(record['find'], `${where}.find`);
-  return find === ''
-    ? fail(`${where}.find must not be empty`)
-    : {
-        path: packageFile(asString(record['path'], `${where}.path`)),
-        find,
-        replace: asString(record['replace'], `${where}.replace`),
-        wholeLine: record['wholeLine'] === true,
-      };
+  const reason =
+    record['reason'] === undefined ? undefined : asString(record['reason'], `${where}.reason`);
+  if (find === '') {
+    fail(`${where}.find must not be empty`);
+  }
+  if (reason?.trim() === '') {
+    fail(`${where}.reason must explain the edit`);
+  }
+  return {
+    path: packageFile(asString(record['path'], `${where}.path`)),
+    find,
+    replace: asString(record['replace'], `${where}.replace`),
+    wholeLine: record['wholeLine'] === true,
+    reason,
+  };
 }
 
 function parseMove(from: string, to: unknown, where: string): Move {
@@ -640,7 +648,7 @@ function planPackage(
   return { spec, files, dropped };
 }
 
-function describePackage(plan: PackagePlan, sha: Sha40): string {
+function describePackage(manifest: Manifest, plan: PackagePlan, sha: Sha40): string {
   const prefix = `${plan.spec.to}/`;
   const listing = (kind: PlannedFile['kind']): string[] =>
     plan.files.filter((f) => f.kind === kind).map((f) => `\`${f.path.slice(prefix.length)}\``);
@@ -654,6 +662,13 @@ function describePackage(plan: PackagePlan, sha: Sha40): string {
   if (modified.length > 0) {
     lines.push(`- Modified by the tool: ${modified.join(', ')}.`);
   }
+  const written = new Set(plan.files.map((f) => f.path.slice(prefix.length)));
+  const reasons = [...manifest.edits, ...plan.spec.edits].flatMap((edit) =>
+    edit.reason === undefined || !written.has(edit.path)
+      ? []
+      : [`- Modified \`${edit.path}\`. ${edit.reason}`],
+  );
+  lines.push(...[...new Set(reasons)].sort());
   const supplied = listing('supplied');
   if (supplied.length > 0) {
     lines.push(`- Supplied from this repository: ${supplied.join(', ')}.`);
@@ -671,10 +686,15 @@ function pinnedSha(provenance: string): Sha40 {
     : parseSha(line.slice(PIN_PREFIX.length).replace(/`.*$/, ''));
 }
 
-function renderProvenance(current: string, plans: PackagePlan[], sha: Sha40): string {
+function renderProvenance(
+  current: string,
+  manifest: Manifest,
+  plans: PackagePlan[],
+  sha: Sha40,
+): string {
   const at = current.indexOf(`${ENTRIES_HEADING}\n`);
   const head = at === -1 ? `${current.trimEnd()}\n\n` : current.slice(0, at);
-  const body = plans.map((plan) => describePackage(plan, sha)).join('\n\n');
+  const body = plans.map((plan) => describePackage(manifest, plan, sha)).join('\n\n');
   return `${head}${ENTRIES_HEADING}\n\n${body === '' ? 'None yet.' : body}\n`;
 }
 
@@ -833,13 +853,20 @@ export function countFromVitestRun(directory: string, run: VitestRun): TestCount
   return { tests: number('numTotalTests'), skipped: number('numPendingTests') };
 }
 
-function vitestCount(directory: string): TestCount {
+function vitestCount(directory: string, exclude: readonly string[]): TestCount {
   const out = mkdtempSync(join(tmpdir(), 'import-counts-'));
   const outputFile = join(out, 'report.json');
   try {
     const result = spawnSync(
       'pnpm',
-      ['exec', 'vitest', 'run', '--reporter=json', `--outputFile=${outputFile}`],
+      [
+        'exec',
+        'vitest',
+        'run',
+        '--reporter=json',
+        `--outputFile=${outputFile}`,
+        ...exclude.map((path) => `--exclude=${path}`),
+      ],
       { cwd: directory, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     return countFromVitestRun(directory, {
@@ -883,7 +910,7 @@ export function runImport(input: ImportInput): ImportReport {
   );
   const counts = new Map<string, TestCount>();
   for (const plan of plans) {
-    const parts = plan.spec.sources.map((s) => input.countTests(join(input.ooceRoot, s.from)));
+    const parts = plan.spec.sources.map((s) => input.countTests(join(input.ooceRoot, s.from), []));
     counts.set(plan.spec.name, {
       tests: parts.reduce((sum, p) => sum + p.tests, 0),
       skipped: parts.reduce((sum, p) => sum + p.skipped, 0),
@@ -898,7 +925,7 @@ export function runImport(input: ImportInput): ImportReport {
   const owned = plans.map((plan) => plan.spec.to);
   const report = writeOutputs(input.root, outputs, owned);
   const extras = new Map<string, Buffer>([
-    [PROVENANCE_PATH, Buffer.from(renderProvenance(provenance, plans, sha))],
+    [PROVENANCE_PATH, Buffer.from(renderProvenance(provenance, manifest, plans, sha))],
     [IMPORTED_PATH, renderImported(plans)],
     [COUNTS_PATH, renderCounts(manifest, sha, counts)],
   ]);
@@ -918,7 +945,10 @@ export function checkCounts(root: string, countTests: CountTests): string[] {
   for (const spec of manifest.packages) {
     const name = packageName(manifest, spec);
     const want = asRecord(expected[name] ?? fail(`${COUNTS_PATH} lacks ${name}`), name);
-    const got = countTests(join(root, spec.to));
+    const got = countTests(
+      join(root, spec.to),
+      spec.supplied.map((file) => file.to),
+    );
     const match = want['tests'] === got.tests && want['skipped'] === got.skipped;
     ok &&= match;
     lines.push(
