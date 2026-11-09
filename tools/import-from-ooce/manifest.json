@@ -1,0 +1,269 @@
+{
+  "scope": {
+    "from": "@oaknational/",
+    "to": "@oaknational/"
+  },
+  "repository": "https://github.com/oaknational/oak-mcp-server",
+  "dropEverywhere": [
+    {
+      "path": "eslint.config.ts",
+      "reason": "The root eslint.config.ts lints packages/**."
+    }
+  ],
+  "removeScripts": ["lint", "lint:fix"],
+  "removeDependencies": [
+    "@oaknational/eslint-plugin-standards",
+    "@oaknational/workspace-config",
+    "eslint",
+    "globals"
+  ],
+  "textRewrites": [
+    {
+      "find": "@oaknational/env-resolution",
+      "replace": "@oaknational/env/resolution"
+    },
+    {
+      "find": "@example.ingest.sentry.io",
+      "replace": "@localhost"
+    },
+    {
+      "find": "@example.test",
+      "replace": "@localhost"
+    }
+  ],
+  "edits": [
+    {
+      "path": "tsconfig.json",
+      "find": "\"extends\": \"../../../tsconfig.base.json\",",
+      "replace": "\"compilerOptions\": {\n    \"erasableSyntaxOnly\": true,\n    \"target\": \"ES2023\",\n    \"module\": \"ESNext\",\n    \"lib\": [\"ES2023\"],\n    \"moduleResolution\": \"bundler\",\n    \"types\": [\"node\"],\n    \"resolveJsonModule\": true,\n    \"declaration\": true,\n    \"declarationMap\": true,\n    \"esModuleInterop\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"strict\": true,\n    \"noUnusedLocals\": true,\n    \"noUnusedParameters\": true,\n    \"noImplicitReturns\": true,\n    \"noFallthroughCasesInSwitch\": true,\n    \"skipLibCheck\": true\n  },"
+    },
+    {
+      "path": "vitest.config.ts",
+      "find": "@oaknational/workspace-config/vitest",
+      "replace": "../vitest.preset"
+    },
+    {
+      "path": "tsup.config.ts",
+      "find": "@oaknational/workspace-config/tsup",
+      "replace": "../tsup.preset"
+    }
+  ],
+  "packages": [
+    {
+      "name": "result",
+      "to": "packages/result",
+      "sources": [
+        {
+          "from": "packages/core/result"
+        }
+      ],
+      "edits": [
+        {
+          "path": "src/unwrapping.ts",
+          "find": "eslint-disable-next-line @oaknational/no-throw-statement",
+          "replace": "",
+          "wholeLine": true
+        }
+      ]
+    },
+    {
+      "name": "observability",
+      "to": "packages/observability",
+      "sources": [
+        {
+          "from": "packages/core/observability"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-safe-observability.ts",
+          "to": "src/type-safe.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "edits": [
+        {
+          "path": "src/json-sanitisation.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "src/redaction.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "README.md",
+          "find": "`@oaknational/type-helpers`, ",
+          "replace": ""
+        }
+      ]
+    },
+    {
+      "name": "env",
+      "to": "packages/env",
+      "sources": [
+        {
+          "from": "packages/core/env"
+        },
+        {
+          "from": "packages/libs/env-resolution",
+          "moves": {
+            "src/": "src/resolution/",
+            "tests/": "tests/resolution/",
+            "README.md": "src/resolution/README.md"
+          },
+          "drop": [
+            {
+              "path": "package.json",
+              "reason": "Dependencies merged into the env package.json."
+            },
+            {
+              "path": "tsconfig.json",
+              "reason": "The env package's own file covers the merged tree."
+            },
+            {
+              "path": "tsconfig.build.json",
+              "reason": "The env package's own file covers the merged tree."
+            },
+            {
+              "path": "tsconfig.lint.json",
+              "reason": "The env package's own file covers the merged tree."
+            },
+            {
+              "path": "tsup.config.ts",
+              "reason": "The env package's own file covers the merged tree."
+            },
+            {
+              "path": "vitest.config.ts",
+              "reason": "The env package's own file covers the merged tree."
+            }
+          ]
+        }
+      ],
+      "edits": [
+        {
+          "path": "tests/resolution/app-root.integration.test.ts",
+          "find": "'../src/",
+          "replace": "'../../src/resolution/"
+        },
+        {
+          "path": "tests/resolution/repo-root.integration.test.ts",
+          "find": "'../src/",
+          "replace": "'../../src/resolution/"
+        },
+        {
+          "path": "tests/resolution/resolve-env.integration.test.ts",
+          "find": "'../src/",
+          "replace": "'../../src/resolution/"
+        },
+        {
+          "path": "tests/resolution/warnings-channel.unit.test.ts",
+          "find": "'../src/",
+          "replace": "'../../src/resolution/"
+        },
+        {
+          "path": "tsup.config.ts",
+          "find": "createLibConfig()",
+          "replace": "createLibConfig({\n  entry: { index: 'src/index.ts', resolution: 'src/resolution/index.ts' },\n  external: ['node:fs', 'node:path'],\n})"
+        },
+        {
+          "path": "src/root-package-version.ts",
+          "find": "'../../../../package.json'",
+          "replace": "'../../../package.json'"
+        },
+        {
+          "path": "tests/root-package-version.unit.test.ts",
+          "find": "'../../../../package.json'",
+          "replace": "'../../../package.json'"
+        }
+      ],
+      "exports": {
+        "./resolution": {
+          "types": "./dist/resolution/index.d.ts",
+          "import": "./dist/resolution.js"
+        }
+      }
+    },
+    {
+      "name": "build-metadata",
+      "to": "packages/build-metadata",
+      "sources": [
+        {
+          "from": "packages/core/build-metadata"
+        }
+      ]
+    },
+    {
+      "name": "logger",
+      "to": "packages/logger",
+      "sources": [
+        {
+          "from": "packages/libs/logger"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-safe-logger.ts",
+          "to": "src/type-safe.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "edits": [
+        {
+          "path": "src/error-normalisation-fields.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "src/error-normalisation.unit.test.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        }
+      ]
+    },
+    {
+      "name": "sentry-node",
+      "to": "packages/sentry-node",
+      "sources": [
+        {
+          "from": "packages/libs/sentry-node"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-safe-sentry-node.ts",
+          "to": "src/type-safe.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers", "@sentry/cli"],
+      "edits": [
+        {
+          "path": "src/runtime-redaction.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "src/runtime-sinks.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        }
+      ],
+      "drop": [
+        {
+          "path": ".sentryclirc",
+          "reason": "It names a real Sentry organisation and host."
+        }
+      ]
+    },
+    {
+      "name": "posthog-node",
+      "to": "packages/posthog-node",
+      "sources": [
+        {
+          "from": "packages/libs/posthog-node"
+        }
+      ]
+    }
+  ]
+}
