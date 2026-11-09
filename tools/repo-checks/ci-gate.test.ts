@@ -38,8 +38,8 @@ describe('ci-gate', () => {
     expect([...(gate?.needs ?? [])].sort()).toEqual(others.sort());
   });
 
-  it('runs even when a needed job fails or is skipped', () => {
-    expect(gate?.if).toBe('always()');
+  it('runs when a needed job fails or is skipped, and skips a cancelled run', () => {
+    expect(gate?.if).toBe('${{ !cancelled() }}');
   });
 
   it('declares an expected result count equal to its needs', () => {
