@@ -25,9 +25,9 @@ updates:
         patterns: ['*']
     ignore:
       # typescript-eslint 8.72.1 supports TypeScript below 6.1 only. Lift when a
-      # typescript-eslint release supports TypeScript 7.
+      # typescript-eslint release supports the newer range.
       - dependency-name: typescript
-        update-types: ['version-update:semver-major']
+        versions: ['>=6.1']
       # Lift when engines.node moves to 25 or later.
       - dependency-name: '@types/node'
         versions: ['>=25']
