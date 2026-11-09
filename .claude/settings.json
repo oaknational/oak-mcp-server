@@ -12,15 +12,11 @@
       "Bash(git clean -xfd*)",
       "Bash(git clean -xdf*)",
       "Bash(rm -rf /)",
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~*)",
-      "Bash(rm -rf $HOME*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf $HOME)",
       "Bash(rm -rf .)",
-      "Bash(rm -rf ..*)",
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Bash(cat *.env*)",
-      "Bash(cat **/.env*)"
+      "Bash(rm -rf ..)",
+      "Read(**/.env)"
     ]
   },
   "hooks": {

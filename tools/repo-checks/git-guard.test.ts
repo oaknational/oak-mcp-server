@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const hook = join(import.meta.dirname, '../../.claude/hooks/git-guard.sh');
 let clean = '';
 let dirty = '';
+let untrackedOnly = '';
 
 function git(cwd: string, ...args: string[]): void {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -16,12 +17,13 @@ function git(cwd: string, ...args: string[]): void {
 
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'git-guard-'));
-  git(dir, 'init', '--quiet');
+  git(dir, 'init', '--quiet', '--initial-branch=main');
   git(dir, 'config', 'user.name', 'Test');
   git(dir, 'config', 'user.email', '');
   writeFileSync(join(dir, 'file.txt'), 'one\n');
   git(dir, 'add', 'file.txt');
   git(dir, 'commit', '--quiet', '--message', 'seed');
+  git(dir, 'branch', 'side');
   return dir;
 }
 
@@ -43,11 +45,14 @@ beforeAll(() => {
   clean = makeRepo();
   dirty = makeRepo();
   writeFileSync(join(dirty, 'file.txt'), 'two\n');
+  untrackedOnly = makeRepo();
+  writeFileSync(join(untrackedOnly, 'scratch.txt'), 'new\n');
 });
 
 afterAll(() => {
   rmSync(clean, { recursive: true, force: true });
   rmSync(dirty, { recursive: true, force: true });
+  rmSync(untrackedOnly, { recursive: true, force: true });
 });
 
 const blockedWhenDirty = [
@@ -61,6 +66,28 @@ const blockedWhenDirty = [
   'git restore --staged file.txt',
   'git reset --hard',
   'git reset --hard HEAD',
+  'git checkout file.txt',
+  'git checkout HEAD file.txt',
+  'git checkout HEAD .',
+  'git checkout -f',
+  'git checkout --force side',
+  'git checkout -p file.txt',
+  'git checkout -b topic -- file.txt',
+  'git checkout side file.txt',
+  'git switch -f side',
+  'git switch --force side',
+  'git switch --discard-changes side',
+  'git rm -f file.txt',
+  'git rm --force file.txt',
+  'git rm -rf file.txt',
+  'git stash -u',
+  'git stash push --include-untracked',
+  '\\git stash',
+  'timeout 5 git stash',
+  'timeout -s KILL 5 git stash',
+  'xargs git stash',
+  'pnpm exec git stash',
+  'npx git stash',
   'cd . && git stash',
   'bash -c "git -C . stash"',
 ];
@@ -70,7 +97,14 @@ const allowedWhenDirty = [
   'git stash list',
   'git reset --soft HEAD~1',
   'git checkout -b topic',
+  'git checkout -b topic side',
   'git checkout main',
+  'git checkout side',
+  'git checkout -',
+  'git checkout --detach HEAD',
+  'git switch side',
+  'git switch -c topic',
+  'git rm --cached file.txt',
   'git status',
   'git diff',
   'git add file.txt',
@@ -82,7 +116,31 @@ const allowedWhenDirty = [
 
 const blockedAlways = [
   'git add -A',
+  'git add -u',
+  'git add --update',
   'git add .',
+  'git add ./',
+  'git add :/',
+  'git add *',
+  'git add -Av',
+  'git add -fu',
+  'git commit -a -m x',
+  'git commit -am x',
+  'git commit --all -m x',
+  '\\git add -A',
+  'timeout 5 git add -A',
+  'pnpm exec git add .',
+  'GIT_CONFIG_PARAMETERS="\'core.hooksPath=/dev/null\'" git commit -m x',
+  'GIT_CONFIG_KEY_0=core.hooksPath git commit -m x',
+  'git -c alias.x=stash x',
+  'git config alias.s stash',
+  'mv .husky .husky-off',
+  'git rm -r .husky',
+  'git mv .husky/pre-commit x',
+  'git checkout HEAD -- .husky',
+  'rm -rf .husky',
+  'head .env*',
+  'cat .env.*',
   'git add --all',
   'git add -- .',
   'git -C . add -A',
@@ -121,6 +179,20 @@ const blockedAlways = [
 
 const allowedAlways = [
   'git add file.txt',
+  'git add -p file.txt',
+  'git add apps/web/',
+  'git commit --amend -m x',
+  'git log -- .husky/pre-commit',
+  'git diff .husky/',
+  'git log --oneline .husky',
+  'ls .husky',
+  'cat .husky/pre-commit',
+  'cat .env.example',
+  'head .env.sample',
+  'rm -rf /private/tmp/claude-1/scratch/x',
+  'timeout 5 git status',
+  'pnpm exec vitest run',
+  'git config --get alias.st',
   'git add -- tools/repo-checks/git-guard.test.ts',
   'git commit -m "docs: explain why --no-verify is refused"',
   'git commit -m "fix: HUSKY=0 is refused"',
@@ -183,9 +255,71 @@ describe.each([
 
   it.each([
     ['Read', { file_path: '/work/README.md' }],
+    ['Read', { file_path: '/work/.env.example' }],
+    ['Read', { file_path: '/work/.husky/pre-commit' }],
     ['Edit', { file_path: '/work/AGENTS.md' }],
   ])('allows %s of %j', (tool, input) => {
     expect(decide(repo(), tool, input).status).toBe(0);
+  });
+});
+
+describe('git-guard with only untracked files', () => {
+  it.each([
+    'git stash -u',
+    'git stash push --include-untracked',
+    'git stash -a',
+    'git clean -f',
+    'git clean -fd',
+    'git clean -fdq',
+  ])('blocks %s', (command) => {
+    expect(bash(untrackedOnly, command).status).toBe(2);
+  });
+
+  it.each([
+    'git clean -n',
+    'git clean -nfd',
+    'git clean --dry-run',
+    'git stash',
+    'git status',
+    'git checkout side',
+  ])('allows %s', (command) => {
+    expect(bash(untrackedOnly, command).status).toBe(0);
+  });
+
+  it('allows git clean -fd on a tree with no untracked files', () => {
+    expect(bash(clean, 'git clean -fd').status).toBe(0);
+  });
+
+  it('refuses git clean -f in a repository named with -C', () => {
+    expect(bash(clean, `git -C ${untrackedOnly} clean -f`).status).toBe(2);
+  });
+});
+
+describe('git-guard with a git alias', () => {
+  it('refuses an alias that expands to a refused command', () => {
+    const repo = makeRepo();
+    git(repo, 'config', 'alias.hide', 'stash');
+    git(repo, 'config', 'alias.shell', '!git stash');
+    writeFileSync(join(repo, 'file.txt'), 'edited\n');
+    expect(bash(repo, 'git hide').status).toBe(2);
+    expect(bash(repo, 'git shell').status).toBe(2);
+    rmSync(repo, { recursive: true, force: true });
+  });
+});
+
+describe('git-guard malformed payloads', () => {
+  it.each([
+    'null',
+    '[]',
+    '42',
+    '"text"',
+    '{}',
+    '{"tool_name":"Bash","tool_input":null}x',
+    '{"tool_name":"Bash","tool_input":[]}',
+  ])('refuses %s with exit 2', (input) => {
+    const { status, stderr } = spawnSync('bash', [hook], { input, encoding: 'utf8' });
+    expect(status).toBe(2);
+    expect(stderr).toContain('git-guard refused');
   });
 });
 
