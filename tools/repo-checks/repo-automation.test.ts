@@ -94,6 +94,17 @@ describe('pr-size bands', () => {
     expect(evaluateSize(21, '## Size\n\nIt is big.\n').outcome).toBe('fail');
   });
 
+  it("matches the PR template's Size guidance", () => {
+    const counts = Array.from({ length: 100 }, (_, i) => i + 1);
+    const firstNote = counts.find((n) => evaluateSize(n, '').outcome !== 'pass') ?? 0;
+    const firstFail = counts.find((n) => evaluateSize(n, '').outcome === 'fail') ?? 0;
+    const template = readFileSync(join(root, '.github/pull_request_template.md'), 'utf8');
+    const guidance = template.slice(template.indexOf('## Size'));
+    expect(guidance).toContain(`${String(firstNote - 1)} or fewer authored files`);
+    expect(guidance).toContain(`From ${String(firstNote)} to ${String(firstFail - 1)}`);
+    expect(guidance).toContain(`Above ${String(firstFail - 1)}`);
+  });
+
   it('leaves out generated, archival and imported files', () => {
     const result = countAuthored({
       changed: ['a.ts', 'gen.ts', 'moved.ts', 'edited-import.ts'],
