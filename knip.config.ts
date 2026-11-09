@@ -5,7 +5,7 @@ const config: KnipConfig = {
     '.': {
       entry: ['tools/repo-checks/*.ts'],
       includeEntryExports: true,
-      project: ['*.ts', '*.mjs', 'tools/**/*.ts'],
+      project: ['*.{ts,mts,cts,mjs}', 'tools/**/*.{ts,tsx,mts,cts}'],
       ignoreDependencies: ['shellcheck'],
     },
   },

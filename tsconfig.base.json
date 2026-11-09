@@ -16,11 +16,29 @@
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["*.ts", "*.mjs", "tools/**/*.ts", "packages/**/*.ts", "apps/**/*.ts"],
+  "include": [
+    "*.ts",
+    "*.mts",
+    "*.cts",
+    "*.mjs",
+    "tools/**/*.ts",
+    "tools/**/*.tsx",
+    "tools/**/*.mts",
+    "tools/**/*.cts",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "packages/**/*.mts",
+    "packages/**/*.cts",
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "apps/**/*.mts",
+    "apps/**/*.cts"
+  ],
   "exclude": ["**/node_modules", "**/dist", "**/coverage"]
 }
