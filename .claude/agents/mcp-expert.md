@@ -302,7 +302,9 @@ This repo's decisions (ADR-052, ADR-113, ADR-122):
 - MCP server is an OAuth 2.1 Resource Server; Clerk is the external
   Authorisation Server
 - All HTTP MCP methods (including `initialize` and `tools/list`) require a
-  valid Bearer token
+  valid Bearer token, except `resources/read` of an allowlisted public
+  resource (widget HTML, documentation) with no user-specific data
+  (ADR-113, ADR-057)
 - `noauth` on a tool means no scope check required, not no authentication
   required
 - CORS is unconditionally permissive, origin restrictions are meaningless
@@ -346,14 +348,15 @@ the version from the workspace `package.json`, never from memory:
 
 ### Primitives Strategy
 
-This repo's decisions (ADR-123):
+This repo's decisions (ADR-123, as amended 2026-07-23):
 
 - **Tools** (model-controlled): generated from OpenAPI + hand-authored
   aggregated tools
 - **Resources** (application-controlled): curriculum orientation data + MCP
   Apps HTML resources
-- **Prompts** (user-controlled): workflow prompts beginning with
-  `get-curriculum-model`
+- **Prompts** (user-controlled): none. The server registers no MCP prompts.
+  The workflow bodies are guidance resources under `docs://oak/guidance/*`,
+  and `get-curriculum-model` is a tool. Do not recommend restoring prompts
 
 ### Protocol Revision
 
@@ -448,8 +451,9 @@ Used in review mode; informative for active-workflow mode.
 - [ ] CSP fields use MCP Apps standard format (camelCase: `connectDomains`,
       `resourceDomains`, `frameDomains`)
 - [ ] No `localStorage` for auth tokens, session data, or PII
-- [ ] `_meta.ui.domain` only present when widget makes direct cross-origin
-      `fetch()`
+- [ ] `_meta.ui.domain`, when present, matches the target host's
+      documented sandbox-origin format (needed for stable origins such as
+      OAuth callbacks); outbound fetch destinations go in `csp.connectDomains`
 
 ## Guardrails
 

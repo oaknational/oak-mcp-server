@@ -179,7 +179,8 @@ be better aligned with current guidance, say so.
 
 **Settled doctrine**: ADR 115 establishes that the OAuth proxy is transparent
 and stateless, it forwards all parameters unchanged to Clerk. ADR 113
-establishes that all MCP methods require HTTP authentication. These are hard
+establishes that all MCP methods require HTTP authentication, except
+`resources/read` of an allowlisted public resource (ADR 057). These are hard
 invariants. Any code path that modifies proxy behaviour or bypasses auth for
 MCP methods must be verified against this doctrine.
 

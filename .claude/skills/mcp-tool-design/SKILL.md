@@ -19,9 +19,9 @@ Tool schemas are generated from the OpenAPI snapshot. Fix a missing description 
 - **Name.** Use kebab-case. One verb-led name per tool, stable across releases.
 - **Input schema.** Keep it flat. Nested `params`, `query` or `path` objects break client parameter discovery. Give every parameter a `.describe()` text and mark required fields correctly. Never fall back to `z.any()`.
 - **Description.** Say what the tool does, when to use it, and what it returns. State side effects and anything the caller cannot see. A description that omits a side effect is a defect.
-- **Annotations.** Set `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` on every tool, and make them true. Annotations are hints for clients, not security controls.
+- **Annotations.** Set `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` explicitly on every tool, each to the value that matches what the tool does. `readOnlyHint: true` means the tool modifies nothing, and `openWorldHint: false` means its domain is closed. Annotations are hints for clients, not security controls.
 - **Results.** Return a standard `CallToolResult` with a `content` array. Report failure with `isError: true` and a message the model can act on. Do not throw for expected failures.
-- **Auth.** Every HTTP method needs a valid bearer token, including `initialize` and `tools/list`. A `noauth` marker on a tool means no scope check, not no authentication.
+- **Auth.** Every MCP method needs a valid bearer token, including `initialize` and `tools/list`. The one exception is `resources/read` of an allowlisted public resource, such as widget HTML or documentation, which holds no user-specific data (ADR 113, ADR 057). A `noauth` marker on a tool means no scope check, not no authentication.
 - **Transport.** Stateless HTTP builds one server and transport per request. Keep no session state between requests.
 - **Primitives.** Tools are model-controlled and resources are application-controlled. Prompts are user-controlled. Pick the primitive by who decides to invoke it.
 - **Apps.** For widgets, use `registerAppTool` and `registerAppResource`, the exported MIME constant, and `getUiCapability` with a text-only fallback. Widget data flows through the MCP bridge, never `window.openai`. Await `connect()` before rendering.
@@ -29,7 +29,7 @@ Tool schemas are generated from the OpenAPI snapshot. Fix a missing description 
 ## Review checklist
 
 - [ ] Name, description and every parameter read clearly to a model with no other context.
-- [ ] Annotations are present and true.
+- [ ] Annotations are present and match the tool's behaviour.
 - [ ] The schema is flat, with no `z.any()`.
 - [ ] Side effects are in the description.
 - [ ] Failure returns `isError: true`, not a throw.
