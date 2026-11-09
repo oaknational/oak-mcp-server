@@ -26,6 +26,7 @@
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
+    "surface:diff": "node tools/surface-diff/surface-diff.ts",
     "prepare": "husky",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.base.json --noEmit"
@@ -35,6 +36,7 @@
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
     "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^24.13.3",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
