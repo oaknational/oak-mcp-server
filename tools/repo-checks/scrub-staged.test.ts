@@ -12,6 +12,7 @@ const fixtureScrubList = [
   '## Scrub list for anything committed',
   '',
   '- `zorblax-codename`',
+  '- `alpha-term` and `beta-term` things',
   '- the operator real name, not a pattern',
   '',
   '## Another section',
@@ -35,8 +36,8 @@ function stage(file: string, content: string): void {
   git('add', file);
 }
 
-function scrub(): { status: number | null; stderr: string } {
-  const { status, stderr } = spawnSync('node', [script], { cwd: repo, encoding: 'utf8' });
+function scrub(cwd = repo): { status: number | null; stderr: string } {
+  const { status, stderr } = spawnSync('node', [script], { cwd, encoding: 'utf8' });
   return { status, stderr };
 }
 
@@ -79,6 +80,63 @@ describe('scrub-staged', () => {
 
   it('applies the generic rule when no local file exists', () => {
     stage('doc.md', `a ${email('someone', 'example.com')} b\n`);
+    expect(scrub().status).toBe(1);
+  });
+
+  it('reads every backticked term on a scrub list line', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    stage('first.md', 'has alpha-term\n');
+    expect(scrub().stderr).toContain('first.md:1 matches');
+    git('reset', '--quiet');
+    stage('second.md', 'has beta-term\n');
+    expect(scrub().stderr).toContain('second.md:1 matches');
+  });
+
+  it('uses the main checkout scrub list from a linked worktree', () => {
+    writeFileSync(join(repo, 'CLAUDE.local.md'), fixtureScrubList);
+    git(
+      '-c',
+      'user.name=fixture',
+      '-c',
+      'user.email=fixture',
+      'commit',
+      '--quiet',
+      '--allow-empty',
+      '-m',
+      'init',
+    );
+    const linked = join(repo, 'linked');
+    git('worktree', 'add', '--quiet', linked, '-b', 'topic');
+    writeFileSync(join(linked, 'doc.md'), 'the zorblax-codename project\n');
+    execFileSync('git', ['add', 'doc.md'], { cwd: linked });
+    const result = scrub(linked);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('doc.md:1 matches a pattern from the local scrub list');
+  });
+
+  it.each([
+    ['diff.mnemonicPrefix', 'true'],
+    ['diff.noprefix', 'true'],
+  ])('finds an email when %s is set', (key, value) => {
+    git('config', key, value);
+    stage('notes.md', `contact: ${email('jane.doe', 'example.org')}\n`);
+    expect(scrub().stderr).toContain('notes.md:1 contains an email address');
+  });
+
+  it.each(['café.txt', 'has space.txt', 'q"uote.txt'])('names and scans the file %s', (name) => {
+    stage(name, `contact: ${email('jane.doe', 'example.org')}\n`);
+    const result = scrub();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`  ${name}:1 contains an email address\n`);
+  });
+
+  it('scans an added line that starts with two plus signs and a space', () => {
+    stage('pp.txt', `++ header\n${email('jane.doe', 'example.org')}\n`);
+    expect(scrub().stderr).toContain('pp.txt:2 contains an email address');
+  });
+
+  it('scans a binary file that holds text', () => {
+    stage('data.bin', `\0${email('jane.doe', 'example.org')}\n`);
     expect(scrub().status).toBe(1);
   });
 });
