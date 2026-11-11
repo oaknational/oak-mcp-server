@@ -15,22 +15,36 @@ export function overrideName(key: string): string {
   return at === -1 ? target : target.slice(0, at);
 }
 
-export function holdNames(markdown: string): string[] {
-  return [...markdown.matchAll(/^[-*]\s+`([^`]+)`/gm)].map((match) => match[1] ?? '');
+interface Hold {
+  name: string;
+  below: string;
 }
 
-export function namedDependencies(input: {
-  packageJson: string;
-  workspaceYaml: string;
-  holdsMarkdown: string;
-}): string[] {
-  const pkg = JSON.parse(input.packageJson) as { pnpm?: { overrides?: Record<string, string> } };
-  const workspace = (parse(input.workspaceYaml) ?? {}) as { overrides?: Record<string, string> };
+export function readHolds(markdown: string): { holds: Hold[]; errors: string[] } {
+  const holds: Hold[] = [];
+  const errors: string[] = [];
+  for (const [, name = '', below] of markdown.matchAll(
+    /^[-*]\s+`([^`]+)`(?:\s+below\s+`(\d+(?:\.\d+){0,2})`)?/gm,
+  )) {
+    if (below === undefined) {
+      errors.push(
+        `The hold on ${name} declares no bound. Write it as '- \`${name}\` below \`<version>\`: <reason>'.`,
+      );
+    } else {
+      holds.push({ name, below });
+    }
+  }
+  return { holds, errors };
+}
+
+function overriddenNames(packageJson: string, workspaceYaml: string): string[] {
+  const pkg = JSON.parse(packageJson) as { pnpm?: { overrides?: Record<string, string> } };
+  const workspace = (parse(workspaceYaml) ?? {}) as { overrides?: Record<string, string> };
   const keys = [
     ...Object.keys(pkg.pnpm?.overrides ?? {}),
     ...Object.keys(workspace.overrides ?? {}),
   ];
-  return [...new Set([...keys.map(overrideName), ...holdNames(input.holdsMarkdown)])].sort();
+  return [...new Set(keys.map(overrideName))].sort();
 }
 
 export function resolvedVersions(lockfile: string): Map<string, string[]> {
@@ -48,7 +62,7 @@ export function resolvedVersions(lockfile: string): Map<string, string[]> {
   return new Map([...versions].map(([name, set]) => [name, [...set].sort()]));
 }
 
-export function driftedDependencies(
+function driftedDependencies(
   names: readonly string[],
   committed: ReadonlyMap<string, string[]>,
   rebuilt: ReadonlyMap<string, string[]>,
@@ -60,6 +74,56 @@ export function driftedDependencies(
       ? []
       : [`${name} resolves to ${after} after a rebuild, but the lockfile has ${before}.`];
   });
+}
+
+function releaseParts(version: string): number[] {
+  return /^\d+(?:\.\d+)*/.exec(version)?.[0].split('.').map(Number) ?? [];
+}
+
+function isBelow(version: string, bound: string): boolean {
+  const have = releaseParts(version);
+  const limit = releaseParts(bound);
+  for (const [index, part] of limit.entries()) {
+    const own = have[index] ?? Number.NaN;
+    if (own !== part) {
+      return own < part;
+    }
+  }
+  return false;
+}
+
+function heldOutsideBounds(
+  holds: readonly Hold[],
+  rebuilt: ReadonlyMap<string, string[]>,
+): string[] {
+  return holds.flatMap(({ name, below }) =>
+    (rebuilt.get(name) ?? [])
+      .filter((version) => !isBelow(version, below))
+      .map(
+        (version) =>
+          `${name} resolves to ${version} after a rebuild, outside its hold below ${below}. Check the range in package.json and the Dependabot ignore.`,
+      ),
+  );
+}
+
+export function rebuildProblems(input: {
+  packageJson: string;
+  workspaceYaml: string;
+  holdsMarkdown: string;
+  committedLockfile: string;
+  rebuiltLockfile: string;
+}): string[] {
+  const { holds, errors } = readHolds(input.holdsMarkdown);
+  const rebuilt = resolvedVersions(input.rebuiltLockfile);
+  return [
+    ...errors,
+    ...driftedDependencies(
+      overriddenNames(input.packageJson, input.workspaceYaml),
+      resolvedVersions(input.committedLockfile),
+      rebuilt,
+    ),
+    ...heldOutsideBounds(holds, rebuilt),
+  ];
 }
 
 export function newAdvisories(before: ReadonlySet<string>, after: ReadonlySet<string>): string[] {
@@ -112,11 +176,6 @@ function main(): void {
     process.stderr.write('lockfile-rebuild: the frozen install failed. Regenerate the lockfile.\n');
     process.exit(1);
   }
-  const names = namedDependencies({
-    packageJson: readFileSync('package.json', 'utf8'),
-    workspaceYaml: readFileSync('pnpm-workspace.yaml', 'utf8'),
-    holdsMarkdown: readFileSync('docs/dependency-holds.md', 'utf8'),
-  });
   const committedText = readFileSync(LOCKFILE, 'utf8');
   const advisoriesBefore = advisoryIds('.');
   const scratch = mkdtempSync(join(tmpdir(), 'lockfile-rebuild-'));
@@ -133,7 +192,13 @@ function main(): void {
     rmSync(scratch, { recursive: true, force: true });
   }
   const problems = [
-    ...driftedDependencies(names, resolvedVersions(committedText), resolvedVersions(rebuiltText)),
+    ...rebuildProblems({
+      packageJson: readFileSync('package.json', 'utf8'),
+      workspaceYaml: readFileSync('pnpm-workspace.yaml', 'utf8'),
+      holdsMarkdown: readFileSync('docs/dependency-holds.md', 'utf8'),
+      committedLockfile: committedText,
+      rebuiltLockfile: rebuiltText,
+    }),
     ...newAdvisories(advisoriesBefore, advisoriesAfter).map(
       (id) => `pnpm audit reports new advisory ${id} after a rebuild.`,
     ),
@@ -149,9 +214,7 @@ function main(): void {
     );
     process.exit(1);
   }
-  process.stdout.write(
-    `lockfile-rebuild: ok, ${String(names.length)} named dependencies checked.\n`,
-  );
+  process.stdout.write('lockfile-rebuild: ok, overrides and holds survive a rebuild.\n');
 }
 
 if (import.meta.main) {
