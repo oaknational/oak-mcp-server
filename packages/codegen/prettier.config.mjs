@@ -1,6 +1,3 @@
-// OOCE's root .prettierignore skips generated code. This config accepts the
-// generated trees as codegen writes them: TypeScript is skipped, and JSON is
-// checked in JSON.stringify layout, which codegen emits.
 import base from '../../.prettierrc.json' with { type: 'json' };
 
 export default {

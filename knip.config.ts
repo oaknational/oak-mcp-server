@@ -11,8 +11,6 @@ const config: KnipConfig = {
       ignoreBinaries: ['gitleaks'],
     },
     'packages/logger': { entry: ['tests/*.typecheck.ts'] },
-    // The entries below are OOCE's. Knip cannot read entries through the
-    // createSdkConfig() tsup factory, so they mirror each tsup entry list.
     'packages/openapi-zod-client-adapter': { project: ['src/**/*.ts'] },
     'packages/graph-core': { project: ['src/**/*.ts'] },
     'packages/graph-corpus-sdk': {

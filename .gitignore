@@ -7,8 +7,6 @@ node_modules/
 dist/
 coverage/
 
-# Codegen output that OOCE also ignores: typedoc sources written on each run,
-# and the sitemap reference map written by scan:sitemap.
 **/.typedoc
 **/_typedoc_*
 packages/codegen/reference/*.json
