@@ -1,0 +1,171 @@
+import { z } from 'zod';
+
+import type { ToolDescriptor } from '../contract/tool-descriptor.contract.js';
+import { UndocumentedResponseError } from '../contract/undocumented-response-error.js';
+import { getResponseDescriptorsByOperationId } from '../../response-map.js';
+import type { OakApiPathBasedClient } from '../../client-types.js';
+/**
+ * GENERATED FILE - DO NOT EDIT
+ * 
+ * Tool: get-units-summary
+ * Path: /units/\{unit\}/summary
+ * Method: GET
+ */
+
+const operationId = 'getUnits-getUnit' as const;
+const name = 'get-units-summary' as const;
+const path = '/units/{unit}/summary' as const;
+const method = 'GET' as const;
+
+
+/**
+ * Path parameters derived from the OpenAPI schema.
+ */
+export interface ToolPathParams {
+  /** The unit slug */
+  readonly unit: string;
+}
+/**
+ * Query parameters derived from the OpenAPI schema.
+ */
+export interface ToolQueryParams {
+  /** Optional exam board slug to narrow the unit to a specific programme variant, e.g. 'aqa'. Allowed values: aqa, edexcel, eduqas, ocr, wjec, edexcelb */
+  readonly examBoard?: 'aqa' | 'edexcel' | 'eduqas' | 'ocr' | 'wjec' | 'edexcelb';
+  /** Optional pathway slug to narrow the unit to a specific programme variant, e.g. 'gcse'. Allowed values: core, gcse */
+  readonly pathway?: 'core' | 'gcse';
+  /** Optional tier slug to narrow the unit to a specific programme variant, e.g. 'foundation'. Allowed values: core, foundation, higher */
+  readonly tier?: 'core' | 'foundation' | 'higher';
+  /** Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. 'biology'. Allowed values: biology, chemistry, combined-science, physics */
+  readonly childSubject?: 'biology' | 'chemistry' | 'combined-science' | 'physics';
+}
+export interface ToolParams {
+  readonly path: ToolPathParams;
+  readonly query?: ToolQueryParams;
+}
+
+export interface ToolArgs { readonly params: ToolParams; }
+
+export const toolInputJsonSchema = { type: 'object' as const, properties: {"unit":{"type":"string","description":"The unit slug","examples":["programming-subroutines"]},"examBoard":{"type":"string","description":"Optional exam board slug to narrow the unit to a specific programme variant, e.g. 'aqa'.","examples":["aqa"],"enum":["aqa","edexcel","eduqas","ocr","wjec","edexcelb"]},"pathway":{"type":"string","description":"Optional pathway slug to narrow the unit to a specific programme variant, e.g. 'gcse'.","enum":["core","gcse"]},"tier":{"type":"string","description":"Optional tier slug to narrow the unit to a specific programme variant, e.g. 'foundation'.","enum":["core","foundation","higher"]},"childSubject":{"type":"string","description":"Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. 'biology'.","enum":["biology","chemistry","combined-science","physics"]}} as const, additionalProperties: false as const, required: ["unit"] };
+export const toolZodSchema = z.object({ params: z.object({ path: z.object({ unit: z.string().describe("The unit slug") }), query: z.object({ examBoard: z.enum(["aqa", "edexcel", "eduqas", "ocr", "wjec", "edexcelb"] as const).describe("Optional exam board slug to narrow the unit to a specific programme variant, e.g. 'aqa'.").optional(), pathway: z.enum(["core", "gcse"] as const).describe("Optional pathway slug to narrow the unit to a specific programme variant, e.g. 'gcse'.").optional(), tier: z.enum(["core", "foundation", "higher"] as const).describe("Optional tier slug to narrow the unit to a specific programme variant, e.g. 'foundation'.").optional(), childSubject: z.enum(["biology", "chemistry", "combined-science", "physics"] as const).describe("Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. 'biology'.").optional() }).optional() }) });
+export const toolMcpFlatInputSchema = z.strictObject({ unit: z.string().describe("The unit slug").meta({ examples: ["programming-subroutines"] }), examBoard: z.enum(["aqa", "edexcel", "eduqas", "ocr", "wjec", "edexcelb"] as const).describe("Optional exam board slug to narrow the unit to a specific programme variant, e.g. 'aqa'.").meta({ examples: ["aqa"] }).optional(), pathway: z.enum(["core", "gcse"] as const).describe("Optional pathway slug to narrow the unit to a specific programme variant, e.g. 'gcse'.").optional(), tier: z.enum(["core", "foundation", "higher"] as const).describe("Optional tier slug to narrow the unit to a specific programme variant, e.g. 'foundation'.").optional(), childSubject: z.enum(["biology", "chemistry", "combined-science", "physics"] as const).describe("Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. 'biology'.").optional() });
+export type ToolInputSchema = z.infer<typeof toolZodSchema>;
+const toolArgsDescription = 'Invalid request parameters. Please match the following schema:\nSchema: {"type":"object","properties":{"unit":{"type":"string","description":"The unit slug","examples":["programming-subroutines"]},"examBoard":{"type":"string","description":"Optional exam board slug to narrow the unit to a specific programme variant, e.g. \'aqa\'.","examples":["aqa"],"enum":["aqa","edexcel","eduqas","ocr","wjec","edexcelb"]},"pathway":{"type":"string","description":"Optional pathway slug to narrow the unit to a specific programme variant, e.g. \'gcse\'.","enum":["core","gcse"]},"tier":{"type":"string","description":"Optional tier slug to narrow the unit to a specific programme variant, e.g. \'foundation\'.","enum":["core","foundation","higher"]},"childSubject":{"type":"string","description":"Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. \'biology\'.","enum":["biology","chemistry","combined-science","physics"]}},"additionalProperties":false,"required":["unit"]}\nRequired: unit';
+export const describeToolArgs = () => toolArgsDescription;
+/**
+ * Transform flat MCP arguments to nested SDK format.
+ *
+ * Converts flat parameter structure from MCP client to nested params.path/params.query
+ * structure expected by SDK invoke function.
+ *
+ * @param flatArgs - Flat arguments from MCP client (validated against toolMcpFlatInputSchema)
+ * @returns Nested arguments for SDK invoke function (ToolArgs format)
+ */
+export function transformFlatToNestedArgs(flatArgs: z.infer<typeof toolMcpFlatInputSchema>): ToolArgs {
+  const params: ToolParams = {
+    path: {
+      unit: flatArgs.unit,
+    },
+    query: {
+      examBoard: flatArgs.examBoard,
+      pathway: flatArgs.pathway,
+      tier: flatArgs.tier,
+      childSubject: flatArgs.childSubject,
+    },
+  };
+  return { params };
+}
+const responseDescriptors = getResponseDescriptorsByOperationId(operationId);
+const documentedStatuses = ['200', '400', '401', '404'] as const;
+type DocumentedStatus = typeof documentedStatuses[number];
+const STATUS_DISCRIMINANTS = { '200': 200, '400': 400, '401': 401, '404': 404 } as const;
+type DocumentedStatusDiscriminant = typeof STATUS_DISCRIMINANTS[DocumentedStatus];
+const primaryResponseDescriptor = responseDescriptors[documentedStatuses[0]];
+if (!primaryResponseDescriptor) {
+  throw new TypeError('Missing response descriptor for documented status 200 on getUnits-getUnit.');
+}
+const resolveDescriptorForStatus = (status: number) => {
+  const directKey = String(status);
+  const direct = responseDescriptors[directKey];
+  if (direct) {
+    return direct;
+  }
+  const rangeKey = `${String(Math.trunc(status / 100))}XX`;
+  const range = responseDescriptors[rangeKey];
+  if (range) {
+    return range;
+  }
+  return responseDescriptors["default"];
+};
+/**
+ * Tool descriptor consumed by MCP_TOOLS.
+ *
+ * @see MCP_TOOLS
+ * @remarks Wiring layers (stdio, HTTP, aliases) rely on this metadata for execution and validation.
+ */
+export const getUnitsSummary = {
+  invoke: async (client: OakApiPathBasedClient, args: ToolArgs) => {
+    const validation = toolZodSchema.safeParse(args);
+    if (!validation.success) {
+      throw new TypeError(describeToolArgs());
+    }
+    const endpoint = client["/units/{unit}/summary"];
+    const call = endpoint ? endpoint.GET : undefined;
+    if (typeof call !== "function") {
+      throw new TypeError('Invalid method on endpoint: GET for /units/{unit}/summary');
+    }
+    const response = await call(validation.data);
+    const status = response.response.status;
+    const descriptorForStatus = resolveDescriptorForStatus(status);
+    if (!descriptorForStatus) {
+      const responseBody = status >= 200 && status < 300 ? response.data : response.error;
+      throw new UndocumentedResponseError(status, 'getUnits-getUnit', documentedStatuses, responseBody);
+    }
+    const payload = status >= 200 && status < 300 ? response.data : response.error;
+    return { httpStatus: status, payload };
+  },
+  toolZodSchema,
+  toolInputJsonSchema,
+  toolMcpFlatInputSchema,
+  transformFlatToNestedArgs,
+  toolOutputJsonSchema: primaryResponseDescriptor.json,
+  zodOutputSchema: primaryResponseDescriptor.zod,
+  describeToolArgs,
+  inputSchema: toolInputJsonSchema,
+  operationId,
+  name,
+  description: "Unit summary by slug\n\nUse when you have a unit slug and need the unit summary: title, description, key stage, subject, year, threads, prior-knowledge requirements, national-curriculum statements, and the lessons inside. Unit variant slugs (ending in -1, -2, etc.) resolve to that specific variant. Not for: listing every unit in a key stage + subject (GET /key-stages/{keyStage}/subject/{subject}/units); all units across a sequence (GET /sequences/{sequence}/units); units in one programme (GET /programmes/{programme}/units); units in a thread (GET /threads/{threadSlug}/units); lessons inside the unit (GET /key-stages/{keyStage}/subject/{subject}/lessons with unit={unit}).",
+  path,
+  method,
+  documentedStatuses,
+  securitySchemes: [{ type: 'oauth2', scopes: ['email'] }],
+  requiresDomainContext: true,
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: "Get Units Summary",
+  },
+  _meta: {
+    securitySchemes: [{ type: 'oauth2', scopes: ['email'] }],
+  },
+  validateOutput: (data: unknown) => {
+    const attemptedStatuses: { status: DocumentedStatusDiscriminant; issues: z.ZodError["issues"] }[] = [];
+    for (const statusKey of documentedStatuses) {
+      const descriptor = responseDescriptors[statusKey];
+      if (!descriptor) {
+        continue;
+      }
+      const result = descriptor.zod.safeParse(data);
+      if (result.success) {
+        return { ok: true, data: result.data, status: STATUS_DISCRIMINANTS[statusKey] };
+      }
+      attemptedStatuses.push({ status: STATUS_DISCRIMINANTS[statusKey], issues: result.error.issues });
+    }
+    return {
+      ok: false, message: 'Response does not match any documented schema for statuses: 200, 400, 401, 404',
+      issues: attemptedStatuses.flatMap((entry) => entry.issues),
+      attemptedStatuses,
+    };
+  },
+} as const satisfies ToolDescriptor<typeof name, OakApiPathBasedClient, ToolArgs, z.infer<typeof toolMcpFlatInputSchema>, z.infer<typeof primaryResponseDescriptor.zod>, DocumentedStatus>;

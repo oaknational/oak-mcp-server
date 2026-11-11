@@ -1,0 +1,60 @@
+/* GENERATED FILE - DO NOT EDIT */
+import { stubGetKeyStagesResponse } from './get-key-stages.js';
+import { stubGetKeyStagesSubjectAssetsResponse } from './get-key-stages-subject-assets.js';
+import { stubGetKeyStagesSubjectLessonsResponse } from './get-key-stages-subject-lessons.js';
+import { stubGetKeyStagesSubjectQuestionsResponse } from './get-key-stages-subject-questions.js';
+import { stubGetKeyStagesSubjectUnitsResponse } from './get-key-stages-subject-units.js';
+import { stubGetKeywordsResponse } from './get-keywords.js';
+import { stubGetLessonsAssetsResponse } from './get-lessons-assets.js';
+import { stubGetLessonsQuizResponse } from './get-lessons-quiz.js';
+import { stubGetLessonsSummaryResponse } from './get-lessons-summary.js';
+import { stubGetLessonsTranscriptResponse } from './get-lessons-transcript.js';
+import { stubGetProgrammesResponse } from './get-programmes.js';
+import { stubGetProgrammesAssetsResponse } from './get-programmes-assets.js';
+import { stubGetProgrammesQuestionsResponse } from './get-programmes-questions.js';
+import { stubGetProgrammesUnitsResponse } from './get-programmes-units.js';
+import { stubGetRateLimitResponse } from './get-rate-limit.js';
+import { stubGetSequencesResponse } from './get-sequences.js';
+import { stubGetSequencesAssetsResponse } from './get-sequences-assets.js';
+import { stubGetSequencesQuestionsResponse } from './get-sequences-questions.js';
+import { stubGetSequencesUnitsResponse } from './get-sequences-units.js';
+import { stubGetSubjectDetailResponse } from './get-subject-detail.js';
+import { stubGetSubjectsResponse } from './get-subjects.js';
+import { stubGetSubjectsKeyStagesResponse } from './get-subjects-key-stages.js';
+import { stubGetSubjectsProgrammesResponse } from './get-subjects-programmes.js';
+import { stubGetSubjectsYearsResponse } from './get-subjects-years.js';
+import { stubGetThreadsResponse } from './get-threads.js';
+import { stubGetThreadsUnitsResponse } from './get-threads-units.js';
+import { stubGetUnitsSummaryResponse } from './get-units-summary.js';
+
+export const stubbedToolResponses = {
+  'get-key-stages': () => stubGetKeyStagesResponse,
+  'get-key-stages-subject-assets': () => stubGetKeyStagesSubjectAssetsResponse,
+  'get-key-stages-subject-lessons': () => stubGetKeyStagesSubjectLessonsResponse,
+  'get-key-stages-subject-questions': () => stubGetKeyStagesSubjectQuestionsResponse,
+  'get-key-stages-subject-units': () => stubGetKeyStagesSubjectUnitsResponse,
+  'get-keywords': () => stubGetKeywordsResponse,
+  'get-lessons-assets': () => stubGetLessonsAssetsResponse,
+  'get-lessons-quiz': () => stubGetLessonsQuizResponse,
+  'get-lessons-summary': () => stubGetLessonsSummaryResponse,
+  'get-lessons-transcript': () => stubGetLessonsTranscriptResponse,
+  'get-programmes': () => stubGetProgrammesResponse,
+  'get-programmes-assets': () => stubGetProgrammesAssetsResponse,
+  'get-programmes-questions': () => stubGetProgrammesQuestionsResponse,
+  'get-programmes-units': () => stubGetProgrammesUnitsResponse,
+  'get-rate-limit': () => stubGetRateLimitResponse,
+  'get-sequences': () => stubGetSequencesResponse,
+  'get-sequences-assets': () => stubGetSequencesAssetsResponse,
+  'get-sequences-questions': () => stubGetSequencesQuestionsResponse,
+  'get-sequences-units': () => stubGetSequencesUnitsResponse,
+  'get-subject-detail': () => stubGetSubjectDetailResponse,
+  'get-subjects': () => stubGetSubjectsResponse,
+  'get-subjects-key-stages': () => stubGetSubjectsKeyStagesResponse,
+  'get-subjects-programmes': () => stubGetSubjectsProgrammesResponse,
+  'get-subjects-years': () => stubGetSubjectsYearsResponse,
+  'get-threads': () => stubGetThreadsResponse,
+  'get-threads-units': () => stubGetThreadsUnitsResponse,
+  'get-units-summary': () => stubGetUnitsSummaryResponse,
+} as const;
+
+export type StubbedToolName = keyof typeof stubbedToolResponses;

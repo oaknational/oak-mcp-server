@@ -1,0 +1,17 @@
+/* GENERATED FILE - DO NOT EDIT */
+export const stubGetProgrammesResponse = {
+  "examboardSlug": "aqa",
+  "examboardTitle": "AQA",
+  "keystageSlug": "ks4",
+  "keystageTitle": "Key Stage 4",
+  "pathwaySlug": null,
+  "pathwayTitle": null,
+  "phaseSlug": "secondary",
+  "phaseTitle": "Secondary",
+  "subjectSlug": "computing",
+  "subjectTitle": "Computing",
+  "tierSlug": null,
+  "tierTitle": null,
+  "yearSlug": "year-10",
+  "yearTitle": "Year 10"
+} as const;

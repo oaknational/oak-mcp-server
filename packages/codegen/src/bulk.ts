@@ -1,0 +1,137 @@
+/**
+ * Subpath barrel: `@oaknational/sdk-codegen/bulk`
+ *
+ * Bulk download data schemas, types, validation infrastructure,
+ * reader utilities, extractors, generators, and processing.
+ *
+ * This is the canonical entry point for all bulk data functionality.
+ * Consumers should import from this subpath rather than internal paths.
+ *
+ * @see `docs/architecture/architectural-decisions/108-sdk-workspace-decomposition.md` — ADR-108
+ */
+
+// Re-export everything from the bulk directory module, which aggregates:
+// - Generated Zod schemas and types (from types/generated/bulk/)
+// - Reader utilities (discoverBulkFiles, parseBulkFile, etc.)
+// - Extractors (extractKeywords, extractMisconceptions, etc.)
+// - Processing (processBulkData)
+// - Generators (generateVocabularyGraphData, etc.)
+
+export {
+  keyLearningPointSchema,
+  lessonKeywordSchema,
+  misconceptionSchema,
+  nullSentinelSchema,
+  teacherTipSchema,
+  contentGuidanceItemSchema,
+  contentGuidanceSchema,
+  unitLessonSchema,
+  unitSchema,
+  unitThreadSchema,
+  examBoardSchema,
+  examSubjectSchema,
+  categorySchema,
+  tierSchema,
+  programmeFactorSchema,
+  unitProgrammeFactorsSchema,
+  ks4OptionSchema,
+  lessonSchema,
+  bulkDownloadFileSchema,
+  BULK_SCHEMA_DELTA,
+  discoverBulkFiles,
+  extractSubjectPhase,
+  parseBulkFile,
+  readAllBulkFiles,
+  excludeRestrictedLessons,
+  isRestrictedInclusionBarred,
+  extractKeywords,
+  normaliseKeyword,
+  extractMisconceptions,
+  extractPriorKnowledge,
+  extractNCStatements,
+  extractThreads,
+  extractLearningPoints,
+  extractTeacherTips,
+  processBulkData,
+  generateAnalysisReport,
+  serializeAnalysisReport,
+  writeAnalysisReportFile,
+  generateNCCoverageGraphData,
+  serializeNCCoverageGraph,
+  writeNCCoverageGraphAsJson,
+  extractSynonymFromDefinition,
+  generateMinedSynonyms,
+  serializeMinedSynonyms,
+  writeMinedSynonymsFile,
+  generateVocabularyGraphData,
+  serializeVocabularyGraph,
+  writeVocabularyGraphAsJson,
+  generateGraphCorpusData,
+  writeGraphCorpusAsJson,
+} from './bulk/index.js';
+
+export type {
+  NullSentinel,
+  LessonKeyword,
+  KeyLearningPoint,
+  Misconception,
+  TeacherTip,
+  ContentGuidanceItem,
+  ContentGuidance,
+  UnitThread,
+  UnitLesson,
+  ExamBoard,
+  ExamSubject,
+  UnitCategory,
+  Tier,
+  ProgrammeFactor,
+  UnitProgrammeFactors,
+  Unit,
+  Ks4Option,
+  Lesson,
+  BulkDownloadFile,
+  BulkFileResult,
+  SubjectPhase,
+  RestrictedLessonExclusionOptions,
+  RestrictedLessonFilesResult,
+  ExtractedKeyword,
+  ExtractedMisconception,
+  ExtractedPriorKnowledge,
+  ExtractedNCStatement,
+  ExtractedThread,
+  ThreadUnit,
+  ExtractedLearningPoint,
+  ExtractedTeacherTip,
+  BulkDataInput,
+  ExtractionStats,
+  ExtractedData,
+  ProcessingResult,
+  AnalysisReport,
+  AnalysisSummary,
+  CrossSubjectTermEntry,
+  KeywordFrequencyEntry,
+  KeywordStats,
+  MisconceptionDensity,
+  NCCoverage,
+  SubjectRankEntry,
+  SynonymCandidate,
+  SynonymPatterns,
+  NCCoverageGraph,
+  NCCoverageGraphStats,
+  NCStatementNode,
+  MinedSynonym,
+  MinedSynonymsData,
+  MinedSynonymsStats,
+  VocabularyGraph,
+  VocabularyGraphStats,
+  VocabularyNode,
+  GraphCorpus,
+  GraphCorpusUnitNode,
+  GraphCorpusEdge,
+  GraphCorpusNodeId,
+  GraphCorpusStats,
+  GraphCorpusDroppedEdge,
+} from './bulk/index.js';
+
+// Static graph data and ontology are in the /vocab subpath.
+// Pipeline APIs, schemas, and types remain here in /bulk.

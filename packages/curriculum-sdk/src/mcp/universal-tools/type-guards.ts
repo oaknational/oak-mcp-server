@@ -1,0 +1,89 @@
+/**
+ * Type guards for universal tool names.
+ *
+ * These type predicates enable TypeScript to narrow types when working
+ * with tool names, distinguishing between aggregated tools (hand-written)
+ * and generated tools (from OpenAPI spec).
+ */
+
+import type { ToolName } from '@oaknational/sdk-codegen/mcp-tools';
+import { AGGREGATED_TOOL_DEFS } from './definitions.js';
+import type {
+  AggregatedToolName,
+  UniversalToolName,
+  UniversalToolListEntry,
+  AppToolListEntry,
+} from './types.js';
+
+/**
+ * Type predicate for aggregated tool names.
+ *
+ * Checks `value in AGGREGATED_TOOL_DEFS` at runtime. Adding a new
+ * aggregated tool requires updating both the `AggregatedToolName` union
+ * in `types.ts` and the `AGGREGATED_TOOL_DEFS` map in `definitions.ts`.
+ *
+ * @param value - Value to check
+ * @returns True if value is an aggregated tool name
+ *
+ * @example
+ * ```typescript
+ * if (isAggregatedToolName(toolName)) {
+ *   // TypeScript knows toolName is AggregatedToolName
+ *   return executeAggregatedTool(toolName, args);
+ * }
+ * ```
+ */
+export function isAggregatedToolName(value: unknown): value is AggregatedToolName {
+  return typeof value === 'string' && value in AGGREGATED_TOOL_DEFS;
+}
+
+/**
+ * Type predicate for any universal tool name.
+ *
+ * Checks if a value is either an aggregated tool name or a generated
+ * tool name from the OpenAPI spec.
+ *
+ * @param value - Value to check
+ * @returns True if value is a valid universal tool name
+ *
+ * @example
+ * ```typescript
+ * if (!isUniversalToolName(name, registry.isToolName)) {
+ *   return formatError(`Unknown tool: ${name}`);
+ * }
+ * // TypeScript knows name is UniversalToolName here
+ * ```
+ */
+export function isUniversalToolName(
+  value: unknown,
+  isToolNameFn: (v: unknown) => v is ToolName,
+): value is UniversalToolName {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  return isAggregatedToolName(value) || isToolNameFn(value);
+}
+
+/**
+ * Type guard that narrows a `UniversalToolListEntry` to an `AppToolListEntry`.
+ *
+ * Returns true when the tool carries `_meta.ui.resourceUri`, indicating it
+ * should be registered via `registerAppTool()` for UI metadata normalisation.
+ *
+ * @example
+ * ```typescript
+ * for (const tool of listUniversalTools(generatedToolRegistry)) {
+ *   if (isAppToolEntry(tool)) {
+ *     registerAppTool(server, tool.name, {
+ *       title: tool.title,
+ *       description: tool.description,
+ *       inputSchema: tool.inputSchema,
+ *       _meta: { ...tool._meta },
+ *     }, handler);
+ *   }
+ * }
+ * ```
+ */
+export function isAppToolEntry(tool: UniversalToolListEntry): tool is AppToolListEntry {
+  return tool._meta?.ui !== undefined && typeof tool._meta.ui.resourceUri === 'string';
+}

@@ -53,6 +53,7 @@
     "shellcheck": "^4.1.0",
     "smol-toml": "^1.9.1",
     "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.66.0",
     "unist-util-visit": "^5.2.0",
