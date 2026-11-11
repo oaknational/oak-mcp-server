@@ -1,0 +1,241 @@
+/**
+ * Integration tests for createMcpHandler.
+ *
+ * Tests that the MCP handler correctly:
+ * 1. Passes req.auth (set by mcpAuth middleware) through to transport
+ * 2. Passes body to transport.handleRequest
+ * 3. Creates server+transport per request via factory
+ * 4. Connects server to transport before handling
+ *
+ * Tool registration projection tests are in `handlers-tool-registration.integration.test.ts`.
+ *
+ * Uses simple fakes injected as arguments — NO network IO.
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import type { McpHandlerRequest } from './handlers.js';
+import { createMcpHandler } from './handlers.js';
+import type { HttpObservability } from './observability/http-observability.js';
+import {
+  createFakeResponse,
+  createFakeHttpObservability,
+  createFakeMcpServerFactory,
+  createFakeExpressRequest,
+  createFakeAuthInfo,
+} from './test-helpers/fakes.js';
+
+/** Create a minimal request for handler testing. */
+function createMockRequest(body: { method?: string; [key: string]: unknown }): McpHandlerRequest {
+  return createFakeExpressRequest({ body });
+}
+
+describe('createMcpHandler (Integration)', () => {
+  const observability = createFakeHttpObservability();
+
+  describe('request adaptation', () => {
+    it('passes body to transport.handleRequest', async () => {
+      const testBody = { jsonrpc: '2.0', method: 'tools/list', id: '123' };
+      let receivedBody: unknown;
+
+      const { factory } = createFakeMcpServerFactory(
+        vi.fn(async (req: unknown, res: unknown, body: unknown) => {
+          expect(req).toBeDefined();
+          expect(res).toBeDefined();
+          receivedBody = body;
+        }),
+      );
+
+      const handler = createMcpHandler(factory, observability);
+      const mockReq = createMockRequest(testBody);
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      expect(receivedBody).toEqual(testBody);
+    });
+
+    it('passes undefined auth when req.auth is not set by middleware', async () => {
+      let receivedRequest: unknown;
+
+      const { factory } = createFakeMcpServerFactory(
+        vi.fn(async (req: unknown) => {
+          receivedRequest = req;
+        }),
+      );
+
+      const handler = createMcpHandler(factory, observability);
+      const mockReq = createFakeExpressRequest({
+        body: { method: 'tools/list' },
+        headers: {},
+      });
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      // Without mcpAuth middleware setting req.auth, the property is absent.
+      // The MCP SDK transport reads req.auth and gets undefined.
+      expect(receivedRequest).toBeDefined();
+      expect(receivedRequest).not.toHaveProperty('auth');
+    });
+
+    it('passes req.auth through to transport (set by middleware)', async () => {
+      let receivedRequest: unknown;
+
+      const { factory } = createFakeMcpServerFactory(
+        vi.fn(async (req: unknown) => {
+          receivedRequest = req;
+        }),
+      );
+
+      const handler = createMcpHandler(factory, observability);
+      const fakeAuthInfo = createFakeAuthInfo();
+      const mockReq = createFakeExpressRequest({
+        body: { method: 'tools/list' },
+        auth: fakeAuthInfo,
+      });
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      // Handler passes req.auth through to transport — no bridging from res.locals.
+      expect(receivedRequest).toBeDefined();
+      expect(receivedRequest).toHaveProperty('auth', fakeAuthInfo);
+    });
+
+    it('does not leak auth between concurrent requests', async () => {
+      const receivedAuthInfos: unknown[] = [];
+
+      const { factory } = createFakeMcpServerFactory(
+        vi.fn(async (req: { auth?: unknown }) => {
+          receivedAuthInfos.push(req.auth);
+        }),
+      );
+
+      const handler = createMcpHandler(factory, observability);
+
+      const authInfo1 = createFakeAuthInfo({ token: 'token-1', clientId: 'client-1' });
+      const authInfo2 = createFakeAuthInfo({ token: 'token-2', clientId: 'client-2' });
+
+      const req1 = createFakeExpressRequest({ body: { method: 'tools/list' }, auth: authInfo1 });
+      const req2 = createFakeExpressRequest({ body: { method: 'tools/list' }, auth: authInfo2 });
+      const res1 = createFakeResponse();
+      const res2 = createFakeResponse();
+
+      await Promise.all([handler(req1, res1), handler(req2, res2)]);
+
+      expect(receivedAuthInfos).toHaveLength(2);
+      expect(receivedAuthInfos).toContainEqual(authInfo1);
+      expect(receivedAuthInfos).toContainEqual(authInfo2);
+    });
+  });
+
+  describe('per-request lifecycle', () => {
+    it('connects server to transport before handling request', async () => {
+      const { factory, server } = createFakeMcpServerFactory(vi.fn(async () => undefined));
+
+      const handler = createMcpHandler(factory, observability);
+      const mockReq = createMockRequest({ method: 'tools/list' });
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      expect(server.connect).toHaveBeenCalledOnce();
+    });
+
+    it('connects through connectTransport while handleRequest stays on the concrete transport', async () => {
+      const handleRequest = vi.fn(async () => undefined);
+      const connectTransport = { close: vi.fn(() => Promise.resolve()) };
+      const { factory, server, transport } = createFakeMcpServerFactory(
+        handleRequest,
+        connectTransport,
+      );
+
+      const handler = createMcpHandler(factory, observability);
+      const mockReq = createMockRequest({ method: 'tools/list' });
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      expect(server.connect).toHaveBeenCalledExactlyOnceWith(connectTransport);
+      expect(transport.handleRequest).toHaveBeenCalledOnce();
+    });
+
+    it('the handler closes the concrete transport and server directly and never itself closes the connect target', async () => {
+      const connectTransport = { close: vi.fn(() => Promise.resolve()) };
+      const { factory, server, transport } = createFakeMcpServerFactory(
+        vi.fn(async () => undefined),
+        connectTransport,
+      );
+
+      const handler = createMcpHandler(factory, observability);
+      const mockRes = createFakeResponse();
+      await handler(createMockRequest({ method: 'tools/list' }), mockRes);
+
+      const closeRegistration = vi
+        .mocked(mockRes.on)
+        .mock.calls.find(([event]) => event === 'close');
+      expect(closeRegistration).toBeDefined();
+      closeRegistration?.[1]();
+
+      // The handler's own cleanup calls are exactly these two. SDK-side
+      // teardown is callback-driven — the concrete transport's close()
+      // fires onclose synchronously and the SDK server clears its
+      // connection before its own close() runs (verified against the
+      // installed SDK) — so the connect target's close() is never invoked
+      // on this path. That composition is deliberately not modelled by
+      // these narrow fakes; the selected-mode slice proves it against the
+      // real SDK transport.
+      expect(transport.close).toHaveBeenCalledOnce();
+      expect(server.close).toHaveBeenCalledOnce();
+      expect(connectTransport.close).not.toHaveBeenCalled();
+    });
+
+    it('creates an active request span around transport.handleRequest', async () => {
+      const baseObservability = createFakeHttpObservability();
+      const spanCalls: {
+        readonly name: string;
+        readonly attributes?: Record<string, unknown>;
+      }[] = [];
+      let requestSpanActive = false;
+      let requestSpanWasActiveInsideHandler = false;
+      const withSpan: HttpObservability['withSpan'] = async (options) => {
+        spanCalls.push({ name: options.name, attributes: options.attributes });
+        requestSpanActive = true;
+
+        try {
+          return await baseObservability.withSpan(options);
+        } finally {
+          requestSpanActive = false;
+        }
+      };
+      const scopedObservability: HttpObservability = {
+        ...baseObservability,
+        withSpan,
+      };
+
+      const { factory } = createFakeMcpServerFactory(
+        vi.fn(async () => {
+          requestSpanWasActiveInsideHandler = requestSpanActive;
+        }),
+      );
+
+      const handler = createMcpHandler(factory, scopedObservability);
+      const mockReq = createMockRequest({ method: 'tools/list' });
+      const mockRes = createFakeResponse();
+
+      await handler(mockReq, mockRes);
+
+      expect(requestSpanWasActiveInsideHandler).toBe(true);
+      const expectedMcpAttrs: unknown = expect.objectContaining({
+        'http.method': 'POST',
+        'http.route': '/mcp',
+      });
+      expect(spanCalls).toEqual([
+        expect.objectContaining({
+          name: 'oak.http.request.mcp',
+          attributes: expectedMcpAttrs,
+        }),
+      ]);
+    });
+  });
+});

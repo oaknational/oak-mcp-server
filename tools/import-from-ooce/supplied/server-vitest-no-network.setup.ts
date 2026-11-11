@@ -44,3 +44,6 @@ if (typeof g.fetch === 'function' && g.__WITH_FETCH_BLOCKING__ !== true) {
   g.__ORIGINAL_FETCH__ = originalFetch;
   g.__WITH_FETCH_BLOCKING__ = true;
 }
+
+// A module, so its names stay out of the app's global scope.
+export {};

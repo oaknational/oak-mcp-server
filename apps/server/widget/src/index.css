@@ -1,0 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;700&display=swap');
+@import '@oaknational/widget-tokens/index.css';
+
+/* ─── MCP Host Variable Bridges ──────────────────────────────
+ * Defaults for all McpUiStyleVariableKey properties (76 variables).
+ * The host MAY override any of these via applyHostStyleVariables()
+ * (inline styles, higher specificity). Oak tokens are used where an
+ * equivalent exists; sensible defaults elsewhere.
+ * See docs/governance/mcp-app-styling.md.
+ * ──────────────────────────────────────────────────────────── */
+:root {
+  /* Colour — Background (10) */
+  --color-background-primary: var(--oak-semantic-surface-page);
+  --color-background-secondary: var(--oak-semantic-surface-panel);
+  --color-background-tertiary: var(--oak-semantic-surface-panel);
+  /* No Oak "surface-inverse" token — text-primary resolves to the primary dark colour */
+  --color-background-inverse: var(--oak-semantic-text-primary);
+  --color-background-ghost: transparent;
+  --color-background-info: var(--oak-semantic-surface-panel);
+  --color-background-danger: var(--oak-semantic-surface-panel);
+  --color-background-success: var(--oak-semantic-surface-panel);
+  --color-background-warning: var(--oak-semantic-surface-panel);
+  --color-background-disabled: var(--oak-semantic-surface-panel);
+
+  /* Colour — Text (10)
+   * info/success/warning are placeholder defaults — the host overrides
+   * these with its own semantic colours via applyHostStyleVariables(). */
+  --color-text-primary: var(--oak-semantic-text-primary);
+  --color-text-secondary: var(--oak-semantic-text-secondary);
+  --color-text-tertiary: var(--oak-semantic-text-secondary);
+  --color-text-inverse: var(--oak-semantic-text-inverse);
+  --color-text-ghost: var(--oak-semantic-text-secondary);
+  --color-text-info: var(--oak-semantic-text-primary);
+  --color-text-danger: var(--oak-semantic-error);
+  --color-text-success: var(--oak-semantic-accent);
+  --color-text-warning: var(--oak-semantic-text-primary);
+  --color-text-disabled: var(--oak-semantic-text-secondary);
+
+  /* Colour — Border (10) */
+  --color-border-primary: var(--oak-semantic-border-subtle);
+  --color-border-secondary: var(--oak-semantic-border-subtle);
+  --color-border-tertiary: var(--oak-semantic-border-subtle);
+  --color-border-inverse: var(--oak-semantic-text-inverse);
+  --color-border-ghost: transparent;
+  --color-border-info: var(--oak-semantic-border-subtle);
+  --color-border-danger: var(--oak-semantic-error);
+  --color-border-success: var(--oak-semantic-accent);
+  --color-border-warning: var(--oak-semantic-border-subtle);
+  --color-border-disabled: var(--oak-semantic-border-subtle);
+
+  /* Colour — Ring (7) */
+  --color-ring-primary: var(--oak-semantic-focus-ring);
+  --color-ring-secondary: var(--oak-semantic-focus-ring);
+  --color-ring-inverse: var(--oak-semantic-focus-ring-on-accent);
+  --color-ring-info: var(--oak-semantic-focus-ring);
+  --color-ring-danger: var(--oak-semantic-error);
+  --color-ring-success: var(--oak-semantic-accent);
+  --color-ring-warning: var(--oak-semantic-focus-ring);
+
+  /* Typography — Family (2) */
+  --font-sans: var(--oak-semantic-font-body-family);
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Typography — Weight (4) */
+  --font-weight-normal: var(--oak-semantic-font-weight-light);
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: var(--oak-semantic-font-weight-bold);
+
+  /* Typography — Text Size (4) */
+  --font-text-xs-size: 0.75rem;
+  --font-text-sm-size: var(--oak-semantic-font-label-size);
+  --font-text-md-size: var(--oak-semantic-font-body-size);
+  --font-text-lg-size: 1.125rem;
+
+  /* Typography — Heading Size (7) */
+  --font-heading-xs-size: 1rem;
+  --font-heading-sm-size: var(--oak-semantic-font-banner-title-size);
+  --font-heading-md-size: 1.5rem;
+  --font-heading-lg-size: var(--oak-semantic-font-heading-size);
+  --font-heading-xl-size: 2.5rem;
+  --font-heading-2xl-size: 3rem;
+  --font-heading-3xl-size: 3.5rem;
+
+  /* Typography — Text Line Height (4) */
+  --font-text-xs-line-height: var(--oak-semantic-font-label-line-height);
+  --font-text-sm-line-height: var(--oak-semantic-font-label-line-height);
+  --font-text-md-line-height: var(--oak-semantic-font-body-line-height);
+  --font-text-lg-line-height: var(--oak-semantic-font-body-line-height);
+
+  /* Typography — Heading Line Height (7) */
+  --font-heading-xs-line-height: var(--oak-semantic-font-heading-line-height);
+  --font-heading-sm-line-height: var(--oak-semantic-font-heading-line-height);
+  --font-heading-md-line-height: var(--oak-semantic-font-heading-line-height);
+  --font-heading-lg-line-height: var(--oak-semantic-font-heading-line-height);
+  --font-heading-xl-line-height: 1.1;
+  --font-heading-2xl-line-height: 1.1;
+  --font-heading-3xl-line-height: 1.1;
+
+  /* Layout — Border Radius (6) + Width (1) */
+  --border-radius-xs: 2px;
+  --border-radius-sm: 4px;
+  --border-radius-md: var(--oak-semantic-radius-control);
+  --border-radius-lg: var(--oak-semantic-radius-panel);
+  --border-radius-xl: 1rem;
+  --border-radius-full: 9999px;
+  --border-width-regular: 1px;
+
+  /* Shadows (4) */
+  --shadow-hairline: 0 0 0 1px var(--oak-semantic-border-subtle);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: var(--oak-semantic-shadow-panel);
+  --shadow-lg: 0 10px 15px rgb(0 0 0 / 0.1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Height chain: html → body → #root keeps the embedded document
+   sized to its content inside the host iframe */
+html,
+body,
+#root {
+  min-height: fit-content;
+}
+
+/* The document surface around the brand panel belongs to the HOST, not
+   Oak: in a claude.ai session the host overrides the standard MCP
+   variable with its own chat background (applyHostStyleVariables), so
+   the panel's rounded corners sit against the real conversation
+   surface. The bridge default (Oak surface-page) applies standalone. */
+body {
+  margin: 0;
+  background: var(--color-background-primary);
+  color: var(--oak-component-page-text-color);
+  font-family: var(--oak-component-body-family);
+  font-size: var(--oak-component-body-size);
+  line-height: var(--oak-component-body-line-height);
+  font-weight: var(--oak-component-body-weight);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+p,
+h1,
+dl,
+dt,
+dd {
+  margin: 0;
+}
+
+a {
+  color: var(--oak-semantic-accent);
+  text-decoration: underline;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--oak-semantic-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+  text-decoration-thickness: 2px;
+}
+
+/* The shell is the Oak brand panel: white text on Oak green, rounded,
+   borderless — owner branding, approved from the rendered page
+   2026-07-28. The design system (packages/design/oak-design-system,
+   ADR-213) is the authority for this look; the oak-design-tokens
+   bridge below is the current delivery vehicle until Stage B
+   re-sources it from the design system's trees. The logo and link
+   inherit the text colour via currentColor.
+   max-height is rem, not em: it scales with the host root font size
+   without compounding through local font-size changes; content beyond
+   the cap scrolls inside the panel rather than growing the document.
+   Padding COMPOSES the page-padding token with the host safe-area
+   insets — `--oak-safe-area-inset-*` custom properties set inline by
+   the app shell when the host reports insets, 0px fallback otherwise.
+   Composition is load-bearing: a zero-inset host (ChatGPT desktop)
+   must keep the authored token padding; inline padding would replace
+   it with 0 (MCP-434). */
+.oak-app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oak-component-shell-gap);
+  max-height: 24rem;
+  padding: calc(var(--oak-component-page-padding) + var(--oak-safe-area-inset-top, 0px))
+    calc(var(--oak-component-page-padding) + var(--oak-safe-area-inset-right, 0px))
+    calc(var(--oak-component-page-padding) + var(--oak-safe-area-inset-bottom, 0px))
+    calc(var(--oak-component-page-padding) + var(--oak-safe-area-inset-left, 0px));
+  overflow-y: auto;
+  color: var(--oak-semantic-text-inverse);
+  background: var(--oak-semantic-accent-strong);
+  border-radius: var(--oak-component-panel-radius);
+}
+
+/* Service-scoped experimental disclaimer in the shell's main content.
+   These declarations are the design system's .oak-hint spelled in this
+   consumer's tokens; on the post-Stage-B kit-binding lane (ADR-213) this
+   becomes a class-for-class swap to .oak-hint with the .oak-prose measure.
+   65ch is --measure-prose from oak-design-system/colors_and_type.css —
+   provenance-carried, not minted here (ch is not DTCG-expressible). */
+.oak-app__disclaimer {
+  max-width: 65ch;
+  margin-inline: auto;
+  font-size: var(--oak-component-label-size);
+  line-height: var(--oak-component-label-line-height);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* Brand banner — the wide wordmark as the link's only visible content,
+   centred (MCP-368) */
+.oak-brand-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* `color` is LOAD-BEARING, not decoration: the wordmark is bare geometry
+   filled via `fill: currentColor` below, so this is the ink it renders
+   with (and it tracks focus colour changes for free). The block padding
+   keeps the link's target box comfortably past the WCAG 2.5.8 24px
+   minimum at every panel width; `min-inline-size: 0` lets the wordmark
+   shrink inside the flex row instead of forcing a horizontal scrollbar
+   in narrow host panels. The focus ring is the on-accent ring the token
+   bridge provides for exactly this surface. With no visible text there
+   is no designed hover affordance for an image-only link on this
+   surface — an owner call at the render, not a value to invent here. */
+.oak-brand-banner__link {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  padding-block: var(--oak-component-banner-link-padding-block);
+  color: var(--oak-semantic-text-inverse);
+  text-decoration: none;
+}
+
+.oak-brand-banner__link:focus-visible {
+  outline: 2px solid var(--oak-component-focus-ring-on-accent-color);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Width-driven with `block-size: auto`: a clamped width re-resolves the
+   height from the asset's intrinsic ratio (viewBox 3600:368.16), staying
+   ratio-exact at every panel width — height-driven sizing would let
+   preserveAspectRatio letterbox at narrow widths. */
+.oak-brand-banner__logo {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: var(--oak-component-banner-wordmark-max-width);
+  block-size: auto;
+  fill: currentColor;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (forced-colors: active) {
+  .oak-brand-banner__link:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* No mobile padding override: the widget is a single small panel inside a
+   host iframe (typically narrower than 48rem even on desktop), and the
+   full shell padding is what keeps it from reading cramped — owner
+   correction 2026-07-28 (MCP-322). */

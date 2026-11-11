@@ -1,0 +1,539 @@
+# Oak Curriculum MCP – Streamable HTTP (Vercel-ready)
+
+Status: private alpha
+Next status: public alpha
+
+> **New here?** Start at the
+> [repo root README](../../README.md) and the
+> [contributor guide](../../CONTRIBUTING.md)
+> before diving into this workspace. AI agents should also read
+> [`.agent/directives/AGENT.md`](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/.agent/directives/AGENT.md).
+
+This app exposes the Curriculum MCP server over Streamable HTTP using the official TypeScript SDK transport. It uses **stateless session management** (no server-side state) and is designed for Vercel's serverless Node runtime. Responses are streamed using Server-Sent Events (SSE) as per the MCP specification.
+
+It is also the repo's primary MCP Apps exploration surface: one server for
+end-user AI experiences in the assistants teachers already use — the
+[canonical target platforms](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/strategy/stream-mcp-app.md): ChatGPT, Claude,
+Copilot, and Gemini, and others — and one developer tool surface for teams building on
+Oak's openly licenced, fully sequenced and resourced curriculum.
+
+> **Canonical MCP server workspace**. This is the sole MCP server workspace.
+> The legacy stdio workspace was removed per
+> [ADR-128](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/128-stdio-workspace-retirement-and-http-transport-consolidation.md).
+> Future stdio transport support will be added as a separate entry point within
+> this workspace.
+
+**Architecture**: This server imports all MCP tool definitions from `@oaknational/curriculum-sdk`. The tools are generated at compile time from the OpenAPI schema - no manual tool definitions exist in this application. When the API changes, `pnpm sdk-codegen` updates the SDK, and this server automatically has access to new/changed tools.
+
+Architectural Decision Records (ADRs) define how the system should work and are the architectural source of truth.
+Start with the [ADR index](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/), then this HTTP MCP-focused set:
+
+- [ADR-029](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/029-no-manual-api-data.md) - No manual API data structures
+- [ADR-030](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/030-sdk-single-source-truth.md) - SDK as single source of truth
+- [ADR-031](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/031-generation-time-extraction.md) - Generation-time extraction
+- [ADR-113](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/113-mcp-spec-compliant-auth-for-all-methods.md) - MCP auth compliance
+- [ADR-115](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/115-proxy-oauth-as-for-cursor.md) - OAuth authorisation server model
+- [ADR-123](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/123-mcp-server-primitives-strategy.md) - MCP server primitives strategy
+
+## What This Server Provides
+
+This server exposes Oak's curriculum through the three MCP primitive types, each with a distinct control model defined by the [MCP specification](https://modelcontextprotocol.io/).
+
+**Tools** (model-controlled) — currently 37 curriculum tools: 24 generated
+from the OpenAPI schema plus 13 aggregated tools. The aggregated set covers
+search/browse/fetch flows, orientation, the curriculum graph tools
+(`get-thread-progressions` for curriculum-ordered sequences,
+`get-prior-knowledge-graph`, `get-misconception-graph`,
+`get-keyword-graph`), EEF evidence, `download-asset`, and
+the MCP App user-search pair (`user-search`, `user-search-query`). The AI
+model decides when to call them, subject to per-tool visibility metadata.
+Generated tool definitions are updated automatically when the upstream API
+changes via `pnpm sdk-codegen`.
+
+**Resources** (application-controlled) — `curriculum://model` (domain ontology, `priority: 1.0`), a getting-started documentation resource, `eef://interpretation` (EEF evidence interpretation guide), and the served agent guidance documents (`docs://oak/guidance/*` — workflow guidance the assistant reads; the navigation set is live, the creation-oriented set is retained dormant). What is served is governed by the declarative served-surface definition (`src/served-surface/served-surface.ts`) — one reviewed point of control, no runtime flags. The curriculum graphs have no whole-corpus resource form — thread progressions, prior knowledge, misconceptions, and keywords are served by the anchored `get-thread-progressions`, `get-prior-knowledge-graph`, `get-misconception-graph`, and `get-keyword-graph` tools.
+
+**Prompts** — none. The app serves zero MCP prompts: the primitive is unregistered entirely (user-invoked prompt templates are a poor experience for teachers). The workflow substance that once lived in prompts is served instead as agent guidance resources, above.
+
+Together, tools give the AI autonomous access to curriculum data and
+resources give capable clients pre-loaded context and workflow guidance. The goal is to make Oak's curriculum
+discoverable and usable through AI assistants, developer workflows, and MCP App
+hosts, helping teachers and builders find, understand, adapt, and reuse
+high-quality curriculum resources.
+
+For the architectural rationale behind this primitive mapping, see [ADR-123](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/123-mcp-server-primitives-strategy.md) and [ADR-058](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/058-context-grounding-for-ai-agents.md).
+
+## Quick start (local)
+
+1. Set env vars (minimal — auth disabled for local dev):
+
+```bash
+export OAK_API_KEY=your_api_key
+export ELASTICSEARCH_URL=https://your-es-url
+export ELASTICSEARCH_API_KEY=your_es_api_key
+export DANGEROUSLY_DISABLE_AUTH=true
+export SENTRY_MODE=off
+```
+
+`ALLOWED_HOSTS` is not needed locally: `localhost`, `127.0.0.1` and `::1` are
+always allowed. Set it only to name an _extra_ host.
+
+2. Run dev server:
+
+```bash
+pnpm -C apps/oak-curriculum-mcp-streamable-http dev
+```
+
+`pnpm dev`, `pnpm dev:observe`, and `pnpm dev:observe:noauth` now perform the
+initial widget build automatically and regenerate the committed
+`src/generated/widget-html-content.ts` constant. Manual `pnpm build:widget` is
+only required when widget sources change outside the dev watcher.
+
+3. List tools (auth disabled path shown above):
+
+```bash
+curl -sS \
+  -H 'Content-Type: application/json' \
+  -X POST http://localhost:3333/mcp \
+  -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'
+```
+
+If you enable auth locally, repeat the same request with a valid Clerk-issued
+Bearer token instead of relying on the disabled-auth path above.
+
+Note: The server automatically adds the required `Accept: application/json, text/event-stream` header if missing, improving UX for simple curl commands and UI integrations.
+
+## Widget development
+
+The MCP App widget has a multi-page Vite dev server for iterating on
+UI, branding, and design tokens. The dev server serves:
+
+- **Index page** (`/`) — navigation hub listing all widgets and tools
+- **Widget pages** (e.g. `/oak-banner.html`) — individual widgets
+- **Token demo** (`/tokens.html`) — live colour palette, typography, and spacing reference
+
+**Prerequisites**: `pnpm install` and `pnpm build` from the repo root
+(design tokens and SDK must be built before the widget can resolve its
+imports).
+
+### Widget-only iteration (one terminal)
+
+For layout, styling, and token work that does not need MCP host context
+(run from this workspace, or use `pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http dev:widget` from repo root):
+
+```bash
+pnpm dev:widget
+```
+
+Open `http://localhost:5173/`. Vite provides hot module replacement —
+edits to React components, CSS, and design tokens are reflected
+immediately. Design token JSON edits in `packages/design/` trigger an
+automatic rebuild and full-page reload via a Vite plugin. The ext-apps
+SDK will not connect to a host in this mode, but the UI renders normally.
+
+### Full MCP App dev loop (two terminals)
+
+To see the widget rendered inside a real MCP host iframe with security
+sandboxing:
+
+| Terminal | Command                   | Purpose                                                      |
+| -------- | ------------------------- | ------------------------------------------------------------ |
+| 1        | `pnpm dev:observe:noauth` | MCP server on port 3333 (auth disabled for local dev)        |
+| 2        | `pnpm dev:widget-in-host` | ext-apps basic-host on port 8080, connects to localhost:3333 |
+
+Start the MCP server first (terminal 1), then the host (terminal 2).
+The `dev:widget-in-host` script checks prerequisites, prints usage
+instructions, and starts the host automatically. Open
+`http://localhost:8080`, select a tool, and call it — the widget renders
+in a sandboxed double-iframe matching the production security model.
+
+The HTTP dev server serves the widget HTML from the committed TypeScript
+constant `WIDGET_HTML_CONTENT` (in `src/generated/widget-html-content.ts`),
+injected via DI. The dev orchestrator regenerates this constant from widget
+sources automatically before booting the server.
+
+**Production runtime serves the same constant, not a file from `dist/`.**
+The pipeline is: `pnpm build:widget` invokes Vite (which writes the
+single-file widget to `.widget-build/`), then `scripts/embed-widget-html.js`
+generates the committed `src/generated/widget-html-content.ts` constant.
+At runtime, `src/index.ts` wraps `createApp` with
+`getWidgetHtml: () => WIDGET_HTML_CONTENT` — no filesystem read happens.
+The `dist/` artefacts contain the bundled JS only; the widget HTML is
+embedded in the JS bundle via the imported constant. This keeps the
+serverless cold path filesystem-free.
+
+`dev:widget-in-host` clones `@modelcontextprotocol/ext-apps` to
+`$TMPDIR/mcp-ext-apps` on first run and reuses it subsequently. Delete
+that directory to refresh: `rm -rf tmp/mcp-ext-apps`. Requires `bun`.
+
+### Design tokens
+
+Tokens live in `packages/design/oak-design-tokens/src/tokens/`:
+
+| File                   | Purpose                              |
+| ---------------------- | ------------------------------------ |
+| `palette.json`         | Base colour palette (all hex values) |
+| `semantic.light.json`  | Light theme semantic mappings        |
+| `semantic.dark.json`   | Dark theme semantic mappings         |
+| `component.json`       | Component-level token aliases        |
+| `contrast-pairings.ts` | WCAG AA contrast validation manifest |
+
+Dark mode is CSS-only via `@media (prefers-color-scheme: dark)` — no
+JavaScript theme switching. The build pipeline generates
+`dist/contrast-report.json` validating all declared pairings against
+WCAG AA thresholds. Violations fail the build (unless `OAK_TOKEN_DEV=1`
+is set for iterative development).
+
+The widget loads **Google Fonts (Lexend)** via `@import` from
+`fonts.googleapis.com` and `fonts.gstatic.com`. These domains are
+declared in the MCP resource's `_meta.ui.csp.resourceDomains` so that
+hosts with CSP enforcement allow the font requests. The widget also
+provides defaults for all 76 standard MCP host CSS custom properties,
+mapping them to Oak design tokens where equivalents exist.
+
+### Visual review with MCPJam
+
+[MCPJam](https://www.mcpjam.com/) is an MCP Apps-compatible host useful
+for visual design review and acceptance testing. Connect it to the local
+server at `http://localhost:3333/mcp` (requires `dev:observe:noauth` running).
+For a repeatable whole-server validation pass against any server, see the
+[UAT validation runbook](./docs/manual-uat-guide.md).
+
+## Observability
+
+See [`docs/observability.md`](./docs/observability.md) for the authoritative
+guide to Sentry instrumentation, the per-request `oak.http.request.mcp` span,
+scope enrichment (`mcp.method`, `mcp.tool_name`), the Express error handler
+DI wiring, the redaction barrier entry points (ADR-143 + ADR-160), release
+metadata resolution, and source-map upload.
+
+Summary:
+
+- `SENTRY_MODE=off` (default) / `SENTRY_MODE=fixture` / `SENTRY_MODE=sentry`
+  select runtime behaviour. Stdout JSON via `@oaknational/logger` is the
+  canonical local log surface in every mode.
+- MCP auto-instrumentation is wired via `wrapMcpServerWithSentry` at
+  [`src/app/core-endpoints.ts:98`](./src/app/core-endpoints.ts); inert under
+  `off` because `@sentry/node` is not initialised.
+- The Sentry Express error handler is DI-injected from `src/index.ts` when
+  `SENTRY_MODE=sentry`.
+- Every outbound payload passes through the non-bypassable redaction barrier
+  in [`@oaknational/sentry-node`](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/packages/libs/sentry-node/README.md).
+
+## Vercel deployment
+
+- Use Node runtime (not Edge)
+- Required env:
+  - `OAK_API_KEY` — Oak Curriculum API key
+  - `ELASTICSEARCH_URL` — Elasticsearch endpoint (server fails at startup without this)
+  - `ELASTICSEARCH_API_KEY` — Elasticsearch API key (server fails at startup without this)
+  - `CLERK_PUBLISHABLE_KEY` — Clerk publishable key for OAuth
+  - `CLERK_SECRET_KEY` — Clerk secret key for auth middleware
+- Optional env:
+  - `ALLOWED_HOSTS` (comma-separated, additive, supports `*` wildcards). Names hosts to allow **in addition to** the Vercel system hostnames and `localhost`/`127.0.0.1`/`::1`; it cannot remove a host from the allow-list. It gates the Host a request may be self-described from in OAuth metadata and `/mcp` auth challenge/resource URLs. (It also bounds `dnsRebindingProtection`, but that guard is mounted on **no route** since the HTML surfaces were removed on 2026-08-20 — MCP-650 owns remounting it — so setting this variable changes no Host-rejection behaviour today.) When `CANONICAL_HOST` is set it supersedes that second use entirely — self-description then reads the configured origin and never consults this list. Narrowing self-description is `CANONICAL_HOST`'s job, never this variable's.
+  - `CANONICAL_HOST` — the address this server is served at when an edge presents a different Host to the origin (see [Canonical address](#canonical-address)). Bare hostname; startup-validated.
+  - `LOG_LEVEL` (default `info`, use `debug` for staging)
+  - `SENTRY_MODE` — `off` (default), `fixture`, or `sentry`
+  - `SENTRY_DSN` — required when `SENTRY_MODE=sentry`
+  - `SENTRY_TRACES_SAMPLE_RATE` — required numeric trace sample rate for live Sentry mode
+  - `SENTRY_ENVIRONMENT_OVERRIDE` — explicit environment override only
+  - `SENTRY_RELEASE_OVERRIDE` — explicit release override only
+  - `APP_VERSION_OVERRIDE` — explicit application-version override only
+  - `GIT_SHA_OVERRIDE` — explicit git-SHA override only
+  - `REMOTE_MCP_MODE` (default `stateless`, recommended for Vercel — see `docs/vercel-environment-config.md`)
+
+Environment loading uses `resolveEnv` from `@oaknational/env/resolution`: reads `.env` < `.env.local` < `process.env`, validates against a Zod schema with conditional Clerk key requirements, and returns `Result<RuntimeConfig, ConfigError>`. See `src/runtime-config.ts`.
+
+Runtime metadata is resolved fail-fast where the selected mode needs it:
+
+- application version comes from the root repo `package.json` unless
+  `APP_VERSION_OVERRIDE` is set
+- Sentry release comes from `SENTRY_RELEASE_OVERRIDE` or the ADR-163
+  environment row: production-on-`main` app version, preview /
+  production-from-non-main branch URL host, or development `dev-<shortSha>`
+- git SHA metadata comes from `GIT_SHA_OVERRIDE` or `VERCEL_GIT_COMMIT_SHA`
+- invalid override values and missing application version are startup errors
+- the build also fails early if the root package version is missing or invalid
+- `SENTRY_MODE=off` does not require Sentry release metadata
+
+Vercel production builds have an additional repo-owned gate:
+
+- previews and development builds always continue
+- production continues when the root repo `package.json` version is greater than
+  the previous successful production deployment version, **or** when the build is
+  a redeploy of the commit already in production
+  (`VERCEL_GIT_COMMIT_SHA == VERCEL_GIT_PREVIOUS_SHA`) — rebuilding a
+  known-good release is the recovery path, and cancelling it was the defect
+  MCP-479 cured (ADR-163 §10, fourth amendment)
+- production builds that would reuse the previous semantic-release version on a
+  **different** commit are cancelled via `vercel.json` `ignoreCommand`, rather
+  than failing during build
+- the gate reads the previous deployed root `package.json` via
+  `VERCEL_GIT_PREVIOUS_SHA`
+
+**Important**: This server uses **stateless mode** by default, which is correct for Vercel's serverless architecture. Session state is not maintained between requests. See `docs/vercel-environment-config.md` for detailed explanation of transport modes.
+
+### Manual test guide (any server)
+
+A repeatable, whole-server UAT validation runbook — run by an engineer or
+an AI agent against any running server (local dev or a deployed
+preview/production) to gain end-to-end confidence before trusting it or
+signing off a release. Replaces the retired `pnpm smoke:remote` harness
+(ADR-121).
+
+- [UAT validation runbook](./docs/manual-uat-guide.md) — when to run, what
+  to test, how to run each check, and expected results (host or curl).
+  Covers the full served surface: transport/auth, the served tools and
+  resources (zero prompts, asserted), the dual response-shape contract, an
+  inventory self-check, and a copy-paste run-record template tied to the
+  release severity model.
+
+### OAuth discovery
+
+- `GET /.well-known/oauth-protected-resource` returns the canonical resource and authorisation servers
+- 401 responses include a `WWW-Authenticate` header with `resource` and `authorization_uri` to guide clients
+
+### Agent discovery (`Link` header)
+
+- Every response carries an RFC 8288 `Link` header advertising this host's own description (MCP-734):
+  `</.well-known/oauth-protected-resource>; rel="describedby"; type="application/json"; title="OAuth 2.0 protected resource metadata"`.
+  That document names the MCP endpoint in its `resource` field, so an agent arriving at the bare origin reaches the endpoint in one hop.
+- `describedby` rather than `service-desc`: the metadata describes how this resource is protected, not the service's callable interface, and the weaker registered relation is the one that is true.
+- Set by app-level middleware (`src/app/agent-discovery-link-header.ts`), so it rides every response including 404s and does not depend on any route existing at `/`. The advertised path is derived from `PROTECTED_RESOURCE_METADATA_PREFIX`, and an integration test follows the published target and requires a 200, so the link cannot rot into a 404.
+
+### OpenAI domain verification
+
+- `GET /.well-known/openai-apps-challenge` returns the plugin-submission portal's domain-verification token as bare `text/plain` (MCP-700). Not an OAuth surface: public, registered before Clerk middleware, and served in every auth mode. Contract: [OpenAI plugin submission, "Domain verification"](https://developers.openai.com/plugins/deploy/submission), which requires the endpoint to "return only that plugin's verification token".
+
+### Crawler directives
+
+- `GET /robots.txt` returns this host's crawler directives as `text/plain` (MCP-703). Public,
+  registered before Clerk middleware, and served in every auth mode — a crawler arrives with no
+  credentials, so a file reachable only through the auth vendor is an unfetchable one.
+- The body is not a copy of `www`'s. This host is a machine surface — the MCP endpoint, its
+  OAuth authorisation proxy and the discovery documents — with no crawlable page set to
+  enumerate, so it names **no sitemap**; `/.well-known/` is explicitly `Allow`ed so the discovery
+  documents stay fetchable under RFC 9309 §2.2.2's longest-match rule; and only the authorisation
+  endpoints, the signed expiring asset URLs and the liveness probes are disallowed. It names no
+  origin, so it is identical on every host this app answers on, and it names no page, so it does
+  not go stale when the served page set changes.
+- This meets the `robots.txt` half of agent-readiness baseline `AR-A6`. **On the sitemap half,
+  this host is a named `AR-A6` exception: a machine surface has no crawlable page set to
+  enumerate, so a `Sitemap:` directive would advertise a document that does not exist.**
+  **Decided by the repo owner on 2026-09-14** (MCP-703, PR #972), on the ground that this host is
+  machine surface rather than on how many pages it serves — so the exception counts no pages, and
+  holds whether or not a page describes the machine surfaces. Revisit it if this host ever grows
+  a crawlable page set.
+- Content Signals values (`search`, `ai-input`, `ai-train`) are deliberately absent: that is
+  `AR-A7`, an editorial and legal decision about values, undecided for this host. `open-api`
+  already publishes its own set, so cross-host consistency belongs to that decision rather than
+  to this baseline file.
+
+### Canonical address
+
+The server normally describes itself from each request's `Host` header. When an
+edge serves it at a different address — Cloudflare serves
+`https://mcp.thenational.academy/mcp` and overrides the `Host` to the app's own
+Vercel hostname, which is how Vercel selects the serving project — that
+derivation would advertise the origin hostname instead.
+
+Set `CANONICAL_HOST` to the address clients actually use. Every
+self-description surface then names `https://<CANONICAL_HOST>`: the
+protected-resource metadata (RFC 9728), the authorization-server metadata and
+its rewritten endpoints (RFC 8414), the resource URL checked against the token
+audience (RFC 8707), and the `WWW-Authenticate` challenge. Requests reaching
+the origin directly get the same answer, so a token acquired by either route
+validates at both.
+
+It is configuration, never a request header: no per-request signal can
+distinguish edge traffic from a direct request, because a client reaching the
+origin sends exactly the `Host` the edge sends. The value is a bare hostname —
+scheme, port, path and loopback names are rejected at startup — and the scheme
+is fixed to `https` rather than read from `req.protocol`, which a client can
+influence through `X-Forwarded-Proto`.
+
+`ALLOWED_HOSTS` and the DNS-rebinding guard are untouched by this setting: they
+police the hosts that may reach the server, which stays a separate question
+from the address it calls itself.
+
+## Cursor (legacy local stdio) configuration
+
+The checked-in `.mcp.json` and `.cursor/mcp.json` point at the HTTP server.
+The legacy stdio workspace has been removed per
+[ADR-128](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/128-stdio-workspace-retirement-and-http-transport-consolidation.md).
+Future stdio transport support will be added as a separate entry point within
+this workspace.
+
+## Authentication
+
+The server uses **Clerk OAuth** for production authentication. All requests to `/mcp` must include a valid Bearer token in the `Authorization` header.
+
+> **Current status**: Authentication is provided by a Clerk test
+> instance. Only internal Oak team members are supported as users
+> at this time. External access is not available.
+
+### OAuth Flow
+
+1. Unauthenticated requests return `401` with `WWW-Authenticate` header containing OAuth discovery information
+2. Client discovers authorization server via `/.well-known/oauth-protected-resource` endpoint
+3. Client follows OAuth Authorization Code + PKCE flow to obtain access token
+4. Client includes token in `Authorization: Bearer <token>` header
+
+### Development Authentication
+
+A local-development valve only:
+
+- Set `DANGEROUSLY_DISABLE_AUTH=true` to bypass authentication on a local run
+- **Every deployed environment rejects it.** This is enforced, not advised: when
+  `VERCEL_ENV` names any deployed environment (including one that does not exist
+  yet), `DANGEROUSLY_DISABLE_AUTH=true` fails startup rather than serving
+  unauthenticated. A local run means `VERCEL_ENV` unset or `development`.
+
+### MCP Client Configuration
+
+When configuring MCP clients (like Claude Desktop), they will automatically:
+
+1. Detect the OAuth requirement from the 401 response
+2. Follow the OAuth discovery flow
+3. Redirect users to Clerk for authentication
+4. Store and use the resulting access token
+
+See `docs/dev-server-management.md` for local development and OAuth server setup guidance.
+
+## Troubleshooting
+
+- **Server fails to start (OAuth metadata fetch timeout)**: If the server hangs or fails during startup when auth is enabled, ensure Clerk's `/.well-known/oauth-authorization-server` endpoint is reachable from the server's network. The auth bootstrap fetches upstream OAuth metadata at startup and will retry with exponential backoff (added in F10), but if the endpoint is unreachable the server will eventually fail. Check DNS resolution, firewall rules, and Clerk service status.
+- 500 on `/.well-known/oauth-protected-resource` or `/mcp`:
+  - Ensure Vercel framework is Express and the deployed build is using
+    `dist/server.js` via `package.json` `main`. The local listener entry remains
+    `dist/index.js`, but that is not the deployed artefact.
+  - Verify the host is either Vercel-derived (`VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL` — all allowed automatically) or named in `ALLOWED_HOSTS`.
+  - If auth is enabled, verify `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are set and that Clerk metadata discovery succeeds at startup.
+- 401 without `Authorization`: the client must either follow the OAuth discovery flow or send a valid Clerk-issued Bearer token. For local smoke tests, either use a real Clerk token or set `DANGEROUSLY_DISABLE_AUTH=true` and retry without the `Authorization` header.
+- Host blocked: add host to `ALLOWED_HOSTS`
+
+## Search tools
+
+Three search tools (`search`, `browse-curriculum`, `explore-topic`) provide Elasticsearch-backed semantic search. `ELASTICSEARCH_URL` and `ELASTICSEARCH_API_KEY` are **required** environment variables — the server fails at startup if either is absent. In stub mode (`OAK_CURRICULUM_MCP_USE_STUB_TOOLS=true`), `createStubSearchRetrieval()` is used instead of a real Elasticsearch client, so credentials are still required by the env schema but no real ES connection is made.
+
+## How it works
+
+- MCP handlers are attached via `@oaknational/mcp-server-kit` `attachMcpHandlers`, using a registry of tools generated in the SDK.
+- Request validation uses Zod schemas derived at compile-time from the OpenAPI spec; invalid inputs return a formatted error body (200 status, `isError: true`).
+- Successful results are SSE-wrapped JSON-RPC responses formatted with `formatStandardContent`.
+
+## Architecture Notes
+
+### Aggregated tools
+
+Aggregated tools currently return `Promise<CallToolResult>`
+directly, bypassing `ToolExecutionResult`. This is
+**architectural debt** — they miss the error handling,
+logging, and type safety that `ToolExecutionResult` provides
+to generated tools. Remediation tracked in the Practice
+improvements plan. The `AggregatedToolName` type derives from
+`keyof typeof AGGREGATED_TOOL_DEFS`.
+
+### MCP App host compatibility
+
+Tools with `_meta.ui` work in non-MCP-Apps hosts (Claude Code,
+CLI). The host ignores `_meta.ui` and the tool returns text
+content normally. No fallback code is needed — the protocol
+handles degradation.
+
+### Testing the MCP SDK
+
+`McpServer.registerTool` uses unexported generics that make
+it difficult to type-check handler functions through the
+registration surface. Test handler functions directly, not
+through `registerHandlers` → `McpServer`. When a test needs
+to reach into SDK internals, the architectural boundary is
+wrong — test at the handler level instead.
+
+### Type extraction from composition root
+
+When extracting types from this composition root, the root
+module may still need a local `import type` for its own usage
+even after the type is exported.
+
+## Testing
+
+This application has comprehensive test coverage across three testing layers:
+
+### Unit Tests
+
+- **Header Redaction** (`src/logging/header-redaction.unit.test.ts`): sensitive header redaction, IP address handling, edge cases
+- **Validation Logger** (`src/validation-logger.unit.test.ts`): upstream error classification and logging
+- **Served surface** (`src/served-surface/`): the declarative allowlist's totality, exactness, and registration-walk proofs
+
+### Integration Tests
+
+- **Correlation Middleware** (`src/correlation/middleware.integration.test.ts`): header redaction in request/response logging, correlation ID propagation
+
+### End-to-End Tests
+
+- **Header Redaction E2E** (`e2e-tests/header-redaction.e2e.test.ts`): full request/response cycles with sensitive headers, OAuth scenarios
+- **Tool E2E** (`e2e-tests/`): MCP tool invocation, resource listing, the zero-prompts protocol proof, widget metadata
+
+### Widget Tests (Playwright)
+
+Widget tests run against the Vite dev server (port 5173). Both light and
+dark themes are tested via Playwright projects with `colorScheme`
+emulation. This workspace has no other Playwright suite: the browser
+suite that ran on port 3333 covered the landing page and went with it on
+2026-08-20.
+
+```bash
+# Widget visual/structural tests (both themes)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
+
+# Widget WCAG 2.2 AA accessibility tests (both themes, axe-core)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+```
+
+### Running All Tests
+
+```bash
+# Unit and integration tests (Vitest)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test
+
+# Widget unit tests (Vitest, React Testing Library)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget
+
+# E2E tests (Vitest, requires built artefacts)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:e2e
+
+# Widget browser tests (Playwright)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+
+# Widget Playwright tests (separate from server tests)
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
+pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+```
+
+## Detailed Documentation
+
+- [MCP primitives: intention and intended audience](docs/mcp-primitives-intention-and-audience.md) - Internal guide to tool/resource boundaries (zero prompts), control model, and UAT expectations
+- [MCP Registry publication](docs/mcp-registry-publication.md) — how the `server.json` entry is composed from the deployment and proved before publishing, the namespace decision and its ownership proofs, and how the entry stays true
+- [Observability](docs/observability.md) — Sentry instrumentation, per-request span, scope enrichment, redaction barrier, release metadata, source-map upload
+- [Operational Debugging](docs/operational-debugging.md) — request tracing, timing, diagnostics, error debugging, production logging
+- [Widget Rendering](docs/widget-rendering.md) — widget dispatch, rendering architecture, and sandbox details
+
+## Deployment Preconditions
+
+**Traffic controls**: Rate limiting and volumetric abuse controls are
+configured and owned at the Cloudflare and Vercel edge; the application
+runs no in-process rate limiter. The read-only blast radius (all MCP
+tools are read-only) means a bypass cannot mutate state — the worst case
+is upstream load and Vercel compute spend, both bounded at the edge. See
+[ADR-219](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/219-rate-limiting-is-an-edge-concern.md).
+
+**Documentation Status**: Last verified 2026-07-30 against `src/application.ts`,
+the built-artifact E2E coverage, and the current workspace-level transport
+documentation.
+
+**Related Documentation**:
+
+- [deployment-architecture.md](./docs/deployment-architecture.md) - Deployment patterns and architecture
+- [middleware-chain.md](./docs/middleware-chain.md) - Complete middleware execution order
+- [vercel-environment-config.md](./docs/vercel-environment-config.md) - Environment variable reference

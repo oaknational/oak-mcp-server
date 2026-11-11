@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "kind": "protocol-conformance",
+  "name": "MCP Protocol Conformance",
+  "passed": false,
+  "durationMs": 3525,
+  "groups": [
+    {
+      "id": "mcp-1",
+      "title": "MCP Protocol Conformance",
+      "target": "https://curriculum-mcp-alpha.oaknational.dev/mcp",
+      "passed": false,
+      "durationMs": 3525,
+      "summary": "0/15 checks passed, 3 failed, 12 skipped",
+      "cases": [
+        {
+          "id": "server-initialize",
+          "title": "Server Initialize",
+          "category": "core",
+          "status": "failed",
+          "durationMs": 0,
+          "description": "Server responds to initialize and reports capabilities.",
+          "error": "Authentication failed for MCP server \"__ephemeral__\": Streamable HTTP error: Error POSTing to endpoint: {\"error\":\"Unauthorized\"}. SSE error: SSE error: Non-200 status code (401)",
+          "details": {
+            "errorDetails": { "code": "AUTH_ERROR", "name": "MCPAuthError", "statusCode": 401 }
+          }
+        },
+        {
+          "id": "ping",
+          "title": "Ping",
+          "category": "core",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server responds to ping requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "logging-set-level",
+          "title": "Logging Set Level",
+          "category": "core",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server accepts logging/setLevel requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "completion-complete",
+          "title": "Completion Complete",
+          "category": "core",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server responds to completion/complete requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "capabilities-consistent",
+          "title": "Capabilities Consistent",
+          "category": "core",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Advertised server capabilities match the features actually exposed.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "tools-list",
+          "title": "Tools List",
+          "category": "tools",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server lists tools with name, description, and input schema.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "tools-input-schemas-valid",
+          "title": "Tool Input Schemas Valid",
+          "category": "tools",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Every tool's inputSchema has type \"object\" and valid properties/required fields.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "prompts-list",
+          "title": "Prompts List",
+          "category": "prompts",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server lists prompts with name and description.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "resources-list",
+          "title": "Resources List",
+          "category": "resources",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Server lists resources with uri and name.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "protocol-invalid-method-error",
+          "title": "Invalid Method Error",
+          "category": "protocol",
+          "status": "failed",
+          "durationMs": 109,
+          "description": "Server returns a valid JSON-RPC error for an unrecognized method name.",
+          "error": "Server did not return a JSON-RPC error object for an invalid method",
+          "details": { "details": { "status": 401, "body": { "error": "Unauthorized" } } }
+        },
+        {
+          "id": "localhost-host-rebinding-rejected",
+          "title": "Reject Evil Host Header",
+          "category": "security",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Local servers reject initialize requests with a non-localhost Host/Origin header.",
+          "error": "Security host-header checks only apply to localhost servers",
+          "details": {
+            "details": { "serverUrl": "https://curriculum-mcp-alpha.oaknational.dev/mcp" }
+          }
+        },
+        {
+          "id": "localhost-host-valid-accepted",
+          "title": "Accept Valid Local Host Header",
+          "category": "security",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Local servers accept initialize requests with a valid localhost Host/Origin header.",
+          "error": "Security host-header checks only apply to localhost servers",
+          "details": {
+            "details": { "serverUrl": "https://curriculum-mcp-alpha.oaknational.dev/mcp" }
+          }
+        },
+        {
+          "id": "server-sse-polling-session",
+          "title": "SSE Polling Session",
+          "category": "transport",
+          "status": "failed",
+          "durationMs": 57,
+          "description": "Server provides a streamable HTTP session id.",
+          "error": "Initialize request failed with HTTP 401",
+          "details": { "details": { "status": 401, "body": { "error": "Unauthorized" } } }
+        },
+        {
+          "id": "server-accepts-multiple-post-streams",
+          "title": "Multiple POST Streams",
+          "category": "transport",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "The server accepts multiple concurrent POST requests.",
+          "error": "Streamable HTTP session could not be initialized"
+        },
+        {
+          "id": "server-sse-streams-functional",
+          "title": "Functional SSE Streams",
+          "category": "transport",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Concurrent SSE streams remain readable.",
+          "error": "Streamable HTTP session could not be initialized"
+        }
+      ]
+    }
+  ]
+}

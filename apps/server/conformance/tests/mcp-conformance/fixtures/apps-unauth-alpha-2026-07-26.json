@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "apps-conformance",
+  "name": "MCP Apps Conformance",
+  "passed": false,
+  "durationMs": 153,
+  "groups": [
+    {
+      "id": "apps-1",
+      "title": "MCP Apps Conformance",
+      "target": "https://curriculum-mcp-alpha.oaknational.dev/mcp",
+      "passed": false,
+      "durationMs": 153,
+      "summary": "0/7 checks passed, 1 failed, 6 skipped",
+      "cases": [
+        {
+          "id": "ui-tools-present",
+          "title": "UI Tools Present",
+          "category": "tools",
+          "status": "failed",
+          "durationMs": 152,
+          "description": "At least one tool advertises MCP Apps UI metadata through _meta.ui.resourceUri or the deprecated ui/resourceUri field.",
+          "error": "Authentication failed for MCP server \"__apps_conformance__\": Streamable HTTP error: Error POSTing to endpoint: {\"error\":\"Unauthorized\"}. SSE error: SSE error: Non-200 status code (401)",
+          "details": {
+            "errorDetails": { "code": "AUTH_ERROR", "name": "MCPAuthError", "statusCode": 401 }
+          }
+        },
+        {
+          "id": "ui-tool-metadata-valid",
+          "title": "UI Tool Metadata Valid",
+          "category": "tools",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Tools with UI metadata use a ui:// resource URI and valid visibility values.",
+          "error": "Skipping check because the MCP server could not be connected"
+        },
+        {
+          "id": "ui-tool-input-schema-valid",
+          "title": "UI Tool Input Schema Valid",
+          "category": "tools",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "UI tools provide a non-null JSON Schema object as their inputSchema.",
+          "error": "Skipping check because the MCP server could not be connected"
+        },
+        {
+          "id": "ui-listed-resources-valid",
+          "title": "Listed UI Resources Valid",
+          "category": "resources",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "UI resources returned by resources/list use ui:// URIs and the MCP Apps HTML MIME type.",
+          "error": "Skipping check because the MCP server could not be connected"
+        },
+        {
+          "id": "ui-resources-readable",
+          "title": "UI Resources Readable",
+          "category": "resources",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "Every UI resource referenced by a tool or listed by the server can be fetched with resources/read.",
+          "error": "Skipping check because the MCP server could not be connected"
+        },
+        {
+          "id": "ui-resource-contents-valid",
+          "title": "UI Resource Contents Valid",
+          "category": "resources",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "UI resource contents use the MCP Apps HTML MIME type and provide exactly one HTML payload via text or blob.",
+          "error": "Skipping check because the MCP server could not be connected"
+        },
+        {
+          "id": "ui-resource-meta-valid",
+          "title": "UI Resource Metadata Valid",
+          "category": "resources",
+          "status": "skipped",
+          "durationMs": 0,
+          "description": "UI resource metadata uses valid csp, permissions, domain, and prefersBorder shapes.",
+          "error": "Skipping check because the MCP server could not be connected"
+        }
+      ]
+    }
+  ]
+}

@@ -1,14 +1,26 @@
 import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
+  // Vercel calls the default export; OOCE also exports the handler by name.
+  ignoreIssues: { 'apps/server/src/server.ts': ['duplicates'] },
   workspaces: {
     '.': {
       entry: ['tools/repo-checks/*.ts', 'tools/import-from-ooce/import.ts'],
       ignore: ['tools/import-from-ooce/supplied/*.ts'],
       includeEntryExports: true,
       project: ['*.{ts,mts,cts,mjs}', 'tools/**/*.{ts,tsx,mts,cts}', 'packages/*.ts'],
-      ignoreDependencies: ['shellcheck'],
+      ignoreDependencies: ['shellcheck', '@mcpjam/cli'],
       ignoreBinaries: ['gitleaks'],
+    },
+    'apps/server': {
+      entry: [
+        '{src,build-scripts,operations,scripts,conformance,e2e-tests,tests}/**/*.ts',
+        'widget/**/*.{ts,tsx}',
+        'runtime-only-scripts/*.mjs',
+        '*.ts',
+      ],
+      project: ['**/*.{ts,tsx,mjs}'],
+      ignoreDependencies: ['@types/express-serve-static-core', 'prettier'],
     },
     'packages/logger': { entry: ['tests/*.typecheck.ts'] },
     'packages/openapi-zod-client-adapter': { project: ['src/**/*.ts'] },

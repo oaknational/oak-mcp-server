@@ -52,6 +52,24 @@ const importedRuleGaps: Record<string, string[]> = {
   'sentry-node': ['require-await', 'restrict-template-expressions', 'unbound-method'],
 };
 
+const serverRuleGaps = [
+  'no-base-to-string',
+  'no-confusing-void-expression',
+  'no-generated-empty-object-type',
+  'no-implied-eval',
+  'no-unnecessary-condition',
+  'no-unnecessary-template-expression',
+  'no-unnecessary-type-conversion',
+  'no-unnecessary-type-parameters',
+  'no-unsafe-assignment',
+  'no-unsafe-call',
+  'no-unsafe-enum-comparison',
+  'no-unsafe-member-access',
+  'require-await',
+  'restrict-template-expressions',
+  'unbound-method',
+];
+
 const searchBoundary =
   'Outside packages/search, import only @oaknational/oak-search-sdk/contract. Only the server composition root, apps/server/src/composition/search.ts, builds the search service.';
 
@@ -63,6 +81,10 @@ export default defineConfig(
       '**/coverage/**',
       '.cache/**',
       'tools/import-from-ooce/supplied/**',
+      'packages/widget-tokens/**',
+      'apps/server/.widget-build/**',
+      'apps/server/public/oak-ds/**',
+      'apps/server/public/oak-assets/**',
     ],
   },
   eslint.configs.recommended,
@@ -87,6 +109,25 @@ export default defineConfig(
       parserOptions: { project: ['./packages/*/tsconfig.json', './tsconfig.base.json'] },
     },
   },
+  {
+    files: ['apps/server/**/*.{ts,tsx,mts}'],
+    languageOptions: {
+      parserOptions: {
+        project: [
+          './apps/server/tsconfig.lint.json',
+          './apps/server/widget/tsconfig.json',
+          './apps/server/tests/tsconfig.json',
+        ],
+      },
+    },
+  },
+  {
+    files: ['apps/server/**/*.{ts,tsx,mts}'],
+    rules: Object.fromEntries(
+      serverRuleGaps.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const]),
+    ),
+  },
+  { files: ['apps/server/**/*.mjs'], rules: { 'no-undef': 'off' } },
   ...Object.entries(importedRuleGaps).map(([name, rules]) => ({
     files: [`packages/${name}/**/*.ts`],
     rules: Object.fromEntries(rules.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const])),

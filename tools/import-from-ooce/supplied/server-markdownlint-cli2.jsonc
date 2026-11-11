@@ -1,0 +1,8 @@
+// The server's Markdown is copied from OOCE unchanged, so its docs keep OOCE's
+// bold labels and numbered-list style.
+{
+  "config": {
+    "MD029": false,
+    "MD036": false,
+  },
+}

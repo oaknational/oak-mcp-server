@@ -1,0 +1,12 @@
+{
+  "name": "@oaknational/widget-tokens",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Built Oak token CSS, the design-system runtime files and the brand artwork that the MCP server's widget and pages use, copied from OOCE packages/design.",
+  "license": "SEE LICENSE IN LICENCES.md",
+  "exports": {
+    "./assets/*": "./assets/*",
+    "./index.css": "./index.css",
+    "./design-system/*": "./design-system/*"
+  }
+}

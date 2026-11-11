@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oak MCP App — Both Themes</title>
+    <style>
+      /* DEV-ONLY design-review page: the exact widget twice, side by
+         side, light and dark forced per pane. Each pane simulates the
+         two channels a real MCP Apps host drives into the widget
+         document: applyDocumentTheme (data-theme on the root) and
+         applyHostStyleVariables (inline custom properties on the
+         root). The pane backgrounds stand in for the host's own chat
+         surface around the iframe. */
+      body {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
+        font-family: system-ui, sans-serif;
+      }
+
+      .pane {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .pane[data-host-theme='light'] {
+        background: #ffffff;
+        color: #333333;
+      }
+
+      .pane[data-host-theme='dark'] {
+        background: #262624;
+        color: #dddddd;
+      }
+
+      .pane h2 {
+        margin: 1rem 1.5rem 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      iframe {
+        flex: 1;
+        width: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pane" data-host-theme="light">
+      <h2>Light</h2>
+      <iframe src="/oak-banner.html" title="Widget, light theme" data-theme="light"></iframe>
+    </div>
+    <div class="pane" data-host-theme="dark">
+      <h2>Dark</h2>
+      <iframe src="/oak-banner.html" title="Widget, dark theme" data-theme="dark"></iframe>
+    </div>
+    <script type="module">
+      const HOST_BACKGROUND = { light: '#ffffff', dark: '#262624' };
+
+      for (const frame of document.querySelectorAll('iframe')) {
+        const theme = frame.dataset.theme;
+
+        const applyHostChannels = () => {
+          const root = frame.contentDocument?.documentElement;
+          if (!root) {
+            return;
+          }
+          root.dataset.theme = theme;
+          root.style.setProperty('--color-background-primary', HOST_BACKGROUND[theme]);
+        };
+
+        // The load event may already have fired for a fast same-origin
+        // document; applying immediately AND on load is idempotent.
+        if (frame.contentDocument?.readyState === 'complete') {
+          applyHostChannels();
+        }
+        frame.addEventListener('load', applyHostChannels);
+      }
+    </script>
+  </body>
+</html>
