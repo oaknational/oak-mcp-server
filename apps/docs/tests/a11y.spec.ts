@@ -90,11 +90,17 @@ test.describe('docs shell accessibility', () => {
 
   test('@a11y the gate fails on a planted image with no alt text', async ({ page }) => {
     await page.goto('/');
+    await page.waitForFunction(() => document.documentElement.style.colorScheme !== '', undefined, {
+      timeout: 10_000,
+    });
     await page.evaluate(() => {
       const image = document.createElement('img');
-      image.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+      image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      image.width = 24;
+      image.height = 24;
       document.querySelector('main')?.append(image);
     });
+    await expect(page.locator('main img:not([alt])')).toBeVisible();
     const axe = await new AxeBuilder({ page }).withTags(A11Y_TAGS).analyze();
     expect(axe.violations.map((violation) => violation.id)).toContain('image-alt');
   });
