@@ -66,7 +66,11 @@ interface PackageSpec {
   supplied: SuppliedFile[];
   exports: Exports;
   removeDependencies: string[];
+  addDependencies: AddedDependencies;
 }
+type AddedDependencies = Partial<
+  Record<'dependencies' | 'devDependencies', Record<string, string>>
+>;
 interface Manifest {
   scope: { from: string; to: string };
   repository: string;
@@ -300,6 +304,7 @@ function parsePackage(value: unknown, where: string): PackageSpec {
     'supplied',
     'exports',
     'removeDependencies',
+    'addDependencies',
   ]);
   const sources = asList(record['sources'], `${where}.sources`, parseSource);
   if (sources.length === 0) {
@@ -319,7 +324,24 @@ function parsePackage(value: unknown, where: string): PackageSpec {
       `${where}.removeDependencies`,
       asString,
     ),
+    addDependencies: parseAddedDependencies(record['addDependencies'], `${where}.addDependencies`),
   };
+}
+
+function parseAddedDependencies(value: unknown, where: string): AddedDependencies {
+  const record = asRecord(value ?? {}, where, ['dependencies', 'devDependencies']);
+  const added: AddedDependencies = {};
+  for (const section of ['dependencies', 'devDependencies'] as const) {
+    if (record[section] !== undefined) {
+      added[section] = Object.fromEntries(
+        Object.entries(asRecord(record[section], `${where}.${section}`)).map(([name, range]) => [
+          name,
+          asString(range, `${where}.${section}.${name}`),
+        ]),
+      );
+    }
+  }
+  return added;
 }
 
 export function parseManifest(raw: unknown): Manifest {
@@ -494,6 +516,20 @@ function transformPackageJson(
       kept[renamed] = range;
     }
     out[section] = kept;
+  }
+  for (const [section, additions] of Object.entries(spec.addDependencies)) {
+    const current = asRecord(out[section] ?? {}, `${owner} ${section}`);
+    for (const name of Object.keys(additions)) {
+      if (name in current) {
+        fail(`${owner} ${section} already has ${name}, so the manifest must not add it`);
+      }
+    }
+    const merged = { ...current, ...additions };
+    out[section] = Object.fromEntries(
+      Object.keys(merged)
+        .sort()
+        .map((name) => [name, merged[name]]),
+    );
   }
   if (Object.keys(spec.exports).length > 0) {
     out['exports'] = { ...asRecord(out['exports'], `${owner} exports`), ...spec.exports };
