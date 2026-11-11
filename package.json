@@ -31,6 +31,7 @@
     "prepare": "git config core.hooksPath .husky",
     "skills:check": "node tools/repo-checks/skills-check.ts",
     "test": "vitest run && node packages/posthog-node/src/posthog-mcp-logger.smoke.ts",
+    "trial:metrics": "node tools/trial-metrics/collect.ts",
     "typecheck": "tsc --project tsconfig.base.json --noEmit && pnpm --recursive --if-present run type-check"
   },
   "devDependencies": {
