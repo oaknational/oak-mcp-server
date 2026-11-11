@@ -27,7 +27,6 @@ const GlobalStyle = createGlobalStyle`
     margin: 0;
     background: ${(props) => background(props)};
     color: ${(props) => text(props)};
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.5;
     overflow-wrap: anywhere;
   }
