@@ -200,6 +200,27 @@ jobs:
       contents: read
     uses: ./.github/workflows/agent-skills.yml # zizmor: ignore[self-repository] a $/ reference fails actionlint
 
+  docs-a11y:
+    name: docs-a11y
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @oaknational/mcp-docs exec playwright install --with-deps chromium
+      - run: pnpm --filter @oaknational/mcp-docs test:a11y
+
   ci-gate:
     name: ci-gate
     permissions: {}
@@ -211,6 +232,7 @@ jobs:
       - secret-scan
       - workflow-lint
       - agent-skills
+      - docs-a11y
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -218,7 +240,7 @@ jobs:
       - name: Require every needed job to succeed
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-          NEED_COUNT: '7'
+          NEED_COUNT: '8'
         run: |
           echo "Job results: $RESULTS"
           IFS=',' read -ra results <<< "$RESULTS"
