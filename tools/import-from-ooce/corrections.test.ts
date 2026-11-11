@@ -28,62 +28,63 @@ async function redactedRequestData(data: string): Promise<unknown> {
   return event?.request?.data;
 }
 
-describe('Sentry request.data redaction (manifest edits to redaction-form.ts and redaction-url.ts)', () => {
+describe('Sentry request.data redaction (supplied redaction-params.ts)', () => {
   it.each([
     [
-      'a raw URL value',
       'grant_type=authorization_code&code=fixture-code&redirect_uri=https://client.example/callback',
-      'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback',
+      'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https://client.example/callback',
     ],
     [
-      'a raw URL value with a query',
       'grant_type=authorization_code&code=fixture-code&redirect_uri=https://client.example/callback?tab=1',
-      'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Ftab%3D1',
+      'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https://client.example/callback?tab=1',
     ],
     [
-      'a raw URL value whose query holds a sensitive parameter',
       'code=fixture-code&redirect_uri=https://client.example/callback?state=fixture-state',
-      'code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Fstate%3Dfixture-state',
+      'code=%5BREDACTED%5D&redirect_uri=https://client.example/callback?state=%5BREDACTED%5D',
     ],
     [
-      'a URL-encoded URL value',
       'grant_type=authorization_code&code=fixture-code&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback',
       'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback',
     ],
-  ])('redacts the code in a form body with %s', async (_, body, redacted) => {
-    expect(await redactedRequestData(body)).toBe(redacted);
+    [
+      'redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Fcode%3Dfixture-code',
+      'redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Fcode%3D%255BREDACTED%255D',
+    ],
+    [
+      'https://client.example/callback?code=fixture-code&tab=1',
+      'https://client.example/callback?code=%5BREDACTED%5D&tab=1',
+    ],
+    [
+      'https://client.example/callback#access_token=fixture-code&tab=1',
+      'https://client.example/callback#access_token=%5BREDACTED%5D&tab=1',
+    ],
+    [
+      'https://user:fixture-password@localhost/callback?tab=1',
+      'https://%5BREDACTED%5D:%5BREDACTED%5D@localhost/callback?tab=1',
+    ],
+    ['/callback/a=b&c=d?code=fixture-code&tab=1', '/callback/a=b&c=d?code=%5BREDACTED%5D&tab=1'],
+    ['./callback/a=b&c=d?code=fixture-code&tab=1', './callback/a=b&c=d?code=%5BREDACTED%5D&tab=1'],
+    [
+      '../callback/a=b&c=d?code=fixture-code&tab=1',
+      '../callback/a=b&c=d?code=%5BREDACTED%5D&tab=1',
+    ],
+    ['callback/a=b?code=fixture-code', 'callback/a=b?code=%5BREDACTED%5D'],
+    ['a/b=c&d?code=fixture-code', 'a/b=c&d?code=%5BREDACTED%5D'],
+    ['cb=1?code=fixture-code', 'cb=1?code=%5BREDACTED%5D'],
+    ['.hidden/a=b?code=fixture-code', '.hidden/a=b?code=%5BREDACTED%5D'],
+    ['x=1&next=/cb?code=fixture-code', 'x=1&next=/cb?code=%5BREDACTED%5D'],
+    ['a=b&code=fixture-code&c=d', 'a=b&code=%5BREDACTED%5D&c=d'],
+  ])('redacts %s', async (input, redacted) => {
+    expect(await redactedRequestData(input)).toBe(redacted);
   });
 
-  it('redacts the code in a standalone URL query', async () => {
-    expect(
-      await redactedRequestData('https://client.example/callback?code=fixture-code&tab=1'),
-    ).toBe('https://client.example/callback?code=%5BREDACTED%5D&tab=1');
-  });
-
-  it('redacts the code in a rooted relative URL whose path holds = or &', async () => {
-    expect(await redactedRequestData('/callback/a=b&c=d?code=fixture-code&tab=1')).toBe(
-      '/callback/a=b&c=d?code=%5BREDACTED%5D&tab=1',
-    );
-  });
-
-  it.each(['./', '../'])(
-    'redacts the code in a %s relative URL whose path holds = or &',
-    async (prefix) => {
-      expect(await redactedRequestData(`${prefix}callback/a=b&c=d?code=fixture-code&tab=1`)).toBe(
-        '/callback/a=b&c=d?code=%5BREDACTED%5D&tab=1',
-      );
-    },
-  );
-
-  it('redacts the code in a form body with no URL value', async () => {
-    expect(await redactedRequestData('a=b&code=fixture-code&c=d')).toBe(
-      'a=b&code=%5BREDACTED%5D&c=d',
-    );
-  });
-
-  it('leaves a URL with no sensitive parameters unchanged', async () => {
-    expect(await redactedRequestData('https://client.example/callback?tab=1')).toBe(
-      'https://client.example/callback?tab=1',
-    );
+  it.each([
+    'https://client.example/callback?tab=1',
+    'Is x=1? Yes, and y=2 & z=3.',
+    '{"query":"a=b?c=d","n":1}',
+    'subject=maths&key_stage=ks3&page=2',
+    'note=a+b&other=a%20b',
+  ])('leaves %s unchanged', async (input) => {
+    expect(await redactedRequestData(input)).toBe(input);
   });
 });
