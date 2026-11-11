@@ -1,5 +1,5 @@
 import { globSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 
 import { defineConfig } from 'vitest/config';
 
@@ -14,7 +14,7 @@ const sourceAliases = globSync('packages/*/package.json', { cwd: import.meta.dir
     const dir = dirname(manifest);
     const { name, exports } = JSON.parse(readFileSync(manifest, 'utf8')) as Manifest;
     return Object.entries(exports).map(([subpath, { types }]) => ({
-      find: new RegExp(`^${join(name, subpath)}$`),
+      find: new RegExp(`^${posix.join(name, subpath)}$`),
       replacement: join(dir, types.replace(/^\.\/dist\//, 'src/').replace(/\.d\.ts$/, '.ts')),
     }));
   },
