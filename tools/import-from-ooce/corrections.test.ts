@@ -28,7 +28,7 @@ async function redactedRequestData(data: string): Promise<unknown> {
   return event?.request?.data;
 }
 
-describe('Sentry request.data redaction (manifest edit to redaction-form.ts)', () => {
+describe('Sentry request.data redaction (manifest edits to redaction-form.ts and redaction-url.ts)', () => {
   it.each([
     [
       'a raw URL value',
@@ -39,6 +39,11 @@ describe('Sentry request.data redaction (manifest edit to redaction-form.ts)', (
       'a raw URL value with a query',
       'grant_type=authorization_code&code=fixture-code&redirect_uri=https://client.example/callback?tab=1',
       'grant_type=authorization_code&code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Ftab%3D1',
+    ],
+    [
+      'a raw URL value whose query holds a sensitive parameter',
+      'code=fixture-code&redirect_uri=https://client.example/callback?state=fixture-state',
+      'code=%5BREDACTED%5D&redirect_uri=https%3A%2F%2Fclient.example%2Fcallback%3Fstate%3Dfixture-state',
     ],
     [
       'a URL-encoded URL value',
