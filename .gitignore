@@ -11,3 +11,7 @@ out/
 next-env.d.ts
 playwright-report/
 test-results/
+
+**/.typedoc
+**/_typedoc_*
+packages/codegen/reference/*.json

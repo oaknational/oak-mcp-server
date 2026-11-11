@@ -23,3 +23,44 @@ export function createLibConfig(overrides?: LibConfigOverrides): ReturnType<type
   };
   return defineConfig(options);
 }
+
+interface SdkConfigOverrides {
+  readonly external?: string[];
+  readonly target?: string;
+}
+
+export function createSdkConfig(
+  entries: string[] | Record<string, string>,
+  overrides?: SdkConfigOverrides,
+): ReturnType<typeof defineConfig> {
+  return defineConfig({
+    format: ['esm'],
+    sourcemap: true,
+    clean: true,
+    minify: false,
+    treeshake: true,
+    splitting: false,
+    dts: false,
+    tsconfig: './tsconfig.build.json',
+    outDir: 'dist',
+    entry: entries,
+    target: overrides?.target ?? 'node22',
+    bundle: false,
+    platform: 'neutral',
+    ...(overrides?.external && { external: overrides.external }),
+    esbuildOptions(options) {
+      options.plugins = options.plugins ?? [];
+      options.plugins.push({
+        name: 'ensure-js-extensions',
+        setup(build) {
+          build.onResolve({ filter: /^\./ }, (args) => {
+            if (args.path.endsWith('.js') || args.path.endsWith('.json')) {
+              return null;
+            }
+            return { path: `${args.path}.js` };
+          });
+        },
+      });
+    },
+  });
+}

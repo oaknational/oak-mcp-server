@@ -11,6 +11,30 @@ const config: KnipConfig = {
       ignoreBinaries: ['gitleaks'],
     },
     'packages/logger': { entry: ['tests/*.typecheck.ts'] },
+    'packages/openapi-zod-client-adapter': { project: ['src/**/*.ts'] },
+    'packages/graph-core': { project: ['src/**/*.ts'] },
+    'packages/graph-corpus-sdk': {
+      entry: ['src/index.ts', 'src/eef-strands/index.ts', 'src/curriculum/index.ts'],
+      project: ['src/**/*.ts'],
+    },
+    'packages/curriculum-sdk': {
+      entry: [
+        'src/*.ts',
+        'src/client/**/*.ts',
+        'src/config/**/*.ts',
+        'src/types/**/*.ts',
+        'src/public/**/*.ts',
+        'src/mcp/**/*.ts',
+        'src/validation/**/*.ts',
+      ],
+      project: ['src/**/*.ts'],
+      ignoreDependencies: ['@zod/core'],
+    },
+    'packages/codegen': {
+      entry: ['src/**/*.ts', 'code-generation/**/*.ts', 'vocab-gen/**/*.ts'],
+      project: ['src/**/*.ts', 'code-generation/**/*.ts', 'vocab-gen/**/*.ts'],
+      ignoreDependencies: ['@zod/core'],
+    },
   },
 };
 
