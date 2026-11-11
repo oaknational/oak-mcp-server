@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "add-app-to-server": {
+      "source": "modelcontextprotocol/ext-apps",
+      "sourceType": "github",
+      "ref": "19256f52cad5517ba8272581ed2e11d6a81273d5",
+      "skillPath": "plugins/mcp-apps/skills/add-app-to-server/SKILL.md"
+    },
+    "clerk": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "ref": "c5d2c0d6c5b63243146b4893c875f6ebef55977c",
+      "skillPath": "skills/clerk/SKILL.md"
+    },
+    "clerk-backend-api": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "ref": "c5d2c0d6c5b63243146b4893c875f6ebef55977c",
+      "skillPath": "skills/clerk-backend-api/SKILL.md"
+    },
+    "clerk-testing": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "ref": "c5d2c0d6c5b63243146b4893c875f6ebef55977c",
+      "skillPath": "skills/clerk-testing/SKILL.md"
+    },
+    "convert-web-app": {
+      "source": "modelcontextprotocol/ext-apps",
+      "sourceType": "github",
+      "ref": "19256f52cad5517ba8272581ed2e11d6a81273d5",
+      "skillPath": "plugins/mcp-apps/skills/convert-web-app/SKILL.md"
+    },
+    "create-mcp-app": {
+      "source": "modelcontextprotocol/ext-apps",
+      "sourceType": "github",
+      "ref": "19256f52cad5517ba8272581ed2e11d6a81273d5",
+      "skillPath": "plugins/mcp-apps/skills/create-mcp-app/SKILL.md"
+    },
+    "mcp-inspector": {
+      "source": "mcpjam/inspector",
+      "sourceType": "github",
+      "ref": "61748456c506a7021aff6f9d325e39d38af0df0d",
+      "skillPath": "skills/mcp-inspector/SKILL.md"
+    },
+    "migrate-oai-app": {
+      "source": "modelcontextprotocol/ext-apps",
+      "sourceType": "github",
+      "ref": "19256f52cad5517ba8272581ed2e11d6a81273d5",
+      "skillPath": "plugins/mcp-apps/skills/migrate-oai-app/SKILL.md"
+    }
+  }
+}

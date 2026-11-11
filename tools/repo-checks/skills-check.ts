@@ -7,7 +7,9 @@ interface Manifest {
   files: Record<string, string>;
 }
 
-const ROOTS = ['.agents/skills', '.claude/skills'];
+const SOURCE = '.agents/skills';
+const MIRROR = '.claude/skills';
+const ROOTS = [SOURCE, MIRROR];
 
 function listFiles(dir: string, symlinks: string[]): string[] {
   if (lstatSync(dir, { throwIfNoEntry: false })?.isSymbolicLink() === true) {
@@ -60,6 +62,27 @@ for (const base of ROOTS) {
     if (entry.name.startsWith('oak-') && !known.has(entry.name)) {
       problems.push(`${base}/${entry.name}: skill is not selected in oak-skills.json`);
     }
+  }
+}
+
+const sourceDir = join(root, SOURCE);
+for (const entry of existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTypes: true }) : []) {
+  if (!entry.isDirectory() || entry.name.startsWith('oak-')) {
+    continue;
+  }
+  const symlinks: string[] = [];
+  for (const file of listFiles(join(sourceDir, entry.name), symlinks)) {
+    const rel = relative(sourceDir, file).split('\\').join('/');
+    const copy = join(root, MIRROR, rel);
+    if (!existsSync(copy)) {
+      problems.push(`${MIRROR}/${rel}: missing, copy it from ${SOURCE}/${rel}`);
+    } else if (!readFileSync(copy).equals(readFileSync(file))) {
+      problems.push(`${MIRROR}/${rel}: differs from ${SOURCE}/${rel}, recopy it`);
+    }
+  }
+  for (const link of symlinks) {
+    const path = relative(root, link).split('\\').join('/');
+    problems.push(`${path}: symlink, local skills hold regular files only, remove it`);
   }
 }
 
