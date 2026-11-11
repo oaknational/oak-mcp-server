@@ -4,7 +4,13 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = join(import.meta.dirname, '..', '..');
-const operatorLocal = ['CLAUDE.local.md', 'AGENTS.local.md', '.claude/settings.local.json'];
+const operatorLocal = [
+  'CLAUDE.local.md',
+  'AGENTS.local.md',
+  '.claude/settings.local.json',
+  '.env',
+  '.env.local',
+];
 
 describe('.gitignore', () => {
   it.each(operatorLocal)('ignores %s', (path) => {

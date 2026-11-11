@@ -17,6 +17,7 @@ import {
   parseRetentionRatio,
   refreshGraphCorpus,
   resolveBulkFiles,
+  resolveGraphRefreshEnv,
   type RefreshGuard,
 } from './graph-refresh.js';
 
@@ -226,6 +227,25 @@ describe('refreshGraphCorpus', () => {
     });
     expect(result.ok).toBe(true);
     expect(lines.join('\n')).toContain('treating it as absent');
+  });
+});
+
+describe('resolveGraphRefreshEnv', () => {
+  it('reads OAK_API_KEY from the repo-root .env.local, and the process env overrides it', async () => {
+    const repo = await tempDir();
+    await writeFile(path.join(repo, 'pnpm-workspace.yaml'), 'packages: []\n');
+    await writeFile(path.join(repo, '.env.local'), 'OAK_API_KEY=from-env-local\n');
+
+    expect(resolveGraphRefreshEnv({}, repo).OAK_API_KEY).toBe('from-env-local');
+    expect(resolveGraphRefreshEnv({ OAK_API_KEY: 'from-process' }, repo).OAK_API_KEY).toBe(
+      'from-process',
+    );
+  });
+
+  it('leaves OAK_API_KEY unset when no file or variable provides it', async () => {
+    const repo = await tempDir();
+    await writeFile(path.join(repo, 'pnpm-workspace.yaml'), 'packages: []\n');
+    expect(resolveGraphRefreshEnv({}, repo).OAK_API_KEY).toBeUndefined();
   });
 });
 

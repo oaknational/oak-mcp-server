@@ -8,7 +8,12 @@ import {
   createLocalFileObjectStore,
   createVercelBlobObjectStore,
 } from '../../../graph-corpus-sdk/src/store/index.js';
-import { parseRetentionRatio, refreshGraphCorpus, resolveBulkFiles } from './graph-refresh.js';
+import {
+  parseRetentionRatio,
+  refreshGraphCorpus,
+  resolveBulkFiles,
+  resolveGraphRefreshEnv,
+} from './graph-refresh.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 
@@ -24,15 +29,15 @@ if (values.store !== 'local' && values.store !== 'blob') {
   process.exit(2);
 }
 
-const env = process.env;
-const localRoot = env['GRAPH_CORPUS_LOCAL_PATH'] || path.join(repoRoot, '.cache', 'graph-corpus');
+const env = resolveGraphRefreshEnv(process.env, import.meta.dirname);
+const localRoot = env.GRAPH_CORPUS_LOCAL_PATH || path.join(repoRoot, '.cache', 'graph-corpus');
 const objects =
   values.store === 'local'
     ? createLocalFileObjectStore(localRoot)
-    : createVercelBlobObjectStore(env['BLOB_READ_WRITE_TOKEN']);
+    : createVercelBlobObjectStore(env.BLOB_READ_WRITE_TOKEN);
 const bulkDir = values['bulk-dir'];
-const apiKey = env['OAK_API_KEY'];
-const url = env['OAK_BULK_URL'];
+const apiKey = env.OAK_API_KEY;
+const url = env.OAK_BULK_URL;
 
 const result = await refreshGraphCorpus({
   bulk: await resolveBulkFiles({
@@ -41,7 +46,7 @@ const result = await refreshGraphCorpus({
     ...(url === undefined || url === '' ? {} : { url }),
   }),
   store: createGraphCorpusSnapshotStore(objects),
-  minRetentionRatio: parseRetentionRatio(env['GRAPH_MIN_RETENTION_RATIO']),
+  minRetentionRatio: parseRetentionRatio(env.GRAPH_MIN_RETENTION_RATIO),
   log: (line) => process.stderr.write(`graph:refresh: ${line}\n`),
 });
 
