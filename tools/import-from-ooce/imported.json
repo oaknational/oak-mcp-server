@@ -792,8 +792,6 @@
     "packages/curriculum-sdk/src/index.unit.test.ts": "sha256:cc06b6815edf0a7d9017a50019884fdb2197152b001cc3e01a95fc602f6fb93b",
     "packages/curriculum-sdk/src/lesson-resource-helpers.ts": "sha256:0defac2cc7f07c6ae95fbbdd9efd9d371ccaf533c926c602d6d2e0b1182a5aea",
     "packages/curriculum-sdk/src/lesson-resource-helpers.unit.test.ts": "sha256:67888d79f5a72fc791c0df036b3cbbb251abe27934ddf693f76be55481bfe61c",
-    "packages/curriculum-sdk/src/mcp/agent-support-tool-metadata.ts": "sha256:4bf018942b4274575a345485332fc71de1bd882a7df29f382bcf5e297c674c11",
-    "packages/curriculum-sdk/src/mcp/agent-support-tool-metadata.unit.test.ts": "sha256:9f78abc9bb9d33625c5640275de6be0730f06e5d9dd65ee472182676d6a7b578",
     "packages/curriculum-sdk/src/mcp/aggregated-asset-download/definition.ts": "sha256:cbdc19b59a7f70cd9034ed4c0e36c87f0e02c27b9d7c5734094c9e0eb463ec55",
     "packages/curriculum-sdk/src/mcp/aggregated-asset-download/download-token.ts": "sha256:ea4048d1e547c02d15a00ef7450291bfdb6a74e353bc26d14d18e64ef2b52bae",
     "packages/curriculum-sdk/src/mcp/aggregated-asset-download/download-token.unit.test.ts": "sha256:51478a491979ffa01ff968fe67677c699626d761fdb173fe136b4741fc8c26fb",

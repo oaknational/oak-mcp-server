@@ -18,8 +18,6 @@ overrides:
   '@vercel/cli-config>zod': 4.6.7
 
 allowBuilds:
-  # The server's Sentry esbuild plugin brings @sentry/cli. Its postinstall downloads
-  # a binary only source-map upload needs, which this repository does not run yet.
   '@sentry/cli': false
   esbuild: true
   shellcheck: true

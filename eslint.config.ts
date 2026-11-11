@@ -120,14 +120,11 @@ export default defineConfig(
         ],
       },
     },
-  },
-  {
-    files: ['apps/server/**/*.{ts,tsx,mts}'],
     rules: Object.fromEntries(
       serverRuleGaps.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const]),
     ),
   },
-  { files: ['apps/server/**/*.mjs'], rules: { 'no-undef': 'off' } },
+  { files: ['apps/server/**/*.mjs'], languageOptions: { globals: { process: 'readonly' } } },
   ...Object.entries(importedRuleGaps).map(([name, rules]) => ({
     files: [`packages/${name}/**/*.ts`],
     rules: Object.fromEntries(rules.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const])),

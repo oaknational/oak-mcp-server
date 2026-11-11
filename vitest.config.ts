@@ -13,7 +13,6 @@ const sourceAliases = globSync('packages/*/package.json', { cwd: import.meta.dir
     const manifest = join(import.meta.dirname, file);
     const dir = dirname(manifest);
     const { name, exports } = JSON.parse(readFileSync(manifest, 'utf8')) as Manifest;
-    // Asset-only exports (widget-tokens' CSS and fonts) have no source to alias.
     return Object.entries(exports).flatMap(([subpath, target]) =>
       typeof target === 'string'
         ? []
@@ -34,7 +33,6 @@ export default defineConfig({
   resolve: { alias: sourceAliases },
   test: {
     include: ['{tools,packages,apps}/**/*.test.{ts,tsx,mts,cts}'],
-    // The server runs its own suites with its own setup and environments.
     exclude: [...configDefaults.exclude, 'apps/server/**'],
   },
 });

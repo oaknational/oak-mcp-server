@@ -1,7 +1,6 @@
 import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
-  // Vercel calls the default export; OOCE also exports the handler by name.
   ignoreIssues: { 'apps/server/src/server.ts': ['duplicates'] },
   workspaces: {
     '.': {

@@ -1,12 +1,3 @@
-/**
- * In-process smoke test for the server: the four checks CI runs on every PR.
- *
- * It builds the real composition root twice, with the e2e helpers the server
- * already uses: once with auth bypassed and stub tools, for `initialize`,
- * `tools/list` and one tool call, and once with auth on and fake Clerk
- * dependencies, for the 401 challenge and the protected-resource metadata.
- * Nothing leaves the process.
- */
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 

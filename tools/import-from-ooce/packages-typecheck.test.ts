@@ -31,7 +31,6 @@ function typeScriptFiles(directory: string): string[] {
   ).map((file) => join(directory, file));
 }
 
-// An asset-only package, such as widget-tokens, has no TypeScript to check.
 const names = readdirSync(packagesDirectory, { withFileTypes: true })
   .filter(
     (entry) =>
