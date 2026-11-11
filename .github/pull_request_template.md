@@ -34,7 +34,7 @@ Fixes MCP-nnn
 ## Size
 
 <!--
-Keep this section only when the PR changes more than 20 authored files.
-Name one indivisibility proof: an import cycle, an unreviewable split, or a tool-generated move.
-Delete the section otherwise.
+Delete this section when the PR changes 10 or fewer authored files.
+From 11 to 20 authored files, say why the PR is not smaller. `pr-size` passes with a note.
+Above 20, name one indivisibility proof: an import cycle, an unreviewable split, or a tool-generated move. `pr-size` fails without one.
 -->
