@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -59,5 +67,21 @@ describe('skills-check', () => {
     const result = run(copy);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('.claude/skills/oak-sos-draft');
+  });
+
+  it.each([
+    ['a file symlink', join(repoRoot, 'README.md'), 'oak-tdd/file-link.md'],
+    ['a directory symlink', '/etc', 'oak-tdd/dir-link'],
+    ['a dangling symlink', '/nonexistent-target', 'oak-tdd/dangling-link'],
+    ['a symlinked skill directory', '/etc', 'oak-pr-create'],
+  ])('fails and names %s', (_name, target, link) => {
+    const path = join(copy, '.agents/skills', link);
+    if (link === 'oak-pr-create') {
+      rmSync(path, { recursive: true });
+    }
+    symlinkSync(target, path);
+    const result = run(copy);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`.agents/skills/${link}: symlink`);
   });
 });

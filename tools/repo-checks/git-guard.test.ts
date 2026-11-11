@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -499,11 +499,38 @@ describe('git-guard tripwire forms agents emit', () => {
     git(inner, 'add', 'f.txt');
     git(inner, 'commit', '--quiet', '--message', 'seed');
     writeFileSync(join(inner, 'f.txt'), 'two\n');
+    mkdirSync(join(inner, 'sub'));
+    symlinkSync(inner, join(parent, 'link'));
   });
 
   afterAll(() => {
     rmSync(parent, { recursive: true, force: true });
   });
+
+  it.each([
+    'cd link && git stash',
+    'git -C link stash',
+    'cd inner/sub && git stash',
+    'cd inner/sub/.. && git stash',
+    'cd link/sub && git stash',
+    'cd -P inner && git stash',
+    'cd -- inner && git stash',
+    'cd -L inner && git stash',
+    'pushd inner && git stash',
+    'pushd inner >/dev/null; git stash; popd',
+    'builtin cd inner && git stash',
+    'command cd inner && git stash',
+    'cd "inner" && git reset --hard',
+  ])('checks %s against the dirty nested repository', (command) => {
+    expect(bash(parent, command).status).toBe(2);
+  });
+
+  it.each(['cd inner/.. && git stash', 'cd link/.. && git stash', 'pushd . && git status'])(
+    'allows %s from a clean parent',
+    (command) => {
+      expect(bash(parent, command).status).toBe(0);
+    },
+  );
 
   it.each([
     'cat 0<.env.local',
@@ -531,6 +558,15 @@ describe('git-guard tripwire forms agents emit', () => {
     'cd .husky && echo x > pre-commit',
     'cd .husky; echo x 2>pre-commit',
     'cd .husky && sed -i s/a/b/ pre-commit',
+    'cd .husky && cp /tmp/x pre-commit',
+    'cd .husky && cp -t . /tmp/x',
+    'cd .husky && install /tmp/x pre-commit',
+    'cd .husky && rsync /tmp/x pre-commit',
+    'cd .husky && mv /tmp/x pre-commit',
+    'cd .husky && tee pre-commit',
+    'cd .husky && ln -sf /tmp/x pre-commit',
+    'cd .git && cp /tmp/x config',
+    'cd .git && tee config',
     'cd /etc && rm -rf dist',
     'cd /usr/local && rm -rf node_modules',
   ])('refuses %s', (command) => {
@@ -542,6 +578,14 @@ describe('git-guard tripwire forms agents emit', () => {
     ['Write', { file_path: '/work/.git/config' }],
   ] as const)('refuses %s of git config', (tool, input) => {
     expect(decide(parent, tool, { ...input }).status).toBe(2);
+  });
+
+  it.each([
+    ['Edit', 'pre-commit'],
+    ['Write', 'config'],
+  ] as const)('refuses %s of a bare name from inside a hook directory', (tool, name) => {
+    const dir = name === 'config' ? '.git' : '.husky';
+    expect(decide(join(parent, dir), tool, { file_path: name }).status).toBe(2);
   });
 
   it.each([
@@ -557,6 +601,9 @@ describe('git-guard tripwire forms agents emit', () => {
     'env --chdir inner git stash',
     'env -iCinner git stash',
     'env -iC inner git stash',
+    'env -C./inner git stash',
+    'env -iC./inner git stash',
+    'env -C../parent/inner git stash',
   ])('checks %s against the dirty nested repository', (command) => {
     expect(bash(parent, command).status).toBe(2);
   });
@@ -581,6 +628,8 @@ describe('git-guard tripwire forms agents emit', () => {
     'echo "$(<README.md)"',
     'git config --get include.path',
     'cd .husky && ls',
+    'cd .husky && cp pre-commit /tmp/bak',
+    'cd .git && cp config /tmp/bak',
     'cd /tmp && rm -rf dist',
     'cd packages && rm -rf dist',
     'env -u FOO git status',

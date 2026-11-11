@@ -1,0 +1,30 @@
+# @oaknational/posthog-node
+
+Privacy-preserving PostHog Node adapter for Oak MCP product analytics.
+
+This package is the only repository boundary permitted to import
+`posthog-node` or `@posthog/mcp`. It accepts closed typed configuration and
+provider-neutral Oak capabilities; it never reads ambient environment
+variables.
+
+The actor identity boundary exposes separate active-delivery and deletion
+capabilities. Normal event delivery can project only the configured active key.
+Deletion can deterministically recompute every retained projection without a
+principal ledger.
+
+The live runtime owns one dedicated PostHog client. It exposes only Oak's
+provider-neutral product-event sink, public MCP-transport observer, and
+Result-typed close capability. The observer maps initialise, tool-list, and
+tool-call responses onto the official manual PostHog MCP capture API;
+authenticated resource reads use the Oak sink. Both the transport and final
+client boundaries reconstruct exact allowlisted rows, so raw identities,
+parameters, results, errors, sessions, raw client strings, and unknown
+properties cannot cross the adapter. The one client detail that does cross is a
+`$mcp_client_user_agent` rebuilt from a closed product table, a major version
+of at most two digits, and a closed build-surface list (ADR-218, 2026-09-07
+amendment). The observer forwards protocol messages, options, and delegate
+promises without modification.
+
+Configuration is supplied as an already-validated snapshot. The adapter never
+reads environment variables, and its public surface exposes neither the raw
+PostHog client nor an arbitrary event-capture handle.

@@ -1,0 +1,137 @@
+/**
+ * Canonical semver helpers for Oak's build pipeline.
+ *
+ * @remarks
+ * The shared, npm-`semver`-backed home for application-version
+ * validation logic. Replaces previously scattered inline copies of
+ * the same regex across `runtime-metadata.ts` and
+ * `apps/oak-curriculum-mcp-streamable-http/runtime-only-scripts/vercel-ignore-production-non-release-build.mjs`.
+ *
+ * The vercel-ignore script retains an inline copy because it runs as
+ * Vercel's `ignoreCommand` BEFORE `pnpm install` and so cannot import
+ * any package dependency. Its inline regex stays in sync with this
+ * module via the parity test at `tests/semver-parity.test.ts`. All
+ * other consumers (including `apps/oak-search-cli/scripts/validate-application-version.ts`)
+ * import {@link isValidSemver} directly.
+ *
+ * @packageDocumentation
+ */
+
+import { lte as semverLte, parse as semverParse } from 'semver';
+import { ok, err, type Result } from '@oaknational/result';
+
+/**
+ * Strict semver §2 / §9 / §10 pattern.
+ *
+ * @remarks
+ * Verbatim copy of the canonical regex from the npm `semver` package's
+ * §2 strict pattern, preserved here so tools that need a regex (rather
+ * than a parser) can match without depending on `semver`'s private API.
+ * Required by the two pre-install / pre-dist scripts noted above.
+ */
+export const SEMVER_PATTERN =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+
+/**
+ * Structurally parsed semver components.
+ *
+ * @remarks
+ * `prerelease` is exposed as a `readonly string[]` for ergonomic
+ * consumer use: numeric prerelease identifiers (e.g. the `7` in
+ * `1.0.0-alpha.7.x`) are coerced to their decimal string form. Use
+ * {@link isLessThanOrEqual} for §11.4 precedence comparisons; do not
+ * try to reproduce §11.4 ordering from this array, since the
+ * numeric/alphanumeric distinction is lost by the coercion.
+ */
+export interface ParsedSemver {
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly prerelease: readonly string[];
+}
+
+/**
+ * Test whether a string conforms to strict semver §2.
+ *
+ * @remarks
+ * Uses {@link SEMVER_PATTERN} rather than `semver.valid()` because the
+ * npm `semver` package accepts a leading `v` prefix (e.g. `v1.0.0`)
+ * for compatibility with common tag conventions; the strict §2 grammar
+ * does not. Matching the regex keeps `isValidSemver` consistent with
+ * the inline regex copies in pre-`pnpm install` scripts.
+ *
+ * @example
+ * isValidSemver('1.5.0');         // true
+ * isValidSemver('1.0.0-alpha.1'); // true
+ * isValidSemver('latest');        // false
+ * isValidSemver('1.0');           // false
+ * isValidSemver('v1.0.0');        // false (no v-prefix per strict §2)
+ */
+export function isValidSemver(version: string): boolean {
+  return SEMVER_PATTERN.test(version);
+}
+
+/**
+ * Parse a semver string into its components, or return `null` if the
+ * string is not strict-semver-valid.
+ *
+ * @example
+ * parseSemver('1.5.0');
+ * // \{ major: 1, minor: 5, patch: 0, prerelease: [] \}
+ *
+ * parseSemver('1.0.0-alpha.7.x');
+ * // \{ major: 1, minor: 0, patch: 0, prerelease: ['alpha', '7', 'x'] \}
+ *
+ * parseSemver('not-a-version'); // null
+ */
+export function parseSemver(version: string): ParsedSemver | null {
+  const parsed = semverParse(version);
+
+  if (parsed === null) {
+    return null;
+  }
+
+  const prerelease: readonly string[] = parsed.prerelease.map((identifier) =>
+    typeof identifier === 'number' ? identifier.toString(10) : identifier,
+  );
+
+  return {
+    major: parsed.major,
+    minor: parsed.minor,
+    patch: parsed.patch,
+    prerelease,
+  };
+}
+
+/**
+ * Error returned by {@link isLessThanOrEqual} when an input string is not
+ * strict-semver-valid. Carries the offending value for diagnostics.
+ */
+export interface InvalidSemverError {
+  readonly type: 'invalid-semver';
+  readonly value: string;
+}
+
+/**
+ * Compare two semver strings per §11 precedence.
+ *
+ * @returns `ok(true)` if `a` ≤ `b` in semver order, `ok(false)` otherwise; or
+ * `err(InvalidSemverError)` if either input is not strict-semver-valid. Errors
+ * flow through the Result type (ADR-088 / use-result-pattern), keeping the
+ * failure mode in the type signature rather than as an invisible throw.
+ *
+ * @example
+ * isLessThanOrEqual('1.0.0', '1.0.1'); // ok(true)
+ * isLessThanOrEqual('1.0.1', '1.0.0'); // ok(false)
+ * isLessThanOrEqual('bad', '1.0.0');   // err(\{ type: 'invalid-semver', value: 'bad' \})
+ */
+export function isLessThanOrEqual(a: string, b: string): Result<boolean, InvalidSemverError> {
+  if (!isValidSemver(a)) {
+    return err({ type: 'invalid-semver', value: a });
+  }
+  if (!isValidSemver(b)) {
+    return err({ type: 'invalid-semver', value: b });
+  }
+
+  return ok(semverLte(a, b));
+}

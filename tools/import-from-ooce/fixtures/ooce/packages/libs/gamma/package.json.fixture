@@ -1,0 +1,5 @@
+{
+  "name": "@source/gamma",
+  "version": "0.0.0-development",
+  "dependencies": { "mid-pad": "^3.0.0", "right-pad": "^2.0.0" }
+}

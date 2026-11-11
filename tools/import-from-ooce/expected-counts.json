@@ -1,0 +1,33 @@
+{
+  "sha": "d5846cf6f37270c73291640a526124429369ee97",
+  "packages": {
+    "@oaknational/result": {
+      "tests": 36,
+      "skipped": 0
+    },
+    "@oaknational/observability": {
+      "tests": 59,
+      "skipped": 0
+    },
+    "@oaknational/env": {
+      "tests": 90,
+      "skipped": 0
+    },
+    "@oaknational/build-metadata": {
+      "tests": 93,
+      "skipped": 0
+    },
+    "@oaknational/logger": {
+      "tests": 139,
+      "skipped": 0
+    },
+    "@oaknational/sentry-node": {
+      "tests": 118,
+      "skipped": 0
+    },
+    "@oaknational/posthog-node": {
+      "tests": 367,
+      "skipped": 0
+    }
+  }
+}

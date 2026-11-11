@@ -1,0 +1,6 @@
+{
+  "name": "@source/beta",
+  "version": "0.0.0-development",
+  "exports": { ".": "./dist/index.js" },
+  "dependencies": { "right-pad": "^2.0.0" }
+}

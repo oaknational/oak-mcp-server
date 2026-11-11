@@ -6,7 +6,7 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action == 'synchronize' }}
 
 permissions: {}
 
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           run_install: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -110,6 +110,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Install pinned gitleaks
         run: |
           version=8.30.0
@@ -128,13 +136,7 @@ jobs:
           GIT_CONFIG_VALUE_0: '3000'
         run: |
           rm -f .gitleaksignore
-          : "${BASE_SHA:?BASE_SHA must be set}"
-          git cat-file -e "$BASE_SHA^{commit}"
-          if git cat-file -e "$BASE_SHA:.gitleaks.toml" 2>/dev/null; then
-            git show "$BASE_SHA:.gitleaks.toml" > "$RUNNER_TEMP/gitleaks.toml"
-          else
-            printf '[extend]\nuseDefault = true\n' > "$RUNNER_TEMP/gitleaks.toml"
-          fi
+          node tools/repo-checks/secret-scan-config.ts "$RUNNER_TEMP/gitleaks.toml"
           gitleaks detect --config "$RUNNER_TEMP/gitleaks.toml" --ignore-gitleaks-allow --redact=100 --source . --log-opts="-m --branches --remotes --tags HEAD"
 
   workflow-lint:
@@ -147,16 +149,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           run_install: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
-      - name: Download the shellcheck binary that actionlint calls
-        run: sh -c "pnpm exec shellcheck --version"
-      - name: Install pinned actionlint and zizmor
+      - name: Install pinned actionlint, shellcheck and zizmor
         run: |
           fetch() {
             curl -sSfL --proto '=https' --proto-redir '=https' -o "$1" "$2"
@@ -170,9 +170,18 @@ jobs:
             https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz \
             bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
           sudo tar -xz -C /usr/local/bin -f zizmor.tar.gz
+          fetch shellcheck.tar.gz \
+            https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.gz \
+            b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
+          mkdir -p "$RUNNER_TEMP/shellcheck"
+          tar -xz -C "$RUNNER_TEMP/shellcheck" --strip-components=1 -f shellcheck.tar.gz shellcheck-v0.11.0/shellcheck
           actionlint -version
           zizmor --version
+          "$RUNNER_TEMP/shellcheck/shellcheck" --version
+      # pnpm puts the npm shellcheck wrapper first on PATH. SHELLCHECKJS_BIN makes it run the pinned binary instead of downloading one.
       - run: pnpm lint:workflows
+        env:
+          SHELLCHECKJS_BIN: ${{ runner.temp }}/shellcheck/shellcheck
 
   agent-skills:
     name: agent-skills
@@ -191,7 +200,7 @@ jobs:
       - secret-scan
       - workflow-lint
       - agent-skills
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

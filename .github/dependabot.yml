@@ -22,3 +22,14 @@ updates:
     groups:
       npm:
         patterns: ['*']
+    ignore:
+      # typescript-eslint 8.72.1 supports TypeScript below 6.1 only. Lift when a
+      # typescript-eslint release supports the newer range.
+      - dependency-name: typescript
+        versions: ['>=6.1']
+      - dependency-name: '@types/node'
+        versions: ['>=25']
+      # 0.24.0 pulls in re2js 2.8.6 (GHSA-gg6h-894w-4m9c, high severity). Lift when a
+      # markdownlint-cli2 release depends on markdownlint 0.42.1 or later.
+      - dependency-name: markdownlint-cli2
+        versions: ['0.24.0']
