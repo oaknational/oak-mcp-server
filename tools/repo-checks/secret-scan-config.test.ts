@@ -40,6 +40,27 @@ describe('resolveScanConfig', () => {
   });
 
   it.each([
+    [
+      'a quoted dotted path key',
+      '"extend.path" = "extra.toml"\n\n[[rules]]\nid = "a"\nregex = "x"\n',
+    ],
+    [
+      'a quoted dotted useDefault key',
+      '"extend.useDefault" = false\n\n[extend]\nuseDefault = true\n',
+    ],
+    ['a quoted dotted table header', '["Extend.x"]\n\n[extend]\nuseDefault = true\n'],
+  ])('refuses an extend key written as %s', (_form, toml) => {
+    expect(() => resolveScanConfig(toml)).toThrow(/literal dotted/);
+  });
+
+  it.each([
+    ['[extend] then an empty [EXTEND]', '[extend]\nuseDefault = true\n\n[EXTEND]\n'],
+    ['an empty [EXTEND] then [extend]', '[EXTEND]\n\n[extend]\nuseDefault = true\n'],
+  ])('refuses case-colliding extend tables: %s', (_form, toml) => {
+    expect(() => resolveScanConfig(toml)).toThrow(/more than one extend table/);
+  });
+
+  it.each([
     ['UseDefault', '[extend]\nUseDefault = true\n'],
     ['[EXTEND] with USEDEFAULT', '[EXTEND]\nUSEDEFAULT = true\n'],
   ])('counts %s as the default rules on', (_form, toml) => {

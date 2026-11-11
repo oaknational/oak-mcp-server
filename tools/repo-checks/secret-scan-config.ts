@@ -19,6 +19,16 @@ export function resolveScanConfig(baseConfig: string | undefined): ScanConfig {
     };
   }
   const config = parse(baseConfig);
+  if (Object.keys(config).some((key) => key.toLowerCase().startsWith('extend.'))) {
+    throw new Error(
+      `${CONFIG_PATH} at the base has a literal dotted extend key such as "extend.path". viper expands it into [extend], past this check. Write it inside [extend] instead.`,
+    );
+  }
+  if (fields(config, 'extend').length > 1) {
+    throw new Error(
+      `${CONFIG_PATH} at the base has more than one extend table differing only in case. viper keeps one of them, so the rules gitleaks loads are unknown. Keep a single [extend].`,
+    );
+  }
   const extendTables = fields(config, 'extend').filter(
     (value): value is Record<string, unknown> => typeof value === 'object' && !Array.isArray(value),
   );
