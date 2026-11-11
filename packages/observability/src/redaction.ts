@@ -8,7 +8,8 @@
  */
 
 import { typeSafeEntries } from './type-safe.js';
-import { redactWireParams } from './redaction-params.js';
+import { redactFormEncodedString } from './redaction-form.js';
+import { redactUrlString } from './redaction-url.js';
 import type { JsonObject, JsonValue } from './types.js';
 
 /**
@@ -53,6 +54,22 @@ const PARTIALLY_REDACTED_HEADERS = new Set([
   'x-vercel-proxied-for',
 ]);
 
+const REDACTED_QUERY_KEYS = new Set([
+  'access_token',
+  'assertion',
+  'api_key',
+  'apikey',
+  'client_assertion',
+  'client_secret',
+  'code',
+  'code_verifier',
+  'id_token',
+  'nonce',
+  'refresh_token',
+  'state',
+  'token',
+]);
+
 function isJsonObject(value: JsonValue): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -93,17 +110,23 @@ function redactEmbeddedCredentials(value: string): string {
 }
 
 function redactString(value: string): string {
-  const redacted = redactWireParams(value, {
-    isSensitiveKey: shouldFullyRedactKey,
-    encodedRedactedValue: encodeURIComponent(REDACTED_VALUE),
+  const redactedUrl = redactUrlString(value, {
+    normaliseKey,
+    redactedQueryKeys: REDACTED_QUERY_KEYS,
     redactedValue: REDACTED_VALUE,
   });
+  const redactedFormPayload = redactFormEncodedString(redactedUrl, {
+    normaliseKey,
+    redactedQueryKeys: REDACTED_QUERY_KEYS,
+    redactedValue: REDACTED_VALUE,
+    shouldFullyRedactKey,
+  });
 
-  if (redacted !== value) {
-    return redacted;
+  if (redactedFormPayload !== redactedUrl) {
+    return redactedFormPayload;
   }
 
-  return redactEmbeddedCredentials(value);
+  return redactEmbeddedCredentials(redactedUrl);
 }
 
 function redactScalarForKey(key: string | undefined, value: string): string {

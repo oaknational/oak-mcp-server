@@ -106,20 +106,6 @@
         {
           "from": "tools/import-from-ooce/supplied/type-safe-observability.ts",
           "to": "src/type-safe.ts"
-        },
-        {
-          "from": "tools/import-from-ooce/supplied/redaction-params-observability.ts",
-          "to": "src/redaction-params.ts"
-        }
-      ],
-      "drop": [
-        {
-          "path": "src/redaction-form.ts",
-          "reason": "Replaced by src/redaction-params.ts, which redacts form bodies and URL queries with one scanner."
-        },
-        {
-          "path": "src/redaction-url.ts",
-          "reason": "Replaced by src/redaction-params.ts, which redacts form bodies and URL queries with one scanner."
         }
       ],
       "removeDependencies": ["@oaknational/type-helpers"],
@@ -137,21 +123,6 @@
         {
           "path": "README.md",
           "find": "`@oaknational/type-helpers`, ",
-          "replace": ""
-        },
-        {
-          "path": "src/redaction.ts",
-          "find": "import { redactFormEncodedString } from './redaction-form.js';\nimport { redactUrlString } from './redaction-url.js';\n",
-          "replace": "import { redactWireParams } from './redaction-params.js';\n"
-        },
-        {
-          "path": "src/redaction.ts",
-          "find": "function redactString(value: string): string {\n  const redactedUrl = redactUrlString(value, {\n    normaliseKey,\n    redactedQueryKeys: REDACTED_QUERY_KEYS,\n    redactedValue: REDACTED_VALUE,\n  });\n  const redactedFormPayload = redactFormEncodedString(redactedUrl, {\n    normaliseKey,\n    redactedQueryKeys: REDACTED_QUERY_KEYS,\n    redactedValue: REDACTED_VALUE,\n    shouldFullyRedactKey,\n  });\n\n  if (redactedFormPayload !== redactedUrl) {\n    return redactedFormPayload;\n  }\n\n  return redactEmbeddedCredentials(redactedUrl);\n}\n\n",
-          "replace": "function redactString(value: string): string {\n  const redacted = redactWireParams(value, {\n    isSensitiveKey: shouldFullyRedactKey,\n    encodedRedactedValue: encodeURIComponent(REDACTED_VALUE),\n    redactedValue: REDACTED_VALUE,\n  });\n\n  if (redacted !== value) {\n    return redacted;\n  }\n\n  return redactEmbeddedCredentials(value);\n}\n\n"
-        },
-        {
-          "path": "src/redaction.ts",
-          "find": "const REDACTED_QUERY_KEYS = new Set([\n  'access_token',\n  'assertion',\n  'api_key',\n  'apikey',\n  'client_assertion',\n  'client_secret',\n  'code',\n  'code_verifier',\n  'id_token',\n  'nonce',\n  'refresh_token',\n  'state',\n  'token',\n]);\n\n",
           "replace": ""
         }
       ]
