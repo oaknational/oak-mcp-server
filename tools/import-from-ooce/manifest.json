@@ -124,18 +124,6 @@
           "path": "README.md",
           "find": "`@oaknational/type-helpers`, ",
           "replace": ""
-        },
-        {
-          "path": "src/redaction-form.ts",
-          "find": "if (value.includes('://') || value.includes('?')) {",
-          "replace": "if (/^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value)) {",
-          "reason": "A form body with a URL-valued field, such as redirect_uri, is redacted as a form, so an OAuth code in it no longer reaches Sentry. A value starting with / counts as a URL in both files. OOCE has the same bug."
-        },
-        {
-          "path": "src/redaction-url.ts",
-          "find": "return value.includes('?') || value.includes('://');",
-          "replace": "return /^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value);",
-          "reason": "A form body with a URL-valued field is left to form redaction instead of being rewritten as a URL, so the OAuth code in it is redacted. A value starting with / counts as a URL in both files. OOCE has the same bug."
         }
       ]
     },

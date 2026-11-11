@@ -72,6 +72,8 @@
     "packages/observability/src/primitives.unit.test.ts": "sha256:368b06528065e1a4c7e9047400d95acadb89b342654a064b3d633cdbd91bb47c",
     "packages/observability/src/product-analytics.ts": "sha256:4e9a5388a3403a5f39c1b4bc70e0da03924ff76164a220a77e955ab22aba53be",
     "packages/observability/src/product-analytics.unit.test.ts": "sha256:9a586e9b4515d5ba90f80688c715ac25fc5ab6ea8c4ca537a3d5af36e0b5f7c7",
+    "packages/observability/src/redaction-form.ts": "sha256:48034f8aa22010e99c531b2190f0a162ec2d9e88ac0e438c98976867d41f625f",
+    "packages/observability/src/redaction-url.ts": "sha256:8cf18a9963d99c2d783bb2409c2359feb4da46792726ece4bfb33b4390448e84",
     "packages/observability/src/span-context.ts": "sha256:15a9fd679b6e683866e4a23ad4582e9c6d496f50a0fc2aca053c925de6565b7a",
     "packages/observability/src/span-context.unit.test.ts": "sha256:b0475857a792fc3f5d4356bbb0ae9cbb61b5daf513610dba58944ceb846b89e7",
     "packages/observability/src/types.ts": "sha256:744bf7a76b5cf9722cff7636bd943cb88337c13d3b43ba5b4f0bfbd47aab9895",
