@@ -60,6 +60,12 @@ describe('Sentry request.data redaction (manifest edits to redaction-form.ts and
     ).toBe('https://client.example/callback?code=%5BREDACTED%5D&tab=1');
   });
 
+  it('redacts the code in a rooted relative URL whose path holds = or &', async () => {
+    expect(await redactedRequestData('/callback/a=b&c=d?code=fixture-code&tab=1')).toBe(
+      '/callback/a=b&c=d?code=%5BREDACTED%5D&tab=1',
+    );
+  });
+
   it('leaves a URL with no sensitive parameters unchanged', async () => {
     expect(await redactedRequestData('https://client.example/callback?tab=1')).toBe(
       'https://client.example/callback?tab=1',
