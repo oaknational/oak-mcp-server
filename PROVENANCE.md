@@ -34,9 +34,10 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 ### `packages/observability`
 
 - Source: `packages/core/observability` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 13 files.
-- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/primitives.ts`, `src/redaction-form.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `src/sink-registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Copied unchanged: 12 files.
+- Modified by the tool: `package.json`, `README.md`, `src/json-sanitisation.ts`, `src/primitives.ts`, `src/redaction-form.ts`, `src/redaction-url.ts`, `src/redaction.ts`, `src/redaction.unit.test.ts`, `src/sink-registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Modified `src/redaction-form.ts`. A form body with a URL-valued field, such as redirect_uri, is redacted as a form, so an OAuth code in it no longer reaches Sentry. OOCE has the same bug.
+- Modified `src/redaction-url.ts`. A form body with a URL-valued field is left to form redaction instead of being rewritten as a URL, so the OAuth code in it is redacted. OOCE has the same bug.
 - Supplied from this repository: `src/type-safe.ts`.
 - Dropped `packages/core/observability/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
