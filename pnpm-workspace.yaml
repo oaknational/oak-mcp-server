@@ -12,6 +12,10 @@ minimumReleaseAge: 10080
 overrides:
   '@posthog/core': 1.47.0
   '@vercel/cli-config>zod': 4.6.7
+  # openapi-zod-client 1.18.3 pins zod ^3, and every zod 3 release is open to
+  # GHSA-mrhx-c7xc-m3w5 (fixed in 4.6.6). Codegen output is unchanged under zod 4.
+  'openapi-zod-client>zod': 4.6.7
+  '@zodios/core>zod': 4.6.7
 
 allowBuilds:
   esbuild: true

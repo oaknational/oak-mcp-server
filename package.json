@@ -20,8 +20,8 @@
   "scripts": {
     "build": "pnpm --recursive --if-present build",
     "check": "out=$(pnpm --silent build 2>&1) || { printf '%s\\n' \"$out\"; exit 1; }; echo 'build ok' && pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
-    "codegen": "pnpm --filter @oaknational/sdk-codegen generate:types",
-    "codegen:drift": "pnpm codegen && drift=\"$(git diff --name-only -- packages/codegen; git ls-files --others --exclude-standard -- packages/codegen)\" && if [ -n \"$drift\" ]; then printf 'Codegen changed the committed tree:\\n%s\\n' \"$drift\"; exit 1; fi",
+    "codegen": "pnpm --filter @oaknational/sdk-codegen generate:types && pnpm --filter '@oaknational/sdk-codegen...' build && tsx packages/search/code-generation/searchgen.ts",
+    "codegen:drift": "pnpm codegen && drift=\"$(git diff --name-only -- packages/codegen packages/search; git ls-files --others --exclude-standard -- packages/codegen packages/search)\" && if [ -n \"$drift\" ]; then printf 'Codegen changed the committed tree:\\n%s\\n' \"$drift\"; exit 1; fi",
     "codegen:online": "SDK_CODEGEN_MODE=online pnpm codegen",
     "format": "prettier --check .",
     "graph:refresh": "tsx packages/codegen/vocab-gen/scripts/run-graph-refresh.ts",

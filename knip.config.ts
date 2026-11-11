@@ -36,6 +36,10 @@ const config: KnipConfig = {
       project: ['src/**/*.ts'],
       ignoreDependencies: ['@zod/core'],
     },
+    'packages/search': {
+      entry: ['src/**/*.ts', 'code-generation/**/*.ts', 'tests/**/*.ts'],
+      project: ['src/**/*.ts', 'code-generation/**/*.ts', 'tests/**/*.ts'],
+    },
     'packages/codegen': {
       entry: ['src/**/*.ts', 'code-generation/**/*.ts', 'vocab-gen/**/*.ts'],
       project: ['src/**/*.ts', 'code-generation/**/*.ts', 'vocab-gen/**/*.ts'],

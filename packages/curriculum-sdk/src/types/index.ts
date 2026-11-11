@@ -31,7 +31,7 @@ export {
   isSearchUnitRollupDoc,
   isSearchSequenceIndexDoc,
   isSearchThreadIndexDoc,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 export type {
   SearchLessonsCompletionContexts,
   SearchUnitsCompletionContexts,
@@ -49,16 +49,16 @@ export type {
   SearchSequenceIndexDoc,
   SearchThreadIndexDoc,
   SearchSubjectSlug,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 // Hybrid search facet types and schemas
 export type {
   SequenceFacetUnit,
   SequenceFacet,
   SearchFacets,
-} from '@oaknational/sdk-codegen/search';
-export { SequenceFacetUnitSchema, SequenceFacetSchema } from '@oaknational/sdk-codegen/zod';
-export { SearchFacetsSchema } from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
+export { SequenceFacetUnitSchema, SequenceFacetSchema } from '@oaknational/oak-search-sdk/contract';
+export { SearchFacetsSchema } from '@oaknational/oak-search-sdk/contract';
 
 // Response-shape type guards for search-related endpoints
 export {

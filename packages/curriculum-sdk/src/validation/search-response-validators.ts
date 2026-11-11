@@ -6,7 +6,10 @@
 import type { ValidationResult, SearchResponseForScope } from './types.js';
 import { parseSearchResponse, parseSearchSuggestionResponse } from './types.js';
 
-import type { SearchSuggestionResponse, SearchScopeWithAll } from '@oaknational/sdk-codegen/search';
+import type {
+  SearchSuggestionResponse,
+  SearchScopeWithAll,
+} from '@oaknational/oak-search-sdk/contract';
 
 export function validateSearchResponse<S extends SearchScopeWithAll>(
   scope: S,

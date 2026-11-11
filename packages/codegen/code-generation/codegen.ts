@@ -28,7 +28,7 @@ import { generateSchemaArtifacts } from './codegen-core.js';
 import { writeSchemaCacheIfChanged } from './schema-cache.js';
 import { createOpenCurriculumSchema } from './schema-separation-core.js';
 import { validateOpenApiDocument } from './schema-validator.js';
-import { generateWidgetConstants, generateSubjectHierarchy } from './typegen/index.js';
+import { generateWidgetConstants } from './typegen/index.js';
 import { runSitemapValidation } from './typegen/routing/validate-canonical-urls.js';
 import type { OpenAPIObject } from 'openapi3-ts/oas31';
 import { createCodegenLogger } from './create-codegen-logger.js';
@@ -117,9 +117,6 @@ await generateSchemaArtifacts(originalSchema, sdkSchema, outDirectory);
 
 logger.info('Generating widget constants...');
 generateWidgetConstants(logger);
-
-logger.info('Generating subject hierarchy...');
-generateSubjectHierarchy(logger);
 
 // Post-generation: run sitemap reference integrity validation.
 // Invalid URLs emit warnings (not errors) — this is intentionally a soft phase

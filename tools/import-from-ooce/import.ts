@@ -1,14 +1,18 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  closeSync,
+  constants,
   existsSync,
+  ftruncateSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
-  writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -25,7 +29,8 @@ type SuppliedSource = Brand<string, 'SuppliedSource'>;
 type PackageName = Brand<string, 'PackageName'>;
 /** A `./` path inside the package, as package.json `exports` needs. */
 type ExportTarget = Brand<string, 'ExportTarget'>;
-type Exports = Record<string, ExportTarget | Record<string, ExportTarget>>;
+type Exports = Record<string, ExportTarget | Record<string, ExportTarget> | null>;
+type DependencySection = (typeof DEPENDENCY_SECTIONS)[number];
 
 interface Drop {
   path: PackageFile;
@@ -47,6 +52,7 @@ interface SourceSpec {
   from: OocePath;
   moves: Move[];
   drop: Drop[];
+  pick: boolean;
 }
 interface SuppliedFile {
   from: SuppliedSource;
@@ -62,6 +68,7 @@ interface PackageSpec {
   supplied: SuppliedFile[];
   exports: Exports;
   removeDependencies: string[];
+  addDependencies: Partial<Record<DependencySection, Record<string, string>>>;
 }
 interface Manifest {
   scope: { from: string; to: string };
@@ -88,7 +95,7 @@ type PlannedFile = { path: RepoPath; bytes: Buffer } & (
 interface PackagePlan {
   spec: PackageSpec;
   files: PlannedFile[];
-  dropped: { source: OocePath; reason: string }[];
+  dropped: { source: string; reason: string; files: number }[];
 }
 type LockedVersions = Map<string, Record<string, string>>;
 type SuppliedContents = ReadonlyMap<SuppliedSource, Buffer>;
@@ -96,7 +103,11 @@ export interface TestCount {
   tests: number;
   skipped: number;
 }
-type CountTests = (directory: string, exclude: readonly string[]) => TestCount;
+interface CountFilter {
+  exclude: readonly string[];
+  include: readonly string[];
+}
+type CountTests = (directory: string, filter: CountFilter) => TestCount;
 
 const MANIFEST_PATH = 'tools/import-from-ooce/manifest.json';
 const IMPORTED_PATH = 'tools/import-from-ooce/imported.json';
@@ -192,14 +203,16 @@ function parseExports(value: unknown, where: string): Exports {
       }
       return [
         key,
-        typeof entry === 'string'
-          ? exportTarget(entry, at)
-          : Object.fromEntries(
-              Object.entries(asRecord(entry, at)).map(([condition, target]) => [
-                condition,
-                exportTarget(target, `${at}.${condition}`),
-              ]),
-            ),
+        entry === null
+          ? null
+          : typeof entry === 'string'
+            ? exportTarget(entry, at)
+            : Object.fromEntries(
+                Object.entries(asRecord(entry, at)).map(([condition, target]) => [
+                  condition,
+                  exportTarget(target, `${at}.${condition}`),
+                ]),
+              ),
       ];
     }),
   );
@@ -232,9 +245,16 @@ function asList<T>(value: unknown, where: string, parse: (item: unknown, at: str
 function parseDrop(value: unknown, where: string): Drop {
   const record = asRecord(value, where, ['path', 'reason']);
   const reason = asString(record['reason'], `${where}.reason`);
+  const path = asString(record['path'], `${where}.path`);
+  const directory = path.endsWith('/');
+  packageFile(directory ? path.slice(0, -1) : path);
   return reason.trim() === ''
     ? fail(`${where}.reason must explain the drop`)
-    : { path: packageFile(asString(record['path'], `${where}.path`)), reason };
+    : { path: path as PackageFile, reason };
+}
+
+function dropMatches(drop: Drop, relative: string): boolean {
+  return drop.path.endsWith('/') ? relative.startsWith(drop.path) : drop.path === relative;
 }
 
 function parseEdit(value: unknown, where: string): TextEdit {
@@ -268,13 +288,33 @@ function parseMove(from: string, to: unknown, where: string): Move {
 }
 
 function parseSource(value: unknown, where: string): SourceSpec {
-  const record = asRecord(value, where, ['from', 'moves', 'drop']);
+  const record = asRecord(value, where, ['from', 'moves', 'drop', 'pick']);
   const moves = asRecord(record['moves'] ?? {}, `${where}.moves`);
+  const pick = record['pick'] ?? false;
+  if (typeof pick !== 'boolean') {
+    fail(`${where}.pick must be true or false`);
+  }
   return {
     from: oocePath(asString(record['from'], `${where}.from`)),
     moves: Object.entries(moves).map(([from, to]) => parseMove(from, to, `${where}.moves.${from}`)),
     drop: asList(record['drop'], `${where}.drop`, parseDrop),
+    pick,
   };
+}
+
+function parseAddDependencies(value: unknown, where: string): PackageSpec['addDependencies'] {
+  const record = asRecord(value ?? {}, where, DEPENDENCY_SECTIONS);
+  return Object.fromEntries(
+    Object.entries(record).map(([section, entries]) => [
+      section,
+      Object.fromEntries(
+        Object.entries(asRecord(entries, `${where}.${section}`)).map(([name, range]) => [
+          name,
+          asString(range, `${where}.${section}.${name}`),
+        ]),
+      ),
+    ]),
+  );
 }
 
 function parseSupplied(value: unknown, where: string): SuppliedFile {
@@ -296,10 +336,14 @@ function parsePackage(value: unknown, where: string): PackageSpec {
     'supplied',
     'exports',
     'removeDependencies',
+    'addDependencies',
   ]);
   const sources = asList(record['sources'], `${where}.sources`, parseSource);
   if (sources.length === 0) {
     fail(`${where}.sources needs at least one source`);
+  }
+  if (sources[0]?.pick === true) {
+    fail(`${where}.sources[0] is the package's own source and cannot pick`);
   }
   return {
     name: packageNameSegment(asString(record['name'], `${where}.name`), `${where}.name`),
@@ -315,6 +359,7 @@ function parsePackage(value: unknown, where: string): PackageSpec {
       `${where}.removeDependencies`,
       asString,
     ),
+    addDependencies: parseAddDependencies(record['addDependencies'], `${where}.addDependencies`),
   };
 }
 
@@ -471,6 +516,9 @@ function transformPackageJson(
   for (const script of manifest.removeScripts) {
     Reflect.deleteProperty(scripts, script);
   }
+  for (const [section, entries] of Object.entries(spec.addDependencies)) {
+    mergeSection(out, entries, section, owner);
+  }
   const moved = destinationPackageNames(manifest);
   for (const section of DEPENDENCY_SECTIONS) {
     if (out[section] === undefined) {
@@ -492,7 +540,10 @@ function transformPackageJson(
     out[section] = kept;
   }
   if (Object.keys(spec.exports).length > 0) {
-    out['exports'] = { ...asRecord(out['exports'], `${owner} exports`), ...spec.exports };
+    const merged = { ...asRecord(out['exports'], `${owner} exports`), ...spec.exports };
+    out['exports'] = Object.fromEntries(
+      Object.entries(merged).filter(([, target]) => target !== null),
+    );
   }
   if (out['repository'] !== undefined) {
     out['repository'] = { type: 'git', url: `git+${manifest.repository}.git`, directory: spec.to };
@@ -541,13 +592,26 @@ function gather(
     const used = new Set<string>();
     for (const file of source.list(src.from)) {
       const relative = file.slice(src.from.length + 1);
-      const drop = drops.find((d) => d.path === relative);
+      if (src.pick && movedPath(relative, src.moves) === undefined) {
+        continue;
+      }
+      const drop = drops.find((d) => dropMatches(d, relative));
       if (index > 0 && relative === 'package.json') {
         secondaryJson.push(asRecord(JSON.parse(source.read(file).toString('utf8')), file));
       }
       if (drop !== undefined) {
         used.add(drop.path);
-        dropped.push({ source: file, reason: drop.reason });
+        const directory = `${src.from}/${drop.path}`;
+        const grouped = dropped.find((d) => d.source === directory);
+        if (grouped !== undefined) {
+          grouped.files += 1;
+        } else {
+          dropped.push({
+            source: drop.path.endsWith('/') ? directory : file,
+            reason: drop.reason,
+            files: 1,
+          });
+        }
         continue;
       }
       const destination = index === 0 ? relative : movedPath(relative, src.moves);
@@ -696,7 +760,11 @@ function describePackage(manifest: Manifest, plan: PackagePlan, sha: Sha40): str
     lines.push(`- Supplied from this repository: ${supplied.join(', ')}.`);
   }
   for (const drop of plan.dropped) {
-    lines.push(`- Dropped \`${drop.source}\`. ${drop.reason}`);
+    lines.push(
+      drop.files === 1
+        ? `- Dropped \`${drop.source}\`. ${drop.reason}`
+        : `- Dropped \`${drop.source}\` (${String(drop.files)} files). ${drop.reason}`,
+    );
   }
   return lines.join('\n');
 }
@@ -786,11 +854,17 @@ function writeOutputs(
   }
   for (const [path, bytes] of outputs) {
     const target = join(root, path);
-    if (existsSync(target) && readFileSync(target).equals(bytes)) {
-      continue;
-    }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, bytes);
+    const fd = openSync(target, constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW);
+    try {
+      if (readFileSync(fd).equals(bytes)) {
+        continue;
+      }
+      ftruncateSync(fd, 0);
+      writeSync(fd, bytes, 0, bytes.length, 0);
+    } finally {
+      closeSync(fd);
+    }
     report.written.push(path);
   }
   for (const directory of ownedDirectories) {
@@ -875,7 +949,7 @@ export function countFromVitestRun(directory: string, run: VitestRun): TestCount
   return { tests: number('numTotalTests'), skipped: number('numPendingTests') };
 }
 
-function vitestCount(directory: string, exclude: readonly string[]): TestCount {
+function vitestCount(directory: string, { exclude, include }: CountFilter): TestCount {
   const out = mkdtempSync(join(tmpdir(), 'import-counts-'));
   const outputFile = join(out, 'report.json');
   try {
@@ -888,6 +962,7 @@ function vitestCount(directory: string, exclude: readonly string[]): TestCount {
         '--reporter=json',
         `--outputFile=${outputFile}`,
         ...exclude.map((path) => `--exclude=${path}`),
+        ...include,
       ],
       { cwd: directory, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
@@ -939,7 +1014,12 @@ export function runImport(input: ImportInput): ImportReport {
   }
   const counts = new Map<string, TestCount>();
   for (const plan of plans) {
-    const parts = plan.spec.sources.map((s) => input.countTests(join(input.ooceRoot, s.from), []));
+    const parts = plan.spec.sources.map((s, index) =>
+      input.countTests(
+        join(input.ooceRoot, s.from),
+        sourceCountFilter(manifest, plan.spec, s, index),
+      ),
+    );
     counts.set(plan.spec.name, {
       tests: parts.reduce((sum, p) => sum + p.tests, 0),
       skipped: parts.reduce((sum, p) => sum + p.skipped, 0),
@@ -963,6 +1043,19 @@ export function runImport(input: ImportInput): ImportReport {
   return report;
 }
 
+function sourceCountFilter(
+  manifest: Manifest,
+  spec: PackageSpec,
+  src: SourceSpec,
+  index: number,
+): CountFilter {
+  const drops = [...manifest.dropEverywhere, ...(index === 0 ? spec.drop : src.drop)];
+  return {
+    exclude: drops.map((d) => (d.path.endsWith('/') ? `${d.path}**` : d.path)),
+    include: src.pick ? src.moves.map((m) => (m.directory ? `${m.from}/` : m.from)) : [],
+  };
+}
+
 export function checkCounts(root: string, countTests: CountTests): string[] {
   const manifest = parseManifest(JSON.parse(readFileSync(join(root, MANIFEST_PATH), 'utf8')));
   const expected = asRecord(
@@ -974,10 +1067,10 @@ export function checkCounts(root: string, countTests: CountTests): string[] {
   for (const spec of manifest.packages) {
     const name = packageName(manifest, spec);
     const want = asRecord(expected[name] ?? fail(`${COUNTS_PATH} lacks ${name}`), name);
-    const got = countTests(
-      join(root, spec.to),
-      spec.supplied.map((file) => file.to),
-    );
+    const got = countTests(join(root, spec.to), {
+      exclude: spec.supplied.map((file) => file.to),
+      include: [],
+    });
     const match = want['tests'] === got.tests && want['skipped'] === got.skipped;
     ok &&= match;
     lines.push(

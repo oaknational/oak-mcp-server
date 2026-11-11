@@ -13,7 +13,7 @@ import {
   resolveUniversalToolLogger,
   type UniversalToolExecutorDependencies,
 } from '../universal-tool-shared.js';
-import type { SearchFacets } from '@oaknational/sdk-codegen/search';
+import type { SearchFacets } from '@oaknational/oak-search-sdk/contract';
 import type { BrowseArgs } from './types.js';
 import { buildBrowseSummary } from './formatting.js';
 
