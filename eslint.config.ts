@@ -27,6 +27,11 @@ export default defineConfig(
       '**/coverage/**',
       '.cache/**',
       'tools/import-from-ooce/supplied/**',
+      'apps/docs/.next/**',
+      'apps/docs/out/**',
+      'apps/docs/test-results/**',
+      'apps/docs/playwright-report/**',
+      'apps/docs/next-env.d.ts',
     ],
   },
   eslint.configs.recommended,
@@ -50,6 +55,10 @@ export default defineConfig(
     languageOptions: {
       parserOptions: { project: ['./packages/*/tsconfig.json', './tsconfig.base.json'] },
     },
+  },
+  {
+    files: ['apps/docs/**/*.{ts,tsx,mts}'],
+    languageOptions: { parserOptions: { project: ['./apps/docs/tsconfig.json'] } },
   },
   ...Object.entries(importedRuleGaps).map(([name, rules]) => ({
     files: [`packages/${name}/**/*.ts`],
