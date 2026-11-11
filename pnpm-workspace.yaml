@@ -7,8 +7,11 @@ minimumReleaseAge: 10080
 
 # @posthog/core 1.64 changes the fetch types that posthog-node and @posthog/mcp
 # compile against. Hold the release OOCE resolved at the import pin.
+# @vercel/cli-config (under @vercel/blob) pins zod 4.1.11, which has
+# GHSA-mrhx-c7xc-m3w5. Lift it to the patched zod the workspace already uses.
 overrides:
   '@posthog/core': 1.47.0
+  '@vercel/cli-config>zod': 4.6.7
 
 allowBuilds:
   esbuild: true
