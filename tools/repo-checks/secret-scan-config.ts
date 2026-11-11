@@ -64,7 +64,10 @@ function fields(table: Readonly<Record<string, unknown>>, lowerKey: string): unk
 }
 
 function git(args: string[]): { ok: boolean; stdout: string } {
-  const result = spawnSync('git', args, { encoding: 'utf8' });
+  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
   return { ok: result.status === 0, stdout: result.stdout };
 }
 
@@ -73,8 +76,13 @@ function main(): void {
   if (!git(['cat-file', '-e', `${base}^{commit}`]).ok) {
     throw new Error(`BASE_SHA '${base}' is not a commit in this checkout`);
   }
-  const file = git(['show', `${base}:${CONFIG_PATH}`]);
-  const config = resolveScanConfig(file.ok ? file.stdout : undefined);
+  const blob = `${base}:${CONFIG_PATH}`;
+  const exists = git(['cat-file', '-e', blob]).ok;
+  const file = exists ? git(['show', blob]) : undefined;
+  if (file?.ok === false) {
+    throw new Error(`cannot read ${blob}`);
+  }
+  const config = resolveScanConfig(file?.stdout);
   writeFileSync(process.argv[2] ?? '', config.toml);
   const summary = `secret-scan: config from ${config.source} (base ${base.slice(0, 12)}).\n`;
   process.stdout.write(summary);

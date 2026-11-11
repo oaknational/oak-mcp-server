@@ -145,6 +145,8 @@ describe('secret-scan-config against a real repository', () => {
   const strong = commit({ '.gitleaks.toml': '[extend]\nuseDefault = true\n' });
   const weak = commit({ '.gitleaks.toml': '' });
   const head = commit({ '.gitleaks.toml': '[extend]\npath = "extra.toml"\n' });
+  const large = `[extend]\nuseDefault = true\n${'# padding\n'.repeat(120_000)}`;
+  const largeBase = commit({ '.gitleaks.toml': large });
 
   it('falls back to the default rules and says so', () => {
     const result = run(noConfig);
@@ -168,6 +170,12 @@ describe('secret-scan-config against a real repository', () => {
     const result = run(head);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('[extend] path');
+  });
+
+  it('writes a base config larger than the default subprocess buffer', () => {
+    const result = run(largeBase);
+    expect(result.status).toBe(0);
+    expect(readFileSync(out, 'utf8')).toBe(large);
   });
 
   it('fails when the base commit is missing', () => {
