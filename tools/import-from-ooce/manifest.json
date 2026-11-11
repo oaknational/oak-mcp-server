@@ -10,7 +10,7 @@
       "reason": "The root eslint.config.ts lints packages/**."
     }
   ],
-  "removeScripts": ["lint", "lint:fix"],
+  "removeScripts": ["lint", "lint:fix", "test:e2e"],
   "removeDependencies": [
     "@oaknational/eslint-plugin-standards",
     "@oaknational/workspace-config",
@@ -332,6 +332,197 @@
           "find": "s direction) from PostHog's published resolver and its fixtures",
           "replace": " * as a product decision) from PostHog's published resolver and its fixtures",
           "wholeLine": true
+        }
+      ]
+    },
+    {
+      "name": "openapi-zod-client-adapter",
+      "to": "packages/openapi-zod-client-adapter",
+      "sources": [
+        {
+          "from": "packages/core/openapi-zod-client-adapter"
+        }
+      ],
+      "edits": [
+        {
+          "path": "src/endpoint-types.ts",
+          "find": "users/:id",
+          "replace": "members/:id",
+          "reason": "The example path matches the pre-commit personal-data scrub pattern for home directories, so it is renamed. No test reads it."
+        }
+      ]
+    },
+    {
+      "name": "graph-core",
+      "to": "packages/graph-core",
+      "sources": [
+        {
+          "from": "packages/core/graph-core"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-safe-graph-core.ts",
+          "to": "src/type-safe.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "edits": [
+        {
+          "path": "src/vocab/registry.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'"
+        },
+        {
+          "path": "src/vocab/index.unit.test.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'"
+        }
+      ]
+    },
+    {
+      "name": "sdk-codegen",
+      "to": "packages/codegen",
+      "sources": [
+        {
+          "from": "packages/sdks/oak-sdk-codegen"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "src/types/helpers/type-safe.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-prettier.config.mjs",
+          "to": "prettier.config.mjs"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-drift.test-source.ts",
+          "to": "tests/drift.test.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "edits": [
+        {
+          "path": "src/types/helpers/type-helpers.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "src/synonym-export.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./types/helpers/type-helpers.js'"
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "find": ", \"src/generated/vocab/**\", \"src/vocab-data.ts\"]",
+          "replace": "]",
+          "reason": "The type-check covers the generated vocab modules too, as the repository's type-check coverage test requires. They type-check clean."
+        },
+        {
+          "path": "reference/README.md",
+          "find": "(../../../../.gitignore)",
+          "replace": "(../../../.gitignore)",
+          "reason": "The link points at this repository's root .gitignore, which carries the same reference rule, one level nearer than in OOCE."
+        },
+        {
+          "path": "src/synonyms/README.md",
+          "find": "(../../../../../apps/oak-search-cli/docs/SYNONYMS.md)",
+          "replace": "(https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-search-cli/docs/SYNONYMS.md)",
+          "reason": "The search app stays in OOCE, so the link points at its file at the pinned SHA."
+        },
+        {
+          "path": "code-generation/test-fixtures.ts",
+          "find": "users/{id}",
+          "replace": "members/{id}",
+          "reason": "The example path matches the pre-commit personal-data scrub pattern for home directories, so it is renamed. No test reads it."
+        }
+      ],
+      "drop": [
+        {
+          "path": "vitest.e2e.config.ts",
+          "reason": "It extends the e2e preset in OOCE's workspace-config, which this repository does not carry. The codegen e2e lane is deferred to MCP-861."
+        },
+        {
+          "path": "e2e-tests/scripts/codegen-core.e2e.test.ts",
+          "reason": "Its config is dropped. The codegen e2e lane is deferred to MCP-861."
+        }
+      ],
+      "keepText": [
+        {
+          "path": "code-generation/typegen/search/generate-search-index-docs.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-modules.unit.test.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-response-docs.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        }
+      ]
+    },
+    {
+      "name": "graph-corpus-sdk",
+      "to": "packages/graph-corpus-sdk",
+      "sources": [
+        {
+          "from": "packages/sdks/graph-corpus-sdk"
+        }
+      ]
+    },
+    {
+      "name": "curriculum-sdk",
+      "to": "packages/curriculum-sdk",
+      "sources": [
+        {
+          "from": "packages/sdks/oak-curriculum-sdk"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "src/types/helpers/type-safe.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "edits": [
+        {
+          "path": "src/types/helpers/type-helpers.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "find": "    \"bin/**/*.ts\",\n",
+          "replace": "    \"bin/**/*.ts\",\n    \"examples/**/*.ts\",\n",
+          "reason": "The type-check covers the client example too, as the repository's type-check coverage test requires. It type-checks clean."
+        },
+        {
+          "path": "docs/mcp/README.md",
+          "find": "3. Run `pnpm sdk-codegen` to regenerate tool descriptors\n4. Verify the tool now has `securitySchemes: [{ type: 'noauth' }]`\n",
+          "replace": "<!-- markdownlint-disable MD029 -->\n\n3. Run `pnpm sdk-codegen` to regenerate tool descriptors\n4. Verify the tool now has `securitySchemes: [{ type: 'noauth' }]`\n\n<!-- markdownlint-enable MD029 -->\n",
+          "reason": "The list continues after an unindented code block, which the repository's markdownlint rejects. The disable pair keeps OOCE's text and rendering."
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "    \"docs/_typedoc_src/**/*.ts\"\n",
+          "replace": "    \"docs/_typedoc_src/**/*.ts\",\n    \"examples/**/*.ts\"\n",
+          "reason": "ESLint's typed rules resolve each file through the package tsconfig.json, so it must cover the client example."
+        },
+        {
+          "path": "docs/logging-guide.md",
+          "find": "(../../../libs/logger/README.md)",
+          "replace": "(../../logger/README.md)",
+          "reason": "The logger package moved to packages/logger in this repository."
+        },
+        {
+          "path": "docs/logging-guide.md",
+          "find": "(../../../../apps/oak-curriculum-mcp-streamable-http/README.md)",
+          "replace": "(https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-curriculum-mcp-streamable-http/README.md)",
+          "reason": "The HTTP server has not moved yet, so the link points at its OOCE README at the pinned SHA."
         }
       ]
     }

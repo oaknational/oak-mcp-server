@@ -6,3 +6,7 @@ AGENTS.local.md
 node_modules/
 dist/
 coverage/
+
+**/.typedoc
+**/_typedoc_*
+packages/codegen/reference/*.json

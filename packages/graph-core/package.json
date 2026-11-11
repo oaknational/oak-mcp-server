@@ -1,0 +1,84 @@
+{
+  "name": "@oaknational/graph-core",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "RDF/JS-aligned graph primitives: Term, Dataset, JSON-LD wrappers, canonicalisation, vocabulary registry",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./term": {
+      "types": "./dist/term/index.d.ts",
+      "import": "./dist/term/index.js"
+    },
+    "./data-factory": {
+      "types": "./dist/data-factory/index.d.ts",
+      "import": "./dist/data-factory/index.js"
+    },
+    "./dataset": {
+      "types": "./dist/dataset/index.d.ts",
+      "import": "./dist/dataset/index.js"
+    },
+    "./jsonld": {
+      "types": "./dist/jsonld/index.d.ts",
+      "import": "./dist/jsonld/index.js"
+    },
+    "./canon": {
+      "types": "./dist/canon/index.d.ts",
+      "import": "./dist/canon/index.js"
+    },
+    "./vocab": {
+      "types": "./dist/vocab/index.d.ts",
+      "import": "./dist/vocab/index.js"
+    },
+    "./graph-view": {
+      "types": "./dist/graph-view/index.d.ts",
+      "import": "./dist/graph-view/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "src/**/*",
+    "!**/*.test.ts",
+    "!**/*.integration.test.ts"
+  ],
+  "scripts": {
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@oaknational/result": "workspace:*",
+    "jsonld": "9.0.0",
+    "rdf-canonize": "5.0.0"
+  },
+  "devDependencies": {
+    "@types/jsonld": "^1.5.15",
+    "@types/node": "^24.13.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/graph-core"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/graph-core#readme",
+  "keywords": [
+    "rdf",
+    "graph",
+    "json-ld",
+    "knowledge-graph"
+  ],
+  "license": "MIT"
+}

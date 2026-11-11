@@ -1,0 +1,67 @@
+{
+  "name": "@oaknational/graph-corpus-sdk",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Oak's typed corpus SDK for the graph substrate. Ships the EEF strands typed raw-corpus foundation, derived from the fixed as-const corpus snapshot. Transport-agnostic (ADR-179).",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./eef-strands": {
+      "types": "./dist/eef-strands/index.d.ts",
+      "default": "./dist/eef-strands/index.js"
+    },
+    "./curriculum": {
+      "types": "./dist/curriculum/index.d.ts",
+      "default": "./dist/curriculum/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "@oaknational/graph-core": "workspace:*",
+    "@oaknational/result": "workspace:*",
+    "@oaknational/sdk-codegen": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/graph-corpus-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/graph-corpus-sdk#readme",
+  "keywords": [
+    "oak",
+    "graph",
+    "corpus",
+    "eef",
+    "sdk",
+    "education",
+    "typescript"
+  ],
+  "license": "MIT"
+}

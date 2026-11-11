@@ -86,3 +86,56 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Copied unchanged: 33 files.
 - Modified by the tool: `package.json`, `src/client-product-selection.ts`, `src/event-policy.integration.test.ts`, `src/mcp-transport-observer-collaborator.integration.test.ts`, `src/product-analytics-sink.integration.test.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
 - Dropped `packages/libs/posthog-node/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+
+### `packages/openapi-zod-client-adapter`
+
+- Source: `packages/core/openapi-zod-client-adapter` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 9 files.
+- Modified by the tool: `package.json`, `README.md`, `src/endpoint-types.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Modified `src/endpoint-types.ts`. The example path matches the pre-commit personal-data scrub pattern for home directories, so it is renamed. No test reads it.
+- Dropped `packages/core/openapi-zod-client-adapter/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+
+### `packages/graph-core`
+
+- Source: `packages/core/graph-core` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 37 files.
+- Modified by the tool: `package.json`, `src/vocab/index.unit.test.ts`, `src/vocab/registry.ts`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Supplied from this repository: `src/type-safe.ts`.
+- Dropped `packages/core/graph-core/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+
+### `packages/codegen`
+
+- Source: `packages/sdks/oak-sdk-codegen` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 480 files.
+- Modified by the tool: `code-generation/test-fixtures.ts`, `code-generation/typegen/bulk/generate-bulk-schemas.ts`, `package.json`, `README.md`, `reference/README.md`, `src/synonym-export.ts`, `src/synonyms/README.md`, `src/types/helpers/type-helpers.ts`, `tsconfig.json`, `tsconfig.lint.json`, `tsup.config.ts`.
+- Modified `code-generation/test-fixtures.ts`. The example path matches the pre-commit personal-data scrub pattern for home directories, so it is renamed. No test reads it.
+- Modified `reference/README.md`. The link points at this repository's root .gitignore, which carries the same reference rule, one level nearer than in OOCE.
+- Modified `src/synonyms/README.md`. The search app stays in OOCE, so the link points at its file at the pinned SHA.
+- Modified `tsconfig.lint.json`. The type-check covers the generated vocab modules too, as the repository's type-check coverage test requires. They type-check clean.
+- Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-index-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
+- Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-modules.unit.test.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
+- Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-response-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
+- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`.
+- Dropped `packages/sdks/oak-sdk-codegen/e2e-tests/scripts/codegen-core.e2e.test.ts`. Its config is dropped. The codegen e2e lane is deferred to MCP-861.
+- Dropped `packages/sdks/oak-sdk-codegen/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+- Dropped `packages/sdks/oak-sdk-codegen/vitest.e2e.config.ts`. It extends the e2e preset in OOCE's workspace-config, which this repository does not carry. The codegen e2e lane is deferred to MCP-861.
+
+### `packages/graph-corpus-sdk`
+
+- Source: `packages/sdks/graph-corpus-sdk` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 34 files.
+- Modified by the tool: `package.json`, `README.md`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Dropped `packages/sdks/graph-corpus-sdk/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+
+### `packages/curriculum-sdk`
+
+- Source: `packages/sdks/oak-curriculum-sdk` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 187 files.
+- Modified by the tool: `docs/architecture.md`, `docs/logging-guide.md`, `docs/mcp/README.md`, `package.json`, `README.md`, `src/types/helpers/type-helpers.ts`, `tsconfig.json`, `tsconfig.lint.json`, `tsup.config.ts`.
+- Modified `docs/logging-guide.md`. The HTTP server has not moved yet, so the link points at its OOCE README at the pinned SHA.
+- Modified `docs/logging-guide.md`. The logger package moved to packages/logger in this repository.
+- Modified `docs/mcp/README.md`. The list continues after an unindented code block, which the repository's markdownlint rejects. The disable pair keeps OOCE's text and rendering.
+- Modified `tsconfig.json`. ESLint's typed rules resolve each file through the package tsconfig.json, so it must cover the client example.
+- Modified `tsconfig.lint.json`. The type-check covers the client example too, as the repository's type-check coverage test requires. It type-checks clean.
+- Supplied from this repository: `src/types/helpers/type-safe.ts`.
+- Dropped `packages/sdks/oak-curriculum-sdk/eslint.config.ts`. The root eslint.config.ts lints packages/**.

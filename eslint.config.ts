@@ -5,9 +5,29 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 const importedRuleGaps: Record<string, string[]> = {
+  codegen: [
+    'no-base-to-string',
+    'no-confusing-void-expression',
+    'no-redundant-type-constituents',
+    'no-unnecessary-condition',
+    'no-unnecessary-type-conversion',
+    'no-unsafe-assignment',
+    'require-await',
+    'restrict-template-expressions',
+    'return-await',
+  ],
+  'curriculum-sdk': [
+    'no-unnecessary-condition',
+    'no-unnecessary-type-conversion',
+    'restrict-template-expressions',
+    'unbound-method',
+    'use-unknown-in-catch-callback-variable',
+  ],
   env: ['no-confusing-void-expression', 'no-unnecessary-condition'],
   logger: ['no-confusing-void-expression', 'no-unnecessary-condition'],
   observability: ['no-confusing-void-expression', 'no-unnecessary-type-arguments', 'require-await'],
+  'graph-core': ['no-unnecessary-condition', 'require-await', 'restrict-template-expressions'],
+  'graph-corpus-sdk': ['no-unnecessary-condition'],
   'posthog-node': [
     'no-confusing-void-expression',
     'no-unnecessary-condition',

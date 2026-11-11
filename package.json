@@ -20,6 +20,9 @@
   "scripts": {
     "build": "pnpm --recursive --if-present build",
     "check": "out=$(pnpm --silent build 2>&1) || { printf '%s\\n' \"$out\"; exit 1; }; echo 'build ok' && pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
+    "codegen": "pnpm --filter @oaknational/sdk-codegen generate:types",
+    "codegen:drift": "pnpm codegen && drift=\"$(git diff --name-only -- packages/codegen; git ls-files --others --exclude-standard -- packages/codegen)\" && if [ -n \"$drift\" ]; then printf 'Codegen changed the committed tree:\\n%s\\n' \"$drift\"; exit 1; fi",
+    "codegen:online": "SDK_CODEGEN_MODE=online pnpm codegen",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "import:ooce": "node tools/import-from-ooce/import.ts",
@@ -53,6 +56,7 @@
     "shellcheck": "^4.1.0",
     "smol-toml": "^1.9.1",
     "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.66.0",
     "unist-util-visit": "^5.2.0",

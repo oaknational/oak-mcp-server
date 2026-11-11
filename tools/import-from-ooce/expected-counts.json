@@ -28,6 +28,26 @@
     "@oaknational/posthog-node": {
       "tests": 367,
       "skipped": 0
+    },
+    "@oaknational/openapi-zod-client-adapter": {
+      "tests": 22,
+      "skipped": 0
+    },
+    "@oaknational/graph-core": {
+      "tests": 82,
+      "skipped": 0
+    },
+    "@oaknational/sdk-codegen": {
+      "tests": 1036,
+      "skipped": 0
+    },
+    "@oaknational/graph-corpus-sdk": {
+      "tests": 101,
+      "skipped": 0
+    },
+    "@oaknational/curriculum-sdk": {
+      "tests": 773,
+      "skipped": 0
     }
   }
 }

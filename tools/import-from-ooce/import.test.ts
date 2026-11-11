@@ -280,6 +280,27 @@ describe('import from OOCE', () => {
     expect(readme).not.toContain('../https');
   });
 
+  it('leaves the relative paths in a keepText file alone and says why in PROVENANCE.md', () => {
+    const keep = { path: 'README.md', reason: 'The paths are output paths, not links.' };
+    const manifest = {
+      ...manifestJson,
+      textRewrites: [{ find: '../../../docs/', replace: 'https://example.test/blob/{sha}/docs/' }],
+      packages: [{ ...alpha, keepText: [keep] }, beta],
+    };
+    run(manifest);
+    expect(read('packages/alpha/README.md')).toContain('(../../../docs/guide.md)');
+    expect(read('PROVENANCE.md')).toContain(
+      "- Kept OOCE's relative paths in `README.md`. The paths are output paths, not links.",
+    );
+  });
+
+  it('refuses a keepText path the package does not write', () => {
+    const keep = { path: 'missing.md', reason: 'No such file.' };
+    expect(() =>
+      run({ ...manifestJson, packages: [{ ...alpha, keepText: [keep] }, beta] }),
+    ).toThrow(/alpha edits missing.md, which it does not write/);
+  });
+
   it('lists modified and supplied files in PROVENANCE.md with the source path and SHA', () => {
     run();
     const provenance = read('PROVENANCE.md');
@@ -303,6 +324,19 @@ describe('import from OOCE', () => {
     expect(() =>
       parseManifest({ ...manifestJson, packages: [{ ...alpha, edits: [edit] }] }),
     ).toThrow(/reason must explain the edit/);
+  });
+
+  it('skips a manifest edit in a package whose file lacks the text', () => {
+    const edit = { path: 'src/index.ts', find: "from '@source/beta'", replace: "from './b'" };
+    run({ ...manifestJson, edits: [...manifestJson.edits, edit] });
+    expect(read('packages/alpha/src/index.ts')).toContain("from './b'");
+  });
+
+  it('refuses a manifest edit that matches nothing in any package', () => {
+    const edit = { path: 'src/index.ts', find: 'no such text', replace: '' };
+    expect(() => run({ ...manifestJson, edits: [...manifestJson.edits, edit] })).toThrow(
+      /manifest edit matched nothing in any package: src\/index.ts "no such text"/,
+    );
   });
 
   it('records the OOCE test counts, summed over merged sources', () => {

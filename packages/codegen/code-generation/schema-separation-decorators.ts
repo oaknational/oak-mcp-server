@@ -1,0 +1,211 @@
+import type { OpenAPIObject, SchemaObject, ReferenceObject } from 'openapi3-ts/oas31';
+
+type SchemaDict = Record<string, SchemaObject | ReferenceObject>;
+type SchemaItems = SchemaObject | ReferenceObject;
+type CombinatorArray = (SchemaObject | ReferenceObject)[];
+
+/**
+ * Schema names for thread-related responses.
+ * Threads are data concepts without Oak URLs on the website,
+ * so their oakUrl field should be typed as null, not string.
+ */
+const THREAD_SCHEMA_NAMES = new Set(['AllThreadsResponseSchema', 'ThreadUnitsResponseSchema']);
+
+function isThreadSchema(schemaName: string): boolean {
+  return THREAD_SCHEMA_NAMES.has(schemaName);
+}
+
+/**
+ * Schema names describing payloads that are not website resources, so no
+ * `oakUrl` — string-typed or null-typed — may be advertised on them.
+ *
+ * Keywords are vocabulary records rather than resources: the SDK's runtime
+ * augmentation resolves a content type from the request path, `/keywords`
+ * resolves to none, and `augmentArrayResponseWithOakUrl` therefore returns
+ * keyword records untouched. Advertising the field would promise consumers
+ * and the MCP output schema something that can never arrive.
+ *
+ * This list is an exclusion, not the full decoration policy. A wider audit
+ * found further named response schemas whose paths the runtime cannot
+ * classify either; changing those removes a field the published SDK already
+ * advertises, so it is a deliberate contract decision tracked on its own
+ * ticket rather than folded in here.
+ */
+const NON_RESOURCE_SCHEMA_NAMES = new Set(['KeywordsResponseSchema']);
+
+function isNonResourceSchema(schemaName: string): boolean {
+  return NON_RESOURCE_SCHEMA_NAMES.has(schemaName);
+}
+
+/**
+ * Decorate response schemas with an `oakUrl` field where the upstream
+ * schema does not already provide one. Preserves upstream-defined
+ * `oakUrl` and `canonicalUrl` fields unchanged.
+ *
+ * The `oakUrl` is the direct, slug-based URL for a resource on the Oak
+ * National website. It is distinct from the upstream's `canonicalUrl`,
+ * which encodes full curriculum context (programme, unit, key stage,
+ * exam board).
+ */
+export function decorateOakUrls(schema: OpenAPIObject): OpenAPIObject {
+  const clone = structuredClone(schema);
+
+  if (!clone.components?.schemas) {
+    return clone;
+  }
+
+  const entries = Object.entries(clone.components.schemas);
+  for (const [schemaName, schemaDef] of entries) {
+    if (!schemaName.includes('Response') && !schemaName.includes('Schema')) {
+      continue;
+    }
+    if (isNonResourceSchema(schemaName)) {
+      continue;
+    }
+    const useNullType = isThreadSchema(schemaName);
+    const decorated = decorateSchema(schemaDef, useNullType);
+    if (!isReferenceObject(decorated)) {
+      clone.components.schemas[schemaName] = decorated;
+    }
+  }
+
+  return clone;
+}
+
+function isReferenceObject(value: unknown): value is ReferenceObject {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  if (!Object.hasOwn(value, '$ref')) {
+    return false;
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(value, '$ref');
+  return typeof descriptor?.value === 'string';
+}
+
+function decorateSchema(
+  schema: SchemaObject | ReferenceObject,
+  useNullType: boolean,
+): SchemaObject | ReferenceObject {
+  if (isReferenceObject(schema)) {
+    return schema;
+  }
+
+  const working: SchemaObject = schema;
+
+  if (hasPropertiesField(working)) {
+    return decorateObjectWithOakUrl(working, useNullType);
+  }
+
+  if (isArraySchemaWithItems(working)) {
+    return decorateArrayItems(working, useNullType);
+  }
+
+  if (hasAnyOf(working)) {
+    return decorateWithCombinator(working, 'anyOf', useNullType);
+  }
+  if (hasOneOf(working)) {
+    return decorateWithCombinator(working, 'oneOf', useNullType);
+  }
+  if (hasAllOf(working)) {
+    return decorateWithCombinator(working, 'allOf', useNullType);
+  }
+
+  return working;
+}
+
+function hasPropertiesField(
+  schema: SchemaObject,
+): schema is SchemaObject & { properties: SchemaDict } {
+  return (
+    schema.type === 'object' &&
+    'properties' in schema &&
+    schema.properties !== undefined &&
+    typeof schema.properties === 'object'
+  );
+}
+
+function isArraySchemaWithItems(
+  schema: SchemaObject,
+): schema is SchemaObject & { items: SchemaItems } {
+  if (schema.type !== 'array') {
+    return false;
+  }
+  if (!('items' in schema)) {
+    return false;
+  }
+  const items = schema.items;
+  if (!items || typeof items !== 'object') {
+    return false;
+  }
+  if (Array.isArray(items)) {
+    return false;
+  }
+  return true;
+}
+
+function hasAnyOf(schema: SchemaObject): schema is SchemaObject & { anyOf: CombinatorArray } {
+  return Array.isArray(schema.anyOf);
+}
+
+function hasOneOf(schema: SchemaObject): schema is SchemaObject & { oneOf: CombinatorArray } {
+  return Array.isArray(schema.oneOf);
+}
+
+function hasAllOf(schema: SchemaObject): schema is SchemaObject & { allOf: CombinatorArray } {
+  return Array.isArray(schema.allOf);
+}
+
+function decorateObjectWithOakUrl(
+  schema: SchemaObject & { properties: SchemaDict },
+  useNullType: boolean,
+): SchemaObject {
+  if ('oakUrl' in schema.properties) {
+    return schema;
+  }
+
+  const oakUrlField: SchemaObject = useNullType
+    ? {
+        type: 'null',
+        description:
+          'Threads are data concepts without Oak URLs on the website. Always null for thread resources.',
+      }
+    : {
+        type: 'string',
+        format: 'uri',
+        description:
+          'The Oak URL for this resource — a direct, slug-based URL generated by the SDK. Distinct from canonicalUrl, which encodes full curriculum context.',
+        example: 'https://www.thenational.academy/teachers/lessons/example-lesson',
+      };
+  const nextProps: SchemaDict = { ...schema.properties, oakUrl: oakUrlField };
+  schema.properties = nextProps;
+  return schema;
+}
+
+function decorateArrayItems(
+  schema: SchemaObject & { items: SchemaItems },
+  useNullType: boolean,
+): SchemaObject {
+  const decoratedItems = decorateSchema(schema.items, useNullType);
+  return { ...schema, items: decoratedItems };
+}
+
+function decorateWithCombinator(
+  schema: SchemaObject,
+  key: 'anyOf' | 'oneOf' | 'allOf',
+  useNullType: boolean,
+): SchemaObject {
+  if (key === 'anyOf' && Array.isArray(schema.anyOf)) {
+    schema.anyOf = schema.anyOf.map((s) => decorateSchema(s, useNullType));
+    return schema;
+  }
+  if (key === 'oneOf' && Array.isArray(schema.oneOf)) {
+    schema.oneOf = schema.oneOf.map((s) => decorateSchema(s, useNullType));
+    return schema;
+  }
+  if (key === 'allOf' && Array.isArray(schema.allOf)) {
+    schema.allOf = schema.allOf.map((s) => decorateSchema(s, useNullType));
+    return schema;
+  }
+  return schema;
+}

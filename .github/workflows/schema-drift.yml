@@ -1,0 +1,71 @@
+name: schema-drift
+
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: schema-drift
+  cancel-in-progress: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  schema-drift:
+    name: schema-drift
+    permissions:
+      contents: read
+      issues: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate from the live API schema
+        run: pnpm codegen:online
+      - name: Open or update an issue when the generated tree changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          drift="$(git diff --name-only -- packages/codegen; git ls-files --others --exclude-standard -- packages/codegen)"
+          if [ -z "$drift" ]; then
+            echo "The live API schema matches the committed snapshot."
+            exit 0
+          fi
+          title="Upstream API schema drift"
+          body="$RUNNER_TEMP/schema-drift.md"
+          {
+            echo "The weekly schema-drift run regenerated codegen from the live API schema, and these committed files changed:"
+            echo
+            echo '```text'
+            echo "$drift"
+            echo '```'
+            echo
+            echo "Run: $RUN_URL"
+            echo
+            echo "Refresh with \`pnpm codegen:online\`, review the diff and commit it."
+          } > "$body"
+          existing="$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$body"
+          else
+            gh issue create --title "$title" --body-file "$body"
+          fi
+          echo "::error::The live API schema differs from the committed snapshot."
+          echo "$drift"
+          exit 1

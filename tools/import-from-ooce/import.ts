@@ -1,14 +1,18 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  closeSync,
+  constants,
   existsSync,
+  ftruncateSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
-  writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -58,6 +62,7 @@ interface PackageSpec {
   sources: SourceSpec[];
   drop: Drop[];
   edits: TextEdit[];
+  keepText: Drop[];
   supplied: SuppliedFile[];
   exports: Exports;
   removeDependencies: string[];
@@ -291,6 +296,7 @@ function parsePackage(value: unknown, where: string): PackageSpec {
     'sources',
     'drop',
     'edits',
+    'keepText',
     'supplied',
     'exports',
     'removeDependencies',
@@ -305,6 +311,7 @@ function parsePackage(value: unknown, where: string): PackageSpec {
     sources,
     drop: asList(record['drop'], `${where}.drop`, parseDrop),
     edits: asList(record['edits'], `${where}.edits`, parseEdit),
+    keepText: asList(record['keepText'], `${where}.keepText`, parseDrop),
     supplied: asList(record['supplied'], `${where}.supplied`, parseSupplied),
     exports: parseExports(record['exports'], `${where}.exports`),
     removeDependencies: asList(
@@ -562,17 +569,32 @@ function gather(
   return { gathered, dropped, secondaryJson };
 }
 
-function transformText(manifest: Manifest, spec: PackageSpec, item: Gathered, sha: Sha40): Buffer {
+function transformText(
+  manifest: Manifest,
+  spec: PackageSpec,
+  item: Gathered,
+  sha: Sha40,
+  matched: Set<TextEdit>,
+): Buffer {
   if (item.destination === 'package.json' || !isText(item.bytes)) {
     return item.bytes;
   }
   let text = item.bytes.toString('utf8');
-  for (const edit of [...manifest.edits, ...spec.edits]) {
+  for (const edit of manifest.edits) {
+    if (edit.path === item.destination && text.includes(edit.find)) {
+      matched.add(edit);
+      text = applyEdit(text, edit, `${spec.to}/${item.destination}`);
+    }
+  }
+  for (const edit of spec.edits) {
     if (edit.path === item.destination) {
       text = applyEdit(text, edit, `${spec.to}/${item.destination}`);
     }
   }
-  for (const rewrite of manifest.textRewrites) {
+  const rewrites = spec.keepText.some((keep) => keep.path === item.destination)
+    ? []
+    : manifest.textRewrites;
+  for (const rewrite of rewrites) {
     text = rewriteUnlessAfterParentDir(
       text,
       rewrite.find,
@@ -592,6 +614,7 @@ function planPackage(
   supplied: SuppliedContents,
   locked: LockedVersions,
   sha: Sha40,
+  matched: Set<TextEdit>,
 ): PackagePlan {
   const { gathered, dropped, secondaryJson } = gather(manifest, spec, source);
   const pins: Record<string, string> = {};
@@ -620,7 +643,7 @@ function planPackage(
               2,
             )}\n`,
           )
-        : transformText(manifest, spec, item, sha);
+        : transformText(manifest, spec, item, sha, matched);
     files.push({
       kind: bytes.equals(item.bytes) ? 'copied' : 'modified',
       path: repoPath(`${spec.to}/${item.destination}`),
@@ -628,7 +651,7 @@ function planPackage(
       bytes,
     });
   }
-  for (const edit of spec.edits) {
+  for (const edit of [...spec.edits, ...spec.keepText]) {
     if (!seen.has(edit.path)) {
       fail(`${spec.name} edits ${edit.path}, which it does not write`);
     }
@@ -669,6 +692,9 @@ function describePackage(manifest: Manifest, plan: PackagePlan, sha: Sha40): str
       : [`- Modified \`${edit.path}\`. ${edit.reason}`],
   );
   lines.push(...[...new Set(reasons)].sort());
+  for (const keep of plan.spec.keepText) {
+    lines.push(`- Kept OOCE's relative paths in \`${keep.path}\`. ${keep.reason}`);
+  }
   const supplied = listing('supplied');
   if (supplied.length > 0) {
     lines.push(`- Supplied from this repository: ${supplied.join(', ')}.`);
@@ -764,11 +790,17 @@ function writeOutputs(
   }
   for (const [path, bytes] of outputs) {
     const target = join(root, path);
-    if (existsSync(target) && readFileSync(target).equals(bytes)) {
-      continue;
-    }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, bytes);
+    const fd = openSync(target, constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW);
+    try {
+      if (readFileSync(fd).equals(bytes)) {
+        continue;
+      }
+      ftruncateSync(fd, 0);
+      writeSync(fd, bytes, 0, bytes.length, 0);
+    } finally {
+      closeSync(fd);
+    }
     report.written.push(path);
   }
   for (const directory of ownedDirectories) {
@@ -905,9 +937,16 @@ export function runImport(input: ImportInput): ImportReport {
   }
   const locked = lockedVersions(input.source);
   const supplied = readSupplied(input.root, manifest);
+  const matched = new Set<TextEdit>();
   const plans = manifest.packages.map((spec) =>
-    planPackage(manifest, spec, input.source, supplied, locked, sha),
+    planPackage(manifest, spec, input.source, supplied, locked, sha, matched),
   );
+  const unmatched = manifest.edits.filter((edit) => !matched.has(edit));
+  if (unmatched.length > 0) {
+    fail(
+      `manifest edit matched nothing in any package: ${unmatched.map((e) => `${e.path} ${JSON.stringify(e.find)}`).join(', ')}`,
+    );
+  }
   const counts = new Map<string, TestCount>();
   for (const plan of plans) {
     const parts = plan.spec.sources.map((s) => input.countTests(join(input.ooceRoot, s.from), []));
