@@ -286,7 +286,7 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Kept OOCE's relative paths in `tsconfig.json`. Its ../../.agent/ path is an exclude glob, not a link.
 - Kept OOCE's relative paths in `tsconfig.lint.json`. Its ../../.agent/ path is an exclude glob, not a link.
 - Kept OOCE's relative paths in `vitest.config.ts`. Its ../../.agent/ path is an exclude glob, not a link.
-- Supplied from this repository: `.markdownlint-cli2.jsonc`, `conformance/src/core/type-helpers.ts`, `src/composition/search.ts`, `src/type-helpers.ts`, `tsconfig.base.json`, `vitest.e2e.base.ts`, `vitest.no-network.setup.ts`.
+- Supplied from this repository: `.markdownlint-cli2.jsonc`, `conformance/src/core/type-helpers.ts`, `e2e-tests/in-process.smoke.e2e.test.ts`, `src/composition/search.ts`, `src/type-helpers.ts`, `tsconfig.base.json`, `vitest.e2e.base.ts`, `vitest.no-network.setup.ts`.
 - Dropped `apps/oak-curriculum-mcp-streamable-http/docs/archive/` (4 files). Historical OOCE deployment notes. Their links to sibling docs were already broken in OOCE.
 - Dropped `apps/oak-curriculum-mcp-streamable-http/e2e-tests/oak-under-the-hood.e2e.test.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
 - Dropped `apps/oak-curriculum-mcp-streamable-http/eslint.config.ts`. The root eslint.config.ts lints packages/**.

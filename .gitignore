@@ -10,3 +10,6 @@ coverage/
 **/.typedoc
 **/_typedoc_*
 packages/codegen/reference/*.json
+
+# Playwright run output from the server widget suites.
+**/test-results/

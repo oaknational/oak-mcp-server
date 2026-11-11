@@ -29,7 +29,8 @@
     "test:widget:ui": "env -u NO_COLOR playwright test --config playwright.widget.config.ts --grep-invert @a11y",
     "test:widget:a11y": "env -u NO_COLOR playwright test --config playwright.widget.config.ts --grep @a11y",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "conformance": "tsx conformance/src/bin/mcp-conformance.ts"
+    "conformance": "tsx conformance/src/bin/mcp-conformance.ts",
+    "test:smoke": "vitest run --config vitest.e2e.config.ts e2e-tests/in-process.smoke.e2e.test.ts"
   },
   "dependencies": {
     "@clerk/backend": "3.16.1",

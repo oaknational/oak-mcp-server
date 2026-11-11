@@ -51,6 +51,34 @@ jobs:
       - name: Regenerate from the committed schema and fail on drift
         run: pnpm codegen:drift
 
+  server:
+    name: server
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: In-process MCP smoke test
+        run: pnpm --filter @oaknational/mcp-server test:smoke
+      - run: pnpm --filter @oaknational/mcp-server test:e2e
+      - run: pnpm --filter @oaknational/mcp-server test:widget
+      - name: Install the Playwright browser
+        run: pnpm --filter @oaknational/mcp-server exec playwright install --with-deps chromium
+      - run: pnpm --filter @oaknational/mcp-server test:widget:a11y
+      - run: pnpm --filter @oaknational/mcp-server test:widget:ui
+
   pr-title:
     name: pr-title
     permissions:
@@ -207,6 +235,7 @@ jobs:
     permissions: {}
     needs:
       - checks
+      - server
       - pr-title
       - pr-size
       - version-check
@@ -220,7 +249,7 @@ jobs:
       - name: Require every needed job to succeed
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-          NEED_COUNT: '7'
+          NEED_COUNT: '8'
         run: |
           echo "Job results: $RESULTS"
           IFS=',' read -ra results <<< "$RESULTS"
