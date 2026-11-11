@@ -1,0 +1,38 @@
+{
+  "source": "https://github.com/oaknational/oak-agent-skills",
+  "commit": "aa4f22c3a1650bc207889cf83b762af943a0e08a",
+  "selection": "base profile without oak-sos-draft, plus oak-accessibility-review",
+  "skills": [
+    "oak-accessibility-review",
+    "oak-pr-create",
+    "oak-security-review",
+    "oak-tdd",
+    "oak-ticket-start"
+  ],
+  "files": {
+    ".agents/skills/oak-accessibility-review/SKILL.md": "82130d60178410222d7aa266215ea7dec63c4d34d7893476deb738ad3bf9eb03",
+    ".agents/skills/oak-accessibility-review/assets/accessibility-checklist.md": "1e922aec543c61227c26cc24b84291f50c7ef18710bc35cb3d5b0151a69788a3",
+    ".agents/skills/oak-accessibility-review/references/sources.md": "5ab5c91b8be23212d2627b590ee482a96a6a3765c60da2f7be0581f51770ab11",
+    ".agents/skills/oak-accessibility-review/references/wcag-2-2-aa.md": "6d0ead4a594c33ccb8aaba2a6956efe15465eddd38ef48d19863b93cce8abe99",
+    ".agents/skills/oak-accessibility-review/references/web-and-interactive.md": "19414c1fcdb336f55726392a22429d2d82304ddb2575d9d5e3223062880f04be",
+    ".agents/skills/oak-pr-create/SKILL.md": "96934877f140738a7afa0575f0db097921fde3400053430a2ca4d62d2a9757d9",
+    ".agents/skills/oak-pr-create/references/pr-description.md": "d3f12a372bfd25c9f4b4715159cb799d9f7e88f08b6af21fc15ec0b43fd97d0f",
+    ".agents/skills/oak-pr-create/references/testing-instructions.md": "ea2f9dea480b8f188d6f8daefec1c0a21d37ab9d590ba8fe27cd5844a76dbb62",
+    ".agents/skills/oak-security-review/SKILL.md": "284cb81961b9460c1bb1224fa5af2524d8875af7a9f62cd48424140b390b2aa6",
+    ".agents/skills/oak-security-review/references/checklist.md": "4c601cc9eab81dd2f5143b087dd3732d92da218b28e502ef102eca5de656ac1c",
+    ".agents/skills/oak-tdd/SKILL.md": "a36f91d9bff0623bd6be6bb57634fe32b00c705da0d59528cbdd789c05ebb0f8",
+    ".agents/skills/oak-ticket-start/SKILL.md": "2968bfba80d59a4a303e9c387cc84a3d33906f75a6ef5597c21c2b9fc9b83bff",
+    ".claude/skills/oak-accessibility-review/SKILL.md": "82130d60178410222d7aa266215ea7dec63c4d34d7893476deb738ad3bf9eb03",
+    ".claude/skills/oak-accessibility-review/assets/accessibility-checklist.md": "1e922aec543c61227c26cc24b84291f50c7ef18710bc35cb3d5b0151a69788a3",
+    ".claude/skills/oak-accessibility-review/references/sources.md": "5ab5c91b8be23212d2627b590ee482a96a6a3765c60da2f7be0581f51770ab11",
+    ".claude/skills/oak-accessibility-review/references/wcag-2-2-aa.md": "6d0ead4a594c33ccb8aaba2a6956efe15465eddd38ef48d19863b93cce8abe99",
+    ".claude/skills/oak-accessibility-review/references/web-and-interactive.md": "19414c1fcdb336f55726392a22429d2d82304ddb2575d9d5e3223062880f04be",
+    ".claude/skills/oak-pr-create/SKILL.md": "96934877f140738a7afa0575f0db097921fde3400053430a2ca4d62d2a9757d9",
+    ".claude/skills/oak-pr-create/references/pr-description.md": "d3f12a372bfd25c9f4b4715159cb799d9f7e88f08b6af21fc15ec0b43fd97d0f",
+    ".claude/skills/oak-pr-create/references/testing-instructions.md": "ea2f9dea480b8f188d6f8daefec1c0a21d37ab9d590ba8fe27cd5844a76dbb62",
+    ".claude/skills/oak-security-review/SKILL.md": "284cb81961b9460c1bb1224fa5af2524d8875af7a9f62cd48424140b390b2aa6",
+    ".claude/skills/oak-security-review/references/checklist.md": "4c601cc9eab81dd2f5143b087dd3732d92da218b28e502ef102eca5de656ac1c",
+    ".claude/skills/oak-tdd/SKILL.md": "a36f91d9bff0623bd6be6bb57634fe32b00c705da0d59528cbdd789c05ebb0f8",
+    ".claude/skills/oak-ticket-start/SKILL.md": "2968bfba80d59a4a303e9c387cc84a3d33906f75a6ef5597c21c2b9fc9b83bff"
+  }
+}
