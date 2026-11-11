@@ -1317,6 +1317,296 @@
           "@oaknational/oak-search-sdk": "workspace:*"
         }
       }
+    },
+    {
+      "name": "widget-tokens",
+      "to": "packages/widget-tokens",
+      "sources": [
+        {
+          "from": "packages/design/oak-design-assets"
+        },
+        {
+          "from": "packages/design/oak-design-system",
+          "pick": true,
+          "moves": {
+            "styles.css": "design-system/styles.css",
+            "colors_and_type.css": "design-system/colors_and_type.css",
+            "oak-icons.css": "design-system/oak-icons.css",
+            "components.css": "design-system/components.css",
+            "print.css": "design-system/print.css",
+            "oak-theme.js": "design-system/oak-theme.js",
+            "LICENCES.md": "design-system/LICENCES.md",
+            "LICENSING-MANIFEST.md": "design-system/LICENSING-MANIFEST.md",
+            "fonts/": "design-system/fonts/",
+            "assets/": "design-system/assets/"
+          }
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/widget-tokens-index.css",
+          "to": "index.css"
+        }
+      ],
+      "exports": {
+        "./index.css": "./index.css",
+        "./design-system/*": "./design-system/*"
+      },
+      "fields": {
+        "description": "Built Oak token CSS, the design-system runtime files and the brand artwork that the MCP server's widget and pages use, copied from OOCE packages/design."
+      }
+    },
+    {
+      "name": "mcp-server",
+      "to": "apps/server",
+      "sources": [
+        {
+          "from": "apps/oak-curriculum-mcp-streamable-http"
+        },
+        {
+          "from": "agent-tools",
+          "pick": true,
+          "moves": {
+            "src/mcp-conformance/": "conformance/src/mcp-conformance/",
+            "src/core/json.ts": "conformance/src/core/json.ts",
+            "src/core/repo-root.ts": "conformance/src/core/repo-root.ts",
+            "src/core/schema-parse.ts": "conformance/src/core/schema-parse.ts",
+            "src/core/cli-arg-parser.ts": "conformance/src/core/cli-arg-parser.ts",
+            "src/bin/mcp-conformance.ts": "conformance/src/bin/mcp-conformance.ts",
+            "src/bin/mcp-conformance-help.ts": "conformance/src/bin/mcp-conformance-help.ts",
+            "tests/mcp-conformance/": "conformance/tests/mcp-conformance/"
+          }
+        }
+      ],
+      "drop": [
+        {
+          "path": "src/oak-under-the-hood/",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/generated/oak-under-the-hood-content.ts",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "e2e-tests/oak-under-the-hood.e2e.test.ts",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/search-retrieval-factory.ts",
+          "reason": "Replaced by the composition root, src/composition/search.ts, which carries the same factory."
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "src/type-helpers.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "conformance/src/core/type-helpers.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-tsconfig.base.json",
+          "to": "tsconfig.base.json"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-vitest.e2e.base.ts",
+          "to": "vitest.e2e.base.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-vitest-no-network.setup.ts",
+          "to": "vitest.no-network.setup.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-composition-search.ts",
+          "to": "src/composition/search.ts"
+        }
+      ],
+      "removeDependencies": [
+        "@oaknational/env-resolution",
+        "@oaknational/type-helpers",
+        "@oaknational/oak-design-assets",
+        "@oaknational/oak-design-system",
+        "@oaknational/oak-design-tokens",
+        "@eslint/js",
+        "eslint-plugin-import-x",
+        "typescript-eslint"
+      ],
+      "addDependencies": {
+        "devDependencies": {
+          "@oaknational/widget-tokens": "workspace:*"
+        }
+      },
+      "scripts": {
+        "test:e2e": "vitest run --config vitest.e2e.config.ts",
+        "conformance": "tsx conformance/src/bin/mcp-conformance.ts"
+      },
+      "edits": [
+        {
+          "path": "src/oauth-proxy/oauth-proxy-response.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/registration-proof/current-source-registration-proof.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/filter-guidance-content.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/served-surface-registration.integration.test.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/mcp-conformance/baseline-schema.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../core/type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/mcp-conformance/baseline.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../core/type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/bin/mcp-conformance.ts",
+          "find": "'agent-tools/src/mcp-conformance/baselines'",
+          "replace": "'apps/server/conformance/src/mcp-conformance/baselines'",
+          "reason": "Points the default baseline directory at its new home."
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "import { registerOakUnderTheHoodTool } from './oak-under-the-hood/oak-under-the-hood-tool.js';",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "  isAppLocalToolLive,",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "\n  // Additive, app-local effort-orientation tool (not in the SDK generated\n  // registry); own served-surface row; curriculum firewall in its result.\n  if (isAppLocalToolLive(servedSurface, 'oak-under-the-hood')) {\n    const { logger, observability } = options;\n    registerOakUnderTheHoodTool(server, { logger, observability });\n  }\n",
+          "replace": "",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "export type AppLocalToolName = 'oak-under-the-hood';",
+          "replace": "export type AppLocalToolName = never;",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "    'oak-under-the-hood': 'live',",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/served-surface/served-surface.unit.test.ts",
+          "find": "  it('serves the app-local orientation tool live', () => {\n    expect(SERVED_SURFACE.appLocalTools['oak-under-the-hood']).toBe('live');",
+          "replace": "  it('serves no app-local tool, since oak-under-the-hood is removed', () => {\n    expect(SERVED_SURFACE.appLocalTools).toEqual({});",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/handlers-tool-registration.integration.test.ts",
+          "find": "    'oak-under-the-hood': 'live',",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "e2e-tests/server.e2e.test.ts",
+          "find": "const appLocalTools = ['oak-under-the-hood'];",
+          "replace": "const appLocalTools: string[] = [];",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "served-tool-table.md",
+          "find": "- `oak-under-the-hood` — Oak: Under the Hood",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/app/core-endpoints.ts",
+          "find": "'../search-retrieval-factory.js'",
+          "replace": "'../composition/search.js'",
+          "reason": "The search factory moves to the composition root, src/composition/search.ts, the one file allowed to import the search SDK."
+        },
+        {
+          "path": "src/search-retrieval-factory.integration.test.ts",
+          "find": "'./search-retrieval-factory.js'",
+          "replace": "'./composition/search.js'"
+        },
+        {
+          "path": "widget/src/index.css",
+          "find": "@oaknational/oak-design-tokens/index.css",
+          "replace": "@oaknational/widget-tokens/index.css",
+          "reason": "The widget and pages read the Oak design files from packages/widget-tokens."
+        },
+        {
+          "path": "widget/src/BrandBanner.tsx",
+          "find": "'@oaknational/oak-design-system/assets/logo-wide-black.svg?raw'",
+          "replace": "'@oaknational/widget-tokens/design-system/assets/logo-wide-black.svg?raw'"
+        },
+        {
+          "path": "build-scripts/copy-oak-ds.ts",
+          "find": "require.resolve('@oaknational/oak-design-system')",
+          "replace": "require.resolve('@oaknational/widget-tokens/design-system/styles.css')"
+        },
+        {
+          "path": "build-scripts/copy-oak-ds.ts",
+          "find": "'@oaknational/oak-design-assets/assets/oak-national-academy-logo-512.png'",
+          "replace": "'@oaknational/widget-tokens/assets/oak-national-academy-logo-512.png'"
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "\"extends\": \"../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"./tsconfig.base.json\",",
+          "reason": "Extends OOCE's root compiler options, copied into the app, instead of this repository's stricter base."
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "    \"bin/**/*.ts\"",
+          "replace": "    \"bin/**/*.ts\",\n    \"conformance/**/*.ts\""
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "find": "    \"vitest.e2e.config.ts\"\n",
+          "replace": "    \"vitest.e2e.config.ts\",\n    \"conformance/**/*.ts\"\n"
+        },
+        {
+          "path": "widget/tsconfig.json",
+          "find": "\"extends\": \"../../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"../tsconfig.base.json\","
+        },
+        {
+          "path": "tests/tsconfig.json",
+          "find": "\"extends\": \"../../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"../tsconfig.base.json\","
+        },
+        {
+          "path": "vitest.config.ts",
+          "find": "      'src/**/*.integration.test.ts',\n",
+          "replace": "      'src/**/*.integration.test.ts',\n      'conformance/**/*.unit.test.ts',\n      'conformance/**/*.integration.test.ts',\n",
+          "reason": "Runs the conformance runner tests with the app suites."
+        },
+        {
+          "path": "vitest.e2e.config.ts",
+          "find": "'@oaknational/workspace-config/vitest-e2e'",
+          "replace": "'./vitest.e2e.base'"
+        }
+      ]
     }
   ]
 }
