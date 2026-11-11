@@ -69,6 +69,29 @@ describe('skills-check', () => {
     expect(result.stderr).toContain('.claude/skills/oak-sos-draft');
   });
 
+  it('fails when a local skill is not mirrored into .claude/skills', () => {
+    rmSync(join(copy, '.claude/skills/mcp-tool-design'), { recursive: true });
+    const result = run(copy);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('.claude/skills/mcp-tool-design/SKILL.md: missing');
+  });
+
+  it('fails when a mirrored local skill differs from its source', () => {
+    writeFileSync(join(copy, '.claude/skills/mcp-tool-design/SKILL.md'), 'drifted\n');
+    const result = run(copy);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('.claude/skills/mcp-tool-design/SKILL.md: differs');
+  });
+
+  it('fails on a symlink inside a local skill', () => {
+    symlinkSync(join(repoRoot, 'README.md'), join(copy, '.agents/skills/mcp-tool-design/link.md'));
+    const result = run(copy);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      '.agents/skills/mcp-tool-design/link.md: symlink, local skills hold regular files only',
+    );
+  });
+
   it.each([
     ['a file symlink', join(repoRoot, 'README.md'), 'oak-tdd/file-link.md'],
     ['a directory symlink', '/etc', 'oak-tdd/dir-link'],

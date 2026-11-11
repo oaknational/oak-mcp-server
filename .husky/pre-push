@@ -22,16 +22,21 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   fi
 done < "$refs_file"
 
-remote_refs="$(git ls-remote --heads "$2" 2> /dev/null)" || remote_refs=""
+remote_refs=""
+# An insteadOf rewrite would make ls-remote query a remote other than the push target.
+if [ "$(git ls-remote --get-url "$2" 2> /dev/null)" = "$2" ]; then
+  remote_refs="$(git ls-remote --heads "$2" 2> /dev/null)" || remote_refs=""
+fi
 tips_file="$(mktemp)"
 trap 'rm -f "$refs_file" "$tips_file"' EXIT
 printf '%s\n' "$remote_refs" | cut -f1 | sed -n 's/^\(..*\)$/\1^{commit}/p' |
   git cat-file --batch-check='%(objecttype) %(objectname)' 2> /dev/null |
   sed -n 's/^commit //p' > "$tips_file"
-set --
-while read -r tip; do
-  set -- "$@" "$tip"
-done < "$tips_file"
+# Linux caps one argument at 128 KiB; past this size, scan the full local history instead.
+if [ "$(wc -c < "$tips_file")" -gt 130000 ]; then
+  : > "$tips_file"
+fi
+not_tips="$(tr "\n" " " < "$tips_file")"
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
 while read -r _local_ref local_sha _remote_ref remote_sha; do
@@ -45,19 +50,19 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
   esac
   if [ "$remote_known" = 1 ]; then
     range="$remote_sha..$local_sha"
-    git rev-list "$range" > /dev/null
-  elif [ "$#" -gt 0 ]; then
-    range="$local_sha --not $*"
-    git rev-list "$local_sha" --not "$@" > /dev/null
+    git rev-list "$range" -- > /dev/null
+  elif [ -n "$not_tips" ]; then
+    range="$local_sha --not $not_tips"
+    { printf "%s\n--not\n" "$local_sha"; cat "$tips_file"; } | git rev-list --stdin -- > /dev/null
   else
     range="$local_sha"
-    git rev-list "$local_sha" > /dev/null
+    git rev-list "$local_sha" -- > /dev/null
   fi || {
     echo "❌ Cannot list the commits being pushed ($range)."
     scan_status=1
     continue
   }
-  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range" . || scan_status=1
+  gitleaks git --no-banner --verbose --redact=100 --config .gitleaks.toml --log-opts="$range --" . || scan_status=1
 done < "$refs_file"
 if [ "$scan_status" -ne 0 ]; then
   echo "❌ Secret scan failed."

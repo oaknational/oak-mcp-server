@@ -234,6 +234,10 @@
         {
           "from": "tools/import-from-ooce/supplied/type-safe-logger.ts",
           "to": "src/type-safe.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/logger-file-sink-stream-errors.test-source.ts",
+          "to": "src/file-sink-stream-errors.unit.test.ts"
         }
       ],
       "removeDependencies": ["@oaknational/type-helpers"],
@@ -247,6 +251,30 @@
           "path": "src/error-normalisation.unit.test.ts",
           "find": "'@oaknational/type-helpers'",
           "replace": "'./type-safe.js'"
+        },
+        {
+          "path": "src/file-sink.ts",
+          "find": "  readonly end: (cb?: () => void) => SimpleWriteStream;",
+          "replace": "  readonly end: (cb?: () => void) => SimpleWriteStream;\n  readonly on: (event: 'error', listener: (error: Error) => void) => unknown;",
+          "reason": "A write stream error, such as a log path that is a directory or cannot be written, is reported through console.error instead of crashing the process. OOCE has the same bug. MCP-853."
+        },
+        {
+          "path": "src/file-sink.ts",
+          "find": "    const stream = fs.createWriteStream(filePath, { flags });",
+          "replace": "    const stream = fs.createWriteStream(filePath, { flags });\n    stream.on('error', (error) => {\n      console.error('Log file stream failed', { path: filePath, error: error.message });\n    });",
+          "reason": "A write stream error, such as a log path that is a directory or cannot be written, is reported through console.error instead of crashing the process. OOCE has the same bug. MCP-853."
+        },
+        {
+          "path": "src/node.ts",
+          "find": "      return adaptWriteStream(stream);\n    },\n  };",
+          "replace": "      return adaptWriteStream(stream);\n    },\n    on: (event, listener) => stream.on(event, listener),\n  };",
+          "reason": "The Node stream adapter passes the stream's error event to the file sink. MCP-853."
+        },
+        {
+          "path": "src/file-sink.unit.test.ts",
+          "find": "    end: mockEnd,\n  };",
+          "replace": "    end: mockEnd,\n    on: vi.fn(),\n  };",
+          "reason": "The stream fake gains the on method that the stream interface now requires. MCP-853."
         }
       ]
     },

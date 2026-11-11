@@ -290,6 +290,21 @@ describe('import from OOCE', () => {
     expect(provenance).toContain('- Supplied from this repository: `src/helper.ts`.');
   });
 
+  it('gives the reason for an edit that names one in PROVENANCE.md', () => {
+    const edit = { ...alpha.edits[0], reason: 'The helper import is unused.' };
+    run({ ...manifestJson, packages: [{ ...alpha, edits: [edit] }, beta] });
+    expect(read('PROVENANCE.md')).toContain(
+      '- Modified `src/index.ts`. The helper import is unused.',
+    );
+  });
+
+  it('refuses an edit with an empty reason', () => {
+    const edit = { ...alpha.edits[0], reason: ' ' };
+    expect(() =>
+      parseManifest({ ...manifestJson, packages: [{ ...alpha, edits: [edit] }] }),
+    ).toThrow(/reason must explain the edit/);
+  });
+
   it('records the OOCE test counts, summed over merged sources', () => {
     run();
     expect(readJson('tools/import-from-ooce/expected-counts.json')).toEqual({
@@ -339,6 +354,19 @@ describe('import from OOCE', () => {
     );
     expect(same).toHaveLength(2);
     expect(() => checkCounts(root, () => ({ tests: 1, skipped: 0 }))).toThrow(/MISMATCH/);
+  });
+
+  it('leaves supplied files out of the counted tests, since OOCE never ran them', () => {
+    run();
+    const excluded = new Map<string, readonly string[]>();
+    checkCounts(root, (directory, exclude) => {
+      excluded.set(relative(root, directory), exclude);
+      return directory.endsWith('beta') ? { tests: 9, skipped: 1 } : { tests: 3, skipped: 0 };
+    });
+    expect(Object.fromEntries(excluded)).toEqual({
+      'packages/alpha': ['src/helper.ts'],
+      'packages/beta': [],
+    });
   });
 });
 
