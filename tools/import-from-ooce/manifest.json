@@ -128,12 +128,12 @@
         {
           "path": "src/redaction-form.ts",
           "find": "if (value.includes('://') || value.includes('?')) {",
-          "replace": "if (/^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value)) {"
+          "replace": "if (/^(?:\\.{0,2}\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value)) {"
         },
         {
           "path": "src/redaction-url.ts",
           "find": "return value.includes('?') || value.includes('://');",
-          "replace": "return /^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value);"
+          "replace": "return /^(?:\\.{0,2}\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value);"
         }
       ]
     },
