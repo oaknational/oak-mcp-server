@@ -76,7 +76,7 @@ export {
   OAK_SEQUENCE_FACETS_MAPPING,
   /** oak_threads index mapping */
   OAK_THREADS_MAPPING,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 export type {
   OakLessonsMapping,
@@ -85,7 +85,7 @@ export type {
   OakSequencesMapping,
   OakSequenceFacetsMapping,
   OakThreadsMapping,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 // ============================================================================
 // Observability Index Mappings
@@ -100,6 +100,6 @@ export {
   OAK_META_MAPPING,
   /** oak_zero_hit_telemetry index mapping - tracks zero-result searches */
   OAK_ZERO_HIT_MAPPING,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
-export type { OakMetaMapping, OakZeroHitMapping } from '@oaknational/sdk-codegen/search';
+export type { OakMetaMapping, OakZeroHitMapping } from '@oaknational/oak-search-sdk/contract';

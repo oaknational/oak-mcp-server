@@ -42,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          drift="$(git diff --name-only -- packages/codegen; git ls-files --others --exclude-standard -- packages/codegen)"
+          drift="$(git diff --name-only -- packages/codegen packages/search; git ls-files --others --exclude-standard -- packages/codegen packages/search)"
           if [ -z "$drift" ]; then
             echo "The live API schema matches the committed snapshot."
             exit 0

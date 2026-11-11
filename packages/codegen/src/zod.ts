@@ -17,8 +17,3 @@ export type {
   CurriculumSchemaName,
   CurriculumSchemaDefinition,
 } from './types/generated/zod/curriculumZodSchemas.js';
-
-export {
-  SequenceFacetUnitSchema,
-  SequenceFacetSchema,
-} from './types/generated/zod/search/index.js';

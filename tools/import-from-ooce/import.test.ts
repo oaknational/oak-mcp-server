@@ -393,7 +393,7 @@ describe('import from OOCE', () => {
   it('leaves supplied files out of the counted tests, since OOCE never ran them', () => {
     run();
     const excluded = new Map<string, readonly string[]>();
-    checkCounts(root, (directory, exclude) => {
+    checkCounts(root, (directory, { exclude }) => {
       excluded.set(relative(root, directory), exclude);
       return directory.endsWith('beta') ? { tests: 9, skipped: 1 } : { tests: 3, skipped: 0 };
     });
@@ -401,6 +401,104 @@ describe('import from OOCE', () => {
       'packages/alpha': ['src/helper.ts'],
       'packages/beta': [],
     });
+  });
+
+  it('drops a whole directory and names it once in PROVENANCE.md with its file count', () => {
+    const manifest = {
+      ...manifestJson,
+      packages: [
+        { ...alpha, edits: [], drop: [{ path: 'src/', reason: 'The source moved elsewhere.' }] },
+        beta,
+      ],
+    };
+    run(manifest);
+    expect(existsSync(join(root, 'packages/alpha/src/index.ts'))).toBe(false);
+    expect(existsSync(join(root, 'packages/alpha/src/stable.ts'))).toBe(false);
+    expect(existsSync(join(root, 'packages/alpha/src/helper.ts'))).toBe(true);
+    expect(read('PROVENANCE.md')).toContain(
+      'Dropped `packages/libs/alpha/src/` (2 files). The source moved elsewhere.',
+    );
+  });
+
+  it('takes only the moved files from a picking source, without its package.json', () => {
+    const picked = { from: 'packages/libs/alpha', pick: true, moves: { 'src/': 'src/alpha/' } };
+    const manifest = {
+      ...manifestJson,
+      packages: [alpha, { ...beta, sources: [{ from: 'packages/core/beta' }, gamma, picked] }],
+    };
+    run(manifest);
+    expect(read('packages/beta/src/alpha/stable.ts')).toBe(read('packages/alpha/src/stable.ts'));
+    expect(existsSync(join(root, 'packages/beta/README.md'))).toBe(false);
+    expect(readJson('packages/beta/package.json')['dependencies']).toEqual({
+      'mid-pad': '3.0.2',
+      'right-pad': '2.1.4',
+    });
+  });
+
+  it('refuses a picking first source, which is the package itself', () => {
+    const manifest = {
+      ...manifestJson,
+      packages: [{ ...alpha, sources: [{ from: 'packages/libs/alpha', pick: true }] }, beta],
+    };
+    expect(() => parseManifest(manifest)).toThrow(/cannot pick/);
+  });
+
+  it('counts only the OOCE tests a source brings, less its dropped files and directories', () => {
+    const picked = { from: 'packages/libs/alpha', pick: true, moves: { 'src/': 'src/alpha/' } };
+    const manifest = {
+      ...manifestJson,
+      packages: [
+        { ...alpha, edits: [], drop: [...alpha.drop, { path: 'src/', reason: 'Moved to beta.' }] },
+        { ...beta, sources: [{ from: 'packages/core/beta' }, gamma, picked] },
+      ],
+    };
+    write('tools/import-from-ooce/manifest.json', JSON.stringify(manifest));
+    const filters: Record<string, unknown> = {};
+    runImport({
+      root,
+      source: fixtureSource,
+      ooceRoot: 'ooce',
+      countTests: (directory, filter) => {
+        filters[`${directory} ${String(Object.keys(filters).length)}`] = filter;
+        return { tests: 1, skipped: 0 };
+      },
+    });
+    expect(Object.values(filters)).toEqual([
+      {
+        exclude: ['eslint.config.ts', 'internal-notes.txt', 'src/**'],
+        include: [],
+      },
+      { exclude: ['eslint.config.ts'], include: [] },
+      { exclude: ['eslint.config.ts', 'package.json', 'tsconfig.json'], include: [] },
+      { exclude: ['eslint.config.ts'], include: ['src/'] },
+    ]);
+  });
+
+  it('removes an export named with null and keeps the rest', () => {
+    const manifest = {
+      ...manifestJson,
+      packages: [alpha, { ...beta, exports: { ...beta.exports, '.': null } }],
+    };
+    run(manifest);
+    expect(readJson('packages/beta/package.json')['exports']).toEqual({
+      './gamma': './dist/gamma.js',
+    });
+  });
+
+  it('adds dependencies the manifest names, held to the workspace rule', () => {
+    const added = { devDependencies: { '@target/beta': 'workspace:*' } };
+    run({ ...manifestJson, packages: [{ ...alpha, addDependencies: added }, beta] });
+    expect(readJson('packages/alpha/package.json')['devDependencies']).toEqual({
+      '@target/beta': 'workspace:*',
+      vitest: '^5.0.0',
+    });
+    const stray = { dependencies: { '@source/helpers': 'workspace:^' } };
+    expect(() =>
+      run({
+        ...manifestJson,
+        packages: [{ ...alpha, removeDependencies: [], addDependencies: stray }, beta],
+      }),
+    ).toThrow(/is "workspace:\*" and "workspace:\^"|not moved/);
   });
 });
 

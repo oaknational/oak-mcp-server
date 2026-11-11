@@ -100,13 +100,13 @@ export {
   isKs4ScienceVariant,
   getSubjectParent,
   isAllSubject,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 export type {
   AllSubjectSlug,
   ParentSubjectSlug,
   Ks4ScienceVariant,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 // ============================================================================
 // Validation
