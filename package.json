@@ -28,6 +28,7 @@
     "lint:workflows": "sh -c 'status=0; actionlint || status=1; zizmor --offline .github/workflows/ || status=1; exit $status'",
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "git config core.hooksPath .husky",
+    "skills:check": "node tools/repo-checks/skills-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.base.json --noEmit"
   },

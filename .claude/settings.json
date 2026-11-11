@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push -f)",
+      "Bash(git push -f *)",
+      "Bash(git clean -fdx*)",
+      "Bash(git clean -fxd*)",
+      "Bash(git clean -dfx*)",
+      "Bash(git clean -dxf*)",
+      "Bash(git clean -xfd*)",
+      "Bash(git clean -xdf*)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf $HOME)",
+      "Bash(rm -rf .)",
+      "Bash(rm -rf ..)",
+      "Read(**/.env)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/git-guard.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
