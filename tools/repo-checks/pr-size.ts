@@ -26,7 +26,7 @@ export function evaluateSize(authored: number, body: string): SizeResult {
   if (authored <= BAND_LIMIT) {
     return {
       outcome: 'note',
-      message: `${String(authored)} authored files, over the ${String(BAND_ACCEPTABLE)} file band. Passing. Say in the description why the PR is not smaller.`,
+      message: `${String(authored)} authored files, over the ${String(BAND_ACCEPTABLE)} file band. Passing. Say why the PR is not smaller in the '## Size' section.`,
     };
   }
   const size = section(body, 'Size')?.toLowerCase() ?? '';
