@@ -3,7 +3,7 @@ packages:
   - packages/*
 
 engineStrict: true
-minimumReleaseAge: 1440
+minimumReleaseAge: 10080
 
 # @posthog/core 1.64 changes the fetch types that posthog-node and @posthog/mcp
 # compile against. Hold the release OOCE resolved at the import pin.
