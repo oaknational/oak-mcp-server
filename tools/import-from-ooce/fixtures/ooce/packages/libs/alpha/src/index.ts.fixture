@@ -1,0 +1,4 @@
+import { beta } from '@source/beta';
+import { helper } from '@source/helpers';
+
+export const alpha = beta + helper;

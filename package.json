@@ -19,9 +19,10 @@
   "packageManager": "pnpm@12.17.0",
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
+    "check": "out=$(pnpm --silent build 2>&1) || { printf '%s\\n' \"$out\"; exit 1; }; echo 'build ok' && pnpm --silent format && echo 'format ok' && pnpm --silent lint && echo 'lint ok' && pnpm --silent typecheck && echo 'typecheck ok' && pnpm --silent knip && echo 'knip ok'",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
+    "import:ooce": "node tools/import-from-ooce/import.ts",
     "knip": "knip --treat-config-hints-as-errors",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
@@ -29,8 +30,8 @@
     "markdownlint": "markdownlint-cli2 \"**/*.md\"",
     "prepare": "git config core.hooksPath .husky",
     "skills:check": "node tools/repo-checks/skills-check.ts",
-    "test": "vitest run",
-    "typecheck": "tsc --project tsconfig.base.json --noEmit"
+    "test": "vitest run && node packages/posthog-node/src/posthog-mcp-logger.smoke.ts",
+    "typecheck": "tsc --project tsconfig.base.json --noEmit && pnpm --recursive --if-present run type-check"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
@@ -50,6 +51,7 @@
     "prettier": "~3.9.6",
     "shellcheck": "^4.1.0",
     "smol-toml": "^1.9.1",
+    "tsup": "^8.5.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.66.0",
     "unist-util-visit": "^5.2.0",

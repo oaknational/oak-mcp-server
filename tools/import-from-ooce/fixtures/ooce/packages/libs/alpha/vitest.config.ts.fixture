@@ -1,0 +1,1 @@
+import { base } from '@source/workspace-config/vitest';

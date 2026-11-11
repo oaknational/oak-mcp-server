@@ -1,0 +1,237 @@
+/**
+ * Shared telemetry redaction helpers.
+ *
+ * The policy is recursive and value-oriented so it can be reused by logs,
+ * spans, breadcrumbs, CLI metadata, and future Sentry hooks. It also covers
+ * secret-bearing wire formats such as URL query strings and form-encoded
+ * OAuth payloads, not just already-parsed objects.
+ */
+
+import { typeSafeEntries } from './type-safe.js';
+import { redactFormEncodedString } from './redaction-form.js';
+import { redactUrlString } from './redaction-url.js';
+import type { JsonObject, JsonValue } from './types.js';
+
+/**
+ * Redaction placeholder used across all observability surfaces.
+ */
+export const REDACTED_VALUE = '[REDACTED]';
+
+const FULLY_REDACTED_KEYS = new Set([
+  'access_token',
+  'api-key',
+  'api_key',
+  'apikey',
+  'assertion',
+  'authorization',
+  'client_assertion',
+  'client_secret',
+  'code',
+  'code_verifier',
+  'cookie',
+  'dsn',
+  'id_token',
+  'ip',
+  'nonce',
+  'password',
+  'proxy-authorization',
+  'refresh_token',
+  'secret',
+  'set-cookie',
+  'state',
+  'token',
+  'x-api-key',
+  'x-auth-token',
+  'x-vercel-oidc-token',
+  'x-vercel-proxy-signature',
+]);
+
+const PARTIALLY_REDACTED_HEADERS = new Set([
+  'cf-connecting-ip',
+  'x-forwarded-for',
+  'x-real-ip',
+  'x-vercel-forwarded-for',
+  'x-vercel-proxied-for',
+]);
+
+const REDACTED_QUERY_KEYS = new Set([
+  'access_token',
+  'assertion',
+  'api_key',
+  'apikey',
+  'client_assertion',
+  'client_secret',
+  'code',
+  'code_verifier',
+  'id_token',
+  'nonce',
+  'refresh_token',
+  'state',
+  'token',
+]);
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normaliseKey(key: string): string {
+  return key.toLowerCase();
+}
+
+function shouldFullyRedactKey(key: string): boolean {
+  const normalisedKey = normaliseKey(key);
+  return (
+    FULLY_REDACTED_KEYS.has(normalisedKey) ||
+    normalisedKey.includes('token') ||
+    normalisedKey.includes('secret') ||
+    normalisedKey.includes('password')
+  );
+}
+
+function shouldPartiallyRedactHeader(key: string): boolean {
+  return PARTIALLY_REDACTED_HEADERS.has(normaliseKey(key));
+}
+
+function partiallyRedactValue(value: string): string {
+  if (value.length <= 8) {
+    return REDACTED_VALUE;
+  }
+
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function redactEmbeddedCredentials(value: string): string {
+  return value
+    .replaceAll(/\b(Bearer|Basic)\s+[^\s,]+/giu, '$1 [REDACTED]')
+    .replaceAll(
+      /(^|\s)(--?(?:access-token|api-key|api_key|client-secret|client_secret|password|token)|(?:access_token|api_key|client_secret|password|token))=([^\s&]+)/giu,
+      '$1$2=[REDACTED]',
+    );
+}
+
+function redactString(value: string): string {
+  const redactedUrl = redactUrlString(value, {
+    normaliseKey,
+    redactedQueryKeys: REDACTED_QUERY_KEYS,
+    redactedValue: REDACTED_VALUE,
+  });
+  const redactedFormPayload = redactFormEncodedString(redactedUrl, {
+    normaliseKey,
+    redactedQueryKeys: REDACTED_QUERY_KEYS,
+    redactedValue: REDACTED_VALUE,
+    shouldFullyRedactKey,
+  });
+
+  if (redactedFormPayload !== redactedUrl) {
+    return redactedFormPayload;
+  }
+
+  return redactEmbeddedCredentials(redactedUrl);
+}
+
+function redactScalarForKey(key: string | undefined, value: string): string {
+  if (key !== undefined) {
+    if (shouldFullyRedactKey(key)) {
+      return REDACTED_VALUE;
+    }
+
+    if (shouldPartiallyRedactHeader(key)) {
+      return partiallyRedactValue(value);
+    }
+  }
+
+  return redactString(value);
+}
+
+function redactArray(values: readonly JsonValue[], key: string | undefined): readonly JsonValue[] {
+  return values.map((entry) => redactTelemetryValue(entry, key));
+}
+
+function redactObject(value: JsonObject): JsonObject {
+  const redacted: Record<string, JsonValue> = {};
+
+  for (const [key, entry] of typeSafeEntries(value)) {
+    redacted[key] = redactTelemetryValue(entry, key);
+  }
+
+  return redacted;
+}
+
+/**
+ * Recursively redacts a JSON-safe telemetry value.
+ *
+ * @param value - JSON-safe telemetry input
+ * @param key - Optional parent key used for key-specific redaction rules
+ * @returns Redacted JSON-safe telemetry value. A `string` input always
+ * yields a `string` (scalar redaction preserves the type), so the `string`
+ * overload lets string-only callers consume the result without a narrowing
+ * guard.
+ */
+export function redactTelemetryValue(value: string, key?: string): string;
+export function redactTelemetryValue(value: JsonValue, key?: string): JsonValue;
+export function redactTelemetryValue(value: JsonValue, key?: string): JsonValue {
+  if (typeof value === 'string') {
+    return redactScalarForKey(key, value);
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return redactArray(value, key);
+  }
+
+  if (isJsonObject(value)) {
+    return redactObject(value);
+  }
+
+  return value;
+}
+
+/**
+ * Recursively redacts a JSON-safe telemetry object.
+ *
+ * @param value - JSON-safe telemetry object
+ * @returns Redacted object
+ */
+export function redactTelemetryObject(value: JsonObject): JsonObject {
+  return redactObject(value);
+}
+
+/**
+ * Redacts a single header value using the shared telemetry policy.
+ *
+ * @param name - Header name
+ * @param value - Header value
+ * @returns Redacted string safe for logs and telemetry
+ */
+export function redactHeaderValue(
+  name: string,
+  value: string | string[] | number | undefined,
+): string {
+  if (value === undefined) {
+    return '[undefined]';
+  }
+
+  const stringValue = Array.isArray(value) ? value.join(', ') : String(value);
+  return redactScalarForKey(name, stringValue);
+}
+
+/**
+ * Applies header redaction to a full header record.
+ *
+ * @param headers - Header record to redact
+ * @returns Redacted header record
+ */
+export function redactHeaderRecord(
+  headers: Readonly<Record<string, string | string[] | number | undefined>>,
+): Record<string, string> {
+  const redactedHeaders: Record<string, string> = {};
+
+  for (const [key, value] of typeSafeEntries(headers)) {
+    redactedHeaders[key] = redactHeaderValue(key, value);
+  }
+
+  return redactedHeaders;
+}
