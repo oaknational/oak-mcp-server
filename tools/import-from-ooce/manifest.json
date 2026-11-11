@@ -124,16 +124,6 @@
           "path": "README.md",
           "find": "`@oaknational/type-helpers`, ",
           "replace": ""
-        },
-        {
-          "path": "src/redaction-form.ts",
-          "find": "if (value.includes('://') || value.includes('?')) {",
-          "replace": "if (/^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value)) {"
-        },
-        {
-          "path": "src/redaction-url.ts",
-          "find": "return value.includes('?') || value.includes('://');",
-          "replace": "return /^(?:\\/|[^=&]*(?::\\/\\/|\\?))/u.test(value);"
         }
       ]
     },

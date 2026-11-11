@@ -43,7 +43,7 @@ function parseUrlForRedaction(value: string): ParsedUrlForRedaction | undefined 
 }
 
 function mayContainRedactableUrlParts(value: string): boolean {
-  return /^(?:\/|[^=&]*(?::\/\/|\?))/u.test(value);
+  return value.includes('?') || value.includes('://');
 }
 
 function redactSensitiveQueryParams(url: URL, options: UrlRedactionOptions): boolean {
