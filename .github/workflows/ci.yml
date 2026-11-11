@@ -33,6 +33,17 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install pinned gitleaks
+        run: |
+          version=8.30.0
+          asset="gitleaks_${version}_linux_x64.tar.gz"
+          expected=79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e
+          curl -sSfL --proto '=https' --proto-redir '=https' -o "$asset" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${asset}"
+          echo "${expected}  ${asset}" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f "$asset" gitleaks
+          rm -f "$asset"
+          gitleaks version
       - run: pnpm check
       - run: pnpm markdownlint
       - run: pnpm build
