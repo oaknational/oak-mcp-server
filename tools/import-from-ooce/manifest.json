@@ -396,6 +396,10 @@
         {
           "from": "tools/import-from-ooce/supplied/codegen-prettier.config.mjs",
           "to": "prettier.config.mjs"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-drift.test-source.ts",
+          "to": "tests/drift.test.ts"
         }
       ],
       "removeDependencies": ["@oaknational/type-helpers"],

@@ -115,7 +115,7 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-index-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-modules.unit.test.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-response-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
-- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`.
+- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`.
 - Dropped `packages/sdks/oak-sdk-codegen/e2e-tests/scripts/codegen-core.e2e.test.ts`. Its config is dropped. The codegen e2e lane is deferred to MCP-861.
 - Dropped `packages/sdks/oak-sdk-codegen/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 - Dropped `packages/sdks/oak-sdk-codegen/vitest.e2e.config.ts`. It extends the e2e preset in OOCE's workspace-config, which this repository does not carry. The codegen e2e lane is deferred to MCP-861.

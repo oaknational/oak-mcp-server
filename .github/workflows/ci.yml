@@ -48,6 +48,8 @@ jobs:
       - run: pnpm markdownlint
       - run: pnpm build
       - run: pnpm test
+      - name: Regenerate from the committed schema and fail on drift
+        run: pnpm codegen:drift
 
   pr-title:
     name: pr-title
