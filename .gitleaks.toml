@@ -3,3 +3,39 @@ minVersion = "8.30.0"
 
 [extend]
 useDefault = true
+
+# Each allowlist below pairs one server file with the exact shape of one line,
+# so nothing else in that file is exempt.
+
+# The OpenAI domain-verification token is public: the submission portal fetches
+# it from the server over HTTPS and compares it, so holding it grants nothing.
+# Ported from OOCE's .gitleaks.toml (MCP-700). The token is not repeated here.
+[[allowlists]]
+description = "OpenAI domain-verification challenge token is public by design (MCP-700)"
+condition = "AND"
+paths = ['''^apps/server/src/openai-domain-verification\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*const OPENAI_APPS_CHALLENGE_TOKEN = '[A-Za-z0-9_-]{20,64}';\s*$''']
+
+[[allowlists]]
+description = "The integration test asserts the same public OpenAI challenge token"
+condition = "AND"
+paths = ['''^apps/server/src/openai-domain-verification\.integration\.test\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*const EXPECTED_TOKEN = '[A-Za-z0-9_-]{20,64}';\s*$''']
+
+# A Clerk publishable key is public by design, and this one is a pk_test_ key
+# for a placeholder test-instance domain that does not exist.
+[[allowlists]]
+description = "Clerk pk_test_ publishable key for a fake instance in an OAuth proxy unit test"
+condition = "AND"
+paths = ['''^apps/server/src/oauth-proxy/oauth-proxy-upstream\.unit\.test\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*const TEST_PUBLISHABLE_KEY = 'pk_test_[A-Za-z0-9+/=]{20,64}';\s*$''']
+
+[[allowlists]]
+description = "Fixed test-secret value for the test-error route integration test"
+condition = "AND"
+paths = ['''^apps/server/src/test-error/test-error-route\.integration\.test\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*const SECRET = 'test-secret-[0-9]{10}';\s*$''']
