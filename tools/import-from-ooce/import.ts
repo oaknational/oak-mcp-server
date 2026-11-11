@@ -1,14 +1,18 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  closeSync,
+  constants,
   existsSync,
+  ftruncateSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
-  writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -786,11 +790,17 @@ function writeOutputs(
   }
   for (const [path, bytes] of outputs) {
     const target = join(root, path);
-    if (existsSync(target) && readFileSync(target).equals(bytes)) {
-      continue;
-    }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, bytes);
+    const fd = openSync(target, constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW);
+    try {
+      if (readFileSync(fd).equals(bytes)) {
+        continue;
+      }
+      ftruncateSync(fd, 0);
+      writeSync(fd, bytes, 0, bytes.length, 0);
+    } finally {
+      closeSync(fd);
+    }
     report.written.push(path);
   }
   for (const directory of ownedDirectories) {
