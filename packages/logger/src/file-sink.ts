@@ -22,6 +22,7 @@ export interface SimpleWriteStream {
     cb?: (error?: Error | null) => void,
   ) => boolean;
   readonly end: (cb?: () => void) => SimpleWriteStream;
+  readonly on: (event: 'error', listener: (error: Error) => void) => unknown;
 }
 
 /**
@@ -76,6 +77,9 @@ export function createFileSink(config: FileSinkConfig, fs: FileSystem): FileSink
 
     // Create write stream
     const stream = fs.createWriteStream(filePath, { flags });
+    stream.on('error', (error) => {
+      console.error('Log file stream failed', { path: filePath, error: error.message });
+    });
 
     return {
       write(event: LogEvent): void {

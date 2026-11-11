@@ -59,6 +59,7 @@ function adaptWriteStream(stream: NodeWriteStream): SimpleWriteStream {
       stream.end(cb);
       return adaptWriteStream(stream);
     },
+    on: (event, listener) => stream.on(event, listener),
   };
 }
 

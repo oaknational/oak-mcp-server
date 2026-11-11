@@ -20,7 +20,15 @@ const importedRuleGaps: Record<string, string[]> = {
 };
 
 export default defineConfig(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '.cache/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '.cache/**',
+      'tools/import-from-ooce/supplied/**',
+    ],
+  },
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
   eslintComments.recommended,
