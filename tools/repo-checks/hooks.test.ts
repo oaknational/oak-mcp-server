@@ -194,7 +194,7 @@ describe('pre-commit', () => {
   });
 });
 
-describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
+describe.skipIf(!hasGitleaks && !process.env.CI)('pre-push secret scan', () => {
   it('scans the full local history when the push targets a URL', () => {
     git('switch', '-q', '-c', 'topic');
     const token = ['ghp', 'aB3dE5gH7jK9mN1pQ3sT5vX7zA9cD1fG3hJ5'].join('_');
@@ -240,6 +240,16 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
       return status;
     }
 
+    function pushHeads(count: number): void {
+      const heads = Array.from(
+        { length: count },
+        (_, i) =>
+          `commit refs/heads/b${String(i)}\ncommitter f <f> 1700000000 +0000\ndata ${String(String(i).length)}\n${String(i)}\n`,
+      ).join('\n');
+      execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, input: heads });
+      git('push', '-q', 'origin', 'refs/heads/b*:refs/heads/b*');
+    }
+
     it('scans commits whose remote branch was deleted without a pruning fetch', () => {
       execFileSync('git', ['-C', remote, 'branch', '-q', '-D', 'topic']);
       expect(git('rev-parse', 'refs/remotes/origin/topic')).toBe(git('rev-parse', 'HEAD'));
@@ -251,18 +261,24 @@ describe.skipIf(!hasGitleaks)('pre-push secret scan', () => {
     });
 
     it('finishes within a second when the remote has 3,000 heads', () => {
-      const heads = Array.from(
-        { length: 3000 },
-        (_, i) =>
-          `commit refs/heads/b${String(i)}\ncommitter f <f> 1700000000 +0000\ndata ${String(String(i).length)}\n${String(i)}\n`,
-      ).join('\n');
-      execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, input: heads });
-      git('push', '-q', 'origin', 'refs/heads/b*:refs/heads/b*');
+      pushHeads(3000);
       const started = performance.now();
       const status = push();
       const elapsed = performance.now() - started;
       expect(status).toBe(0);
       expect(elapsed).toBeLessThan(1000);
+    }, 30_000);
+
+    it('scans the full local history when the remote has too many heads to exclude', () => {
+      pushHeads(4000);
+      const sha = git('rev-parse', 'HEAD');
+      const { status, stdout } = spawnSync('sh', ['.husky/pre-push', 'origin', remote], {
+        cwd: repo,
+        input: `refs/heads/again ${sha} refs/heads/again ${NULL_SHA}\n`,
+        encoding: 'utf8',
+      });
+      expect(stdout).toContain('RuleID');
+      expect(status).toBe(1);
     }, 30_000);
 
     it('scans against the push target when a URL rewrite points back at the fetch URL', () => {

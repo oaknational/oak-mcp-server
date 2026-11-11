@@ -32,6 +32,10 @@ trap 'rm -f "$refs_file" "$tips_file"' EXIT
 printf '%s\n' "$remote_refs" | cut -f1 | sed -n 's/^\(..*\)$/\1^{commit}/p' |
   git cat-file --batch-check='%(objecttype) %(objectname)' 2> /dev/null |
   sed -n 's/^commit //p' > "$tips_file"
+# Linux caps one argument at 128 KiB; past this size, scan the full local history instead.
+if [ "$(wc -c < "$tips_file")" -gt 130000 ]; then
+  : > "$tips_file"
+fi
 not_tips="$(tr "\n" " " < "$tips_file")"
 echo "🛡️ Running secret scan on the pushed commits..."
 scan_status=0
