@@ -1,8 +1,21 @@
 CLAUDE.local.md
 AGENTS.local.md
 .claude/settings.local.json
+.env
+.env.*
 
 .cache/
 node_modules/
 dist/
 coverage/
+.next/
+out/
+next-env.d.ts
+playwright-report/
+test-results/
+
+**/.typedoc
+**/_typedoc_*
+packages/codegen/reference/*.json
+
+**/test-results/

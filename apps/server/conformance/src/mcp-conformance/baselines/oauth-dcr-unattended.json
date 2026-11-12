@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0.0",
+  "suite": "oauth",
+  "mode": "unattended",
+  "seeded": {
+    "date": "2026-07-26",
+    "mcpjam_version": "3.15.2"
+  },
+  "residual_masking": "The consent-boundary expected failure matches on the consent-shaped error text; a regression where the target's own /oauth/authorize serves an HTTP 200 error page is indistinguishable from the healthy consent redirect chain at this level. Cover: the attended oauth suite (MCP-184 / the Director's authed re-runs) exercises the full authorize chain.",
+  "expected": {
+    "request_without_token": { "status": "pass" },
+    "received_401_unauthorized": { "status": "pass" },
+    "request_resource_metadata": { "status": "pass" },
+    "received_resource_metadata": { "status": "pass" },
+    "request_authorization_server_metadata": { "status": "pass" },
+    "received_authorization_server_metadata": { "status": "pass" },
+    "request_client_registration": { "status": "pass" },
+    "received_client_credentials": { "status": "pass" },
+    "generate_pkce_parameters": { "status": "pass" },
+    "authorization_request": { "status": "pass" },
+    "received_authorization_code": {
+      "status": "fail",
+      "errorIncludes": "Headless authorization requires auto-consent"
+    }
+  }
+}

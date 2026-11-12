@@ -1,0 +1,69 @@
+{
+  "data": {
+    "search": {
+      "issueCount": 9,
+      "pageInfo": {
+        "hasNextPage": true,
+        "endCursor": "Y3Vyc29yOjQ="
+      },
+      "nodes": [
+        {
+          "number": 101,
+          "title": "feat(tools): add the lesson summary tool",
+          "body": "Adds a tool that summarises a lesson.",
+          "headRefName": "feat/lesson-summary",
+          "createdAt": "2026-09-30T10:00:00Z",
+          "mergedAt": "2026-10-01T10:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 102,
+          "title": "Revert \"feat(tools): add the lesson summary tool (#101)\"",
+          "body": "The summary tool broke search ranking.",
+          "headRefName": "revert-lesson-summary",
+          "createdAt": "2026-10-05T08:00:00Z",
+          "mergedAt": "2026-10-05T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 103,
+          "title": "fix(search): trim whitespace from queries",
+          "body": "Trims queries before search.",
+          "headRefName": "fix/trim-queries",
+          "createdAt": "2026-10-06T07:00:00Z",
+          "mergedAt": "2026-10-06T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 104,
+          "title": "Revert \"fix(search): trim whitespace from queries\"",
+          "body": "Reverts example-org/example-repo#103",
+          "headRefName": "revert-103-fix/trim-queries",
+          "createdAt": "2026-10-13T09:00:00Z",
+          "mergedAt": "2026-10-13T10:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        }
+      ]
+    }
+  }
+}

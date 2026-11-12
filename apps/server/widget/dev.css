@@ -1,0 +1,10 @@
+/* Shared layout for the DEV-ONLY pages (index.html, tokens.html).
+   These pages are served by the Vite dev server and never built into
+   the shipped widget. They must not wear .oak-app — that class is the
+   Oak brand panel the widget ships, not a neutral page wrapper. */
+
+.dev-page {
+  display: flex;
+  flex-direction: column;
+  padding: var(--oak-component-page-padding);
+}

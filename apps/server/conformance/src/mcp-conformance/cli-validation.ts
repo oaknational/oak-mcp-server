@@ -1,0 +1,98 @@
+import { type ConformanceSuite } from './types.js';
+
+/**
+ * Parsed CLI state for the `agent-tools mcp-conformance` bin — extracted
+ * here with its validator so the pure validation contract is testable
+ * without importing the self-executing bin module.
+ */
+export interface CliState {
+  help: boolean;
+  unattended: boolean;
+  seed: boolean;
+  drive: boolean;
+  target: string | undefined;
+  suites: ConformanceSuite[];
+  credentialsFile: string | undefined;
+  reportDir: string | undefined;
+  baselineDir: string | undefined;
+  packOut: string | undefined;
+  preambleFile: string | undefined;
+  suiteErrors: string[];
+}
+
+/**
+ * The drive operation's rules (MCP-303): drive enumerates the tool surface
+ * from the server itself, so the suite/mode vocabulary of the verdict and
+ * seed operations does not apply to it — and the pack flags apply only to
+ * it.
+ */
+function validateDriveUsage(state: CliState): string | undefined {
+  if (!state.drive) {
+    if (state.packOut !== undefined) {
+      return '--pack-out is only meaningful with --drive (the reviewer pack is a drive-run projection)';
+    }
+    if (state.preambleFile !== undefined) {
+      return '--preamble-file is only meaningful with --drive (the reviewer pack is a drive-run projection)';
+    }
+    return undefined;
+  }
+  if (state.seed) {
+    return '--drive and --seed are different operations — pick one';
+  }
+  if (state.suites.length > 0) {
+    return '--drive enumerates the tool surface from the server itself — drop --suite';
+  }
+  if (state.unattended) {
+    return '--drive has no unattended mode (tool calls need the authed surface) — drop --unattended';
+  }
+  if (state.baselineDir !== undefined) {
+    return '--baseline-dir belongs to the baseline-verdict operation — the drive derives from the live surface; drop the flag';
+  }
+  return undefined;
+}
+
+/**
+ * The credentials-file rules, separated from the structural checks: the
+ * unattended plan is credential-free, and the oauth suite never consumes
+ * credentials (its argv carries no --credentials-file; the suite drives
+ * its own DCR flow), so an oauth-only invocation with the flag would
+ * silently drop it — refuse loudly instead. Mixed suite sets keep the
+ * flag: protocol/apps consume it.
+ */
+function validateCredentialsUsage(state: CliState): string | undefined {
+  if (state.credentialsFile === undefined) {
+    return undefined;
+  }
+  if (state.unattended) {
+    return '--unattended forbids --credentials-file (the unattended plan is credential-free by definition)';
+  }
+  if (state.suites.length > 0 && state.suites.every((suite) => suite === 'oauth')) {
+    return '--credentials-file is not consumed by the oauth suite — drop the flag, or include a suite that uses it (protocol | apps)';
+  }
+  return undefined;
+}
+
+/**
+ * Validates the scanned CLI state, returning the bare refusal reason (no
+ * usage text — the bin appends its help text at the print site) or
+ * undefined when the state is runnable.
+ */
+export function validateCliState(state: CliState): string | undefined {
+  if (state.suiteErrors.length > 0) {
+    return state.suiteErrors.join('; ');
+  }
+  const duplicates = [...new Set(state.suites.filter((s, i) => state.suites.indexOf(s) !== i))];
+  if (duplicates.length > 0) {
+    return `duplicate --suite value(s): ${duplicates.join(', ')} — each suite runs once and writes one <suite>.json raw report`;
+  }
+  if (state.target === undefined || state.target.trim() === '') {
+    return '--target is required';
+  }
+  const driveRefusal = validateDriveUsage(state);
+  if (driveRefusal !== undefined) {
+    return driveRefusal;
+  }
+  // Drive consumes credentials directly on every call; the suites' rules
+  // (unattended-forbids, oauth-only-drops) are not its rules.
+  return state.drive ? undefined : validateCredentialsUsage(state);
+}

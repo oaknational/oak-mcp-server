@@ -1,0 +1,371 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { LogSink } from '@oaknational/logger';
+import {
+  type SentryBreadcrumb,
+  type SentryErrorEvent,
+  type SentryNodeSdk,
+  type SentryTransactionEvent,
+} from '@oaknational/sentry-node';
+import type { AuthDisabledRuntimeConfig } from '../runtime-config.js';
+import { createHttpObservabilityOrThrow } from './http-observability.js';
+
+interface FakeSentrySdk {
+  readonly sdk: SentryNodeSdk;
+  readonly init: ReturnType<typeof vi.fn<SentryNodeSdk['init']>>;
+  readonly captureException: ReturnType<typeof vi.fn<SentryNodeSdk['captureException']>>;
+  readonly captureMessage: ReturnType<typeof vi.fn<SentryNodeSdk['captureMessage']>>;
+  readonly flush: ReturnType<typeof vi.fn<SentryNodeSdk['flush']>>;
+}
+
+type BeforeSendHook = NonNullable<Parameters<SentryNodeSdk['init']>[0]['beforeSend']>;
+type BeforeSendHint = Parameters<BeforeSendHook>[1];
+type BeforeSendTransactionHook = NonNullable<
+  Parameters<SentryNodeSdk['init']>[0]['beforeSendTransaction']
+>;
+type BeforeSendTransactionHint = Parameters<BeforeSendTransactionHook>[1];
+type BeforeBreadcrumbHook = NonNullable<Parameters<SentryNodeSdk['init']>[0]['beforeBreadcrumb']>;
+type BeforeBreadcrumbHint = NonNullable<Parameters<BeforeBreadcrumbHook>[1]>;
+
+function createRuntimeConfig(
+  mode: 'off' | 'fixture' | 'sentry',
+  envOverrides?: Partial<AuthDisabledRuntimeConfig['env']>,
+): AuthDisabledRuntimeConfig {
+  return {
+    dangerouslyDisableAuth: true,
+    useStubTools: false,
+    version: '1.2.3-test',
+    versionSource: 'APP_VERSION_OVERRIDE',
+    vercelHostnames: [],
+    env: {
+      OAK_API_KEY: 'test-api-key',
+      ELASTICSEARCH_URL: 'https://example-elasticsearch.test',
+      ELASTICSEARCH_API_KEY: 'test-es-key',
+      DANGEROUSLY_DISABLE_AUTH: 'true',
+      LOG_LEVEL: 'info',
+      SENTRY_MODE: mode,
+      VERCEL_GIT_COMMIT_SHA: 'c8b666485ecb08b5dc27e428737b4077c0531f57',
+      ...(mode === 'sentry'
+        ? {
+            SENTRY_DSN: 'https://public@localhost/123456',
+            SENTRY_RELEASE_OVERRIDE: 'release-123',
+            SENTRY_TRACES_SAMPLE_RATE: '1',
+          }
+        : {}),
+      ...envOverrides,
+    },
+  };
+}
+
+const noopStdoutSink: LogSink = {
+  write(): void {
+    // Silences stdout in tests without vi.spyOn(process.stdout).
+  },
+};
+
+const noopLogger: SentryNodeSdk['logger'] = {
+  trace(): void {
+    /* noop */
+  },
+  debug(): void {
+    /* noop */
+  },
+  info(): void {
+    /* noop */
+  },
+  warn(): void {
+    /* noop */
+  },
+  error(): void {
+    /* noop */
+  },
+  fatal(): void {
+    /* noop */
+  },
+};
+
+function createFakeSentrySdk(): FakeSentrySdk {
+  const init = vi.fn<SentryNodeSdk['init']>();
+  const captureException = vi.fn<SentryNodeSdk['captureException']>();
+  const captureMessage = vi.fn<SentryNodeSdk['captureMessage']>();
+  const flush = vi.fn<SentryNodeSdk['flush']>().mockResolvedValue(true);
+  const close = vi.fn<SentryNodeSdk['close']>().mockResolvedValue(true);
+  const setUser = vi.fn<SentryNodeSdk['setUser']>();
+  const setTag = vi.fn<SentryNodeSdk['setTag']>();
+  const setContext = vi.fn<SentryNodeSdk['setContext']>();
+
+  return {
+    sdk: {
+      init,
+      captureException,
+      captureMessage,
+      flush,
+      close,
+      setUser,
+      setTag,
+      setContext,
+      logger: noopLogger,
+    },
+    init,
+    captureException,
+    captureMessage,
+    flush,
+  };
+}
+
+function getInitOptions(fakeSentrySdk: FakeSentrySdk): Parameters<SentryNodeSdk['init']>[0] {
+  const initOptions = fakeSentrySdk.init.mock.calls[0]?.[0];
+
+  if (!initOptions) {
+    throw new Error('Expected Sentry SDK init options to be captured');
+  }
+
+  return initOptions;
+}
+
+function requireDefined<T>(value: T | null | undefined, message: string): T {
+  if (value === undefined || value === null) {
+    throw new Error(message);
+  }
+
+  return value;
+}
+
+function isPromiseLike<T>(value: T | PromiseLike<unknown>): value is PromiseLike<unknown> {
+  return typeof value === 'object' && value !== null && 'then' in value;
+}
+
+function requireImmediateBeforeSendResult(
+  value: ReturnType<BeforeSendHook> | undefined,
+): SentryErrorEvent {
+  const result = requireDefined(value, 'Expected beforeSend to keep the event');
+
+  if (isPromiseLike(result)) {
+    throw new Error('Expected beforeSend to return synchronously');
+  }
+
+  return result;
+}
+
+function requireImmediateBeforeSendTransactionResult(
+  value: ReturnType<BeforeSendTransactionHook> | undefined,
+): SentryTransactionEvent {
+  const result = requireDefined(value, 'Expected beforeSendTransaction to keep the event');
+
+  if (isPromiseLike(result)) {
+    throw new Error('Expected beforeSendTransaction to return synchronously');
+  }
+
+  return result;
+}
+
+function requireImmediateBeforeBreadcrumbResult(
+  value: ReturnType<BeforeBreadcrumbHook> | undefined,
+): SentryBreadcrumb {
+  const result = requireDefined(value, 'Expected beforeBreadcrumb to keep the breadcrumb');
+
+  if (isPromiseLike(result)) {
+    throw new Error('Expected beforeBreadcrumb to return synchronously');
+  }
+
+  return result;
+}
+
+function expectRedactedMcpErrorEvent(beforeSend: BeforeSendHook | undefined): void {
+  expect(beforeSend).toBeDefined();
+
+  const errorEvent: SentryErrorEvent = {
+    type: undefined,
+    request: {
+      url: 'https://curriculum.example.com/mcp?code=secret',
+      method: 'POST',
+      data: {
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: { arguments: { query: 'sensitive payload' } },
+      },
+      headers: {
+        authorization: 'Bearer secret-token',
+      },
+    },
+    transaction: 'https://curriculum.example.com/mcp?code=secret',
+  };
+  const beforeSendHint: BeforeSendHint = {};
+  const event = requireImmediateBeforeSendResult(beforeSend?.(errorEvent, beforeSendHint));
+
+  expect(event.request?.method).toBe('POST');
+  expect(event.request?.url).toBe('/mcp');
+  expect(event.transaction).toBe('POST /mcp');
+}
+
+function expectRedactedMcpTransaction(
+  beforeSendTransaction: BeforeSendTransactionHook | undefined,
+): void {
+  expect(beforeSendTransaction).toBeDefined();
+
+  const transactionEvent: SentryTransactionEvent = {
+    type: 'transaction',
+    request: {
+      url: 'https://curriculum.example.com/mcp?state=secret',
+      method: 'POST',
+      headers: {
+        cookie: 'secret-cookie',
+      },
+      data: {
+        jsonrpc: '2.0',
+        id: '123',
+      },
+    },
+    transaction: 'https://curriculum.example.com/mcp?state=secret',
+  };
+  const beforeSendTransactionHint: BeforeSendTransactionHint = {};
+  const transaction = requireImmediateBeforeSendTransactionResult(
+    beforeSendTransaction?.(transactionEvent, beforeSendTransactionHint),
+  );
+
+  expect(transaction.request?.method).toBe('POST');
+  expect(transaction.request?.url).toBe('/mcp');
+  expect(transaction.transaction).toBe('POST /mcp');
+}
+
+function expectRedactedMcpBreadcrumb(beforeBreadcrumb: BeforeBreadcrumbHook | undefined): void {
+  expect(beforeBreadcrumb).toBeDefined();
+
+  const breadcrumbInput: SentryBreadcrumb = {
+    message: 'POST https://curriculum.example.com/mcp?session=secret',
+    data: {
+      method: 'POST',
+      url: 'https://curriculum.example.com/mcp?session=secret',
+      headers: {
+        authorization: 'Bearer secret-token',
+      },
+      body: {
+        jsonrpc: '2.0',
+        method: 'tools/call',
+      },
+    },
+  };
+  const beforeBreadcrumbHint: BeforeBreadcrumbHint = {};
+  const breadcrumb = requireImmediateBeforeBreadcrumbResult(
+    beforeBreadcrumb?.(breadcrumbInput, beforeBreadcrumbHint),
+  );
+
+  expect(breadcrumb.message).toBe('POST /mcp');
+  expect(breadcrumb.data).toEqual({
+    method: 'POST',
+    route: '/mcp',
+  });
+}
+
+describe('createHttpObservability', () => {
+  it('treats off mode as a real kill switch with no live Sentry init or sink capture', () => {
+    const sdk = createFakeSentrySdk();
+    const observability = createHttpObservabilityOrThrow(createRuntimeConfig('off'), {
+      sentrySdk: sdk.sdk,
+      stdoutSink: noopStdoutSink,
+    });
+    const logger = observability.createLogger({ name: 'test-http' });
+
+    logger.info('off-mode-log');
+
+    expect(sdk.init).not.toHaveBeenCalled();
+    expect(sdk.captureMessage).not.toHaveBeenCalled();
+    expect(sdk.captureException).not.toHaveBeenCalled();
+  });
+
+  it('initialises live Sentry once, composes the logger sink, and delegates flush', async () => {
+    const sdk = createFakeSentrySdk();
+    const observability = createHttpObservabilityOrThrow(createRuntimeConfig('sentry'), {
+      sentrySdk: sdk.sdk,
+      stdoutSink: noopStdoutSink,
+    });
+    const logger = observability.createLogger({ name: 'test-http' });
+
+    logger.info('live-mode-log');
+    observability.captureHandledError(new Error('handled error'), {
+      boundary: 'test_boundary',
+      secret: 'should-be-redacted',
+    });
+    await observability.flush(1234);
+    logger.warn('second-log');
+
+    expect(sdk.init).toHaveBeenCalledTimes(1);
+    expect(sdk.captureMessage).not.toHaveBeenCalled();
+    const expectedContext: unknown = expect.objectContaining({
+      boundary: 'test_boundary',
+    });
+    const expectedExtra: unknown = expect.objectContaining({
+      context: expectedContext,
+    });
+    expect(sdk.captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        extra: expectedExtra,
+      }),
+    );
+    expect(sdk.flush).toHaveBeenCalledWith(1234);
+    expect(sdk.init).toHaveBeenCalledTimes(1);
+  });
+
+  it('strips generic /mcp request capture down to method and route metadata in fake sentry mode', () => {
+    const sdk = createFakeSentrySdk();
+    createHttpObservabilityOrThrow(createRuntimeConfig('sentry'), {
+      sentrySdk: sdk.sdk,
+      stdoutSink: noopStdoutSink,
+    });
+
+    const initOptions = getInitOptions(sdk);
+    const beforeSend = initOptions.beforeSend;
+    const beforeSendTransaction = initOptions.beforeSendTransaction;
+    const beforeBreadcrumb = initOptions.beforeBreadcrumb;
+
+    expectRedactedMcpErrorEvent(beforeSend);
+    expectRedactedMcpTransaction(beforeSendTransaction);
+    expectRedactedMcpBreadcrumb(beforeBreadcrumb);
+  });
+
+  it('redacts OAuth form-encoded request capture for /oauth/token without stripping the route', () => {
+    const sdk = createFakeSentrySdk();
+    createHttpObservabilityOrThrow(createRuntimeConfig('sentry'), {
+      sentrySdk: sdk.sdk,
+      stdoutSink: noopStdoutSink,
+    });
+
+    const initOptions = getInitOptions(sdk);
+    const beforeSend = initOptions.beforeSend;
+
+    expect(beforeSend).toBeDefined();
+
+    const errorEvent: SentryErrorEvent = {
+      type: undefined,
+      request: {
+        url: 'https://curriculum.example.com/oauth/token',
+        method: 'POST',
+        data: 'grant_type=authorization_code&code=secret-code&code_verifier=pkce-secret&client_id=oak-client&state=opaque-state&nonce=random-nonce&client_assertion=signed-client-jwt',
+        headers: {
+          authorization: 'Bearer secret-token',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+      },
+      transaction: 'POST /oauth/token',
+    };
+    const beforeSendHint: BeforeSendHint = {};
+    const event = requireImmediateBeforeSendResult(beforeSend?.(errorEvent, beforeSendHint));
+
+    expect(event.transaction).toBe('POST /oauth/token');
+    expect(event.request?.url).toBe('https://curriculum.example.com/oauth/token');
+    expect(event.request?.method).toBe('POST');
+    expect(event.request?.headers).toEqual({
+      authorization: '[REDACTED]',
+      'content-type': 'application/x-www-form-urlencoded',
+    });
+    expect(event.request?.data).toBe(
+      'grant_type=authorization_code&code=%5BREDACTED%5D&code_verifier=%5BREDACTED%5D&client_id=oak-client&state=%5BREDACTED%5D&nonce=%5BREDACTED%5D&client_assertion=%5BREDACTED%5D',
+    );
+
+    expect(JSON.stringify(event)).not.toContain('secret-code');
+    expect(JSON.stringify(event)).not.toContain('pkce-secret');
+    expect(JSON.stringify(event)).not.toContain('opaque-state');
+    expect(JSON.stringify(event)).not.toContain('random-nonce');
+    expect(JSON.stringify(event)).not.toContain('signed-client-jwt');
+  });
+});

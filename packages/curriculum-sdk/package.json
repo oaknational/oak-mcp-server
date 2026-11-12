@@ -1,0 +1,140 @@
+{
+  "name": "@oaknational/curriculum-sdk",
+  "version": "1.186.9",
+  "description": "TypeScript SDK for Oak National Academy Curriculum API",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.integration.test.ts",
+    "!src/**/*.bak",
+    "README.md",
+    "LICENCE"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./client/*": {
+      "types": "./dist/client/*.d.ts",
+      "default": "./dist/client/*.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./config/*": {
+      "types": "./dist/config/*.d.ts",
+      "default": "./dist/config/*.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./types/*": {
+      "types": "./dist/types/*.d.ts",
+      "default": "./dist/types/*.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/execute-tool-call.d.ts",
+      "default": "./dist/mcp/execute-tool-call.js"
+    },
+    "./mcp/*": {
+      "types": "./dist/mcp/*.d.ts",
+      "default": "./dist/mcp/*.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "default": "./dist/validation/index.js"
+    },
+    "./validation/*": {
+      "types": "./dist/validation/*.d.ts",
+      "default": "./dist/validation/*.js"
+    },
+    "./public/search": {
+      "types": "./dist/public/search.d.ts",
+      "default": "./dist/public/search.js"
+    },
+    "./public/search.js": {
+      "types": "./dist/public/search.d.ts",
+      "default": "./dist/public/search.js"
+    },
+    "./public/mcp-tools": {
+      "types": "./dist/public/mcp-tools.d.ts",
+      "default": "./dist/public/mcp-tools.js"
+    },
+    "./public/mcp-tools.js": {
+      "types": "./dist/public/mcp-tools.d.ts",
+      "default": "./dist/public/mcp-tools.js"
+    },
+    "./elasticsearch": {
+      "types": "./dist/elasticsearch.d.ts",
+      "default": "./dist/elasticsearch.js"
+    },
+    "./elasticsearch.js": {
+      "types": "./dist/elasticsearch.d.ts",
+      "default": "./dist/elasticsearch.js"
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "cp ../../../LICENCE ./LICENCE",
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "peerDependencies": {
+    "@elastic/elasticsearch": "^9.3.4"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@oaknational/graph-corpus-sdk": "workspace:*",
+    "@oaknational/logger": "workspace:*",
+    "@oaknational/oak-search-sdk": "workspace:*",
+    "@oaknational/result": "workspace:*",
+    "@oaknational/sdk-codegen": "workspace:*",
+    "@zod/core": "0.11.6",
+    "openapi-fetch": "0.17.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@elastic/elasticsearch": "^9.5.0",
+    "@types/node": "^24.13.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/curriculum-sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/curriculum-sdk#readme",
+  "keywords": [
+    "oak",
+    "curriculum",
+    "api",
+    "sdk",
+    "education",
+    "typescript"
+  ],
+  "license": "MIT"
+}

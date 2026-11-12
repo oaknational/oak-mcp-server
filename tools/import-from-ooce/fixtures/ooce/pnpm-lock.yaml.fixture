@@ -1,0 +1,21 @@
+lockfileVersion: '9.0'
+
+importers:
+  packages/libs/alpha:
+    dependencies:
+      '@source/beta':
+        specifier: workspace:*
+        version: link:../../core/beta
+      left-pad:
+        specifier: ^1.0.0
+        version: 1.3.0(peer-thing@2.0.0)
+  packages/core/beta:
+    dependencies:
+      right-pad:
+        specifier: ^2.0.0
+        version: 2.1.4
+  packages/libs/gamma:
+    dependencies:
+      mid-pad:
+        specifier: ^3.0.0
+        version: 3.0.2

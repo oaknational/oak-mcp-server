@@ -1,0 +1,65 @@
+{
+  "sha": "d5846cf6f37270c73291640a526124429369ee97",
+  "packages": {
+    "@oaknational/result": {
+      "tests": 36,
+      "skipped": 0
+    },
+    "@oaknational/observability": {
+      "tests": 59,
+      "skipped": 0
+    },
+    "@oaknational/env": {
+      "tests": 90,
+      "skipped": 0
+    },
+    "@oaknational/build-metadata": {
+      "tests": 93,
+      "skipped": 0
+    },
+    "@oaknational/logger": {
+      "tests": 139,
+      "skipped": 0
+    },
+    "@oaknational/sentry-node": {
+      "tests": 118,
+      "skipped": 0
+    },
+    "@oaknational/posthog-node": {
+      "tests": 367,
+      "skipped": 0
+    },
+    "@oaknational/openapi-zod-client-adapter": {
+      "tests": 22,
+      "skipped": 0
+    },
+    "@oaknational/graph-core": {
+      "tests": 82,
+      "skipped": 0
+    },
+    "@oaknational/sdk-codegen": {
+      "tests": 833,
+      "skipped": 0
+    },
+    "@oaknational/graph-corpus-sdk": {
+      "tests": 101,
+      "skipped": 0
+    },
+    "@oaknational/oak-search-sdk": {
+      "tests": 490,
+      "skipped": 0
+    },
+    "@oaknational/curriculum-sdk": {
+      "tests": 773,
+      "skipped": 0
+    },
+    "@oaknational/widget-tokens": {
+      "tests": 0,
+      "skipped": 0
+    },
+    "@oaknational/mcp-server": {
+      "tests": 1313,
+      "skipped": 0
+    }
+  }
+}

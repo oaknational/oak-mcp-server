@@ -1,0 +1,6 @@
+import { createLibConfig } from '../tsup.preset';
+
+export default createLibConfig({
+  entry: { index: 'src/index.ts', node: 'src/node.ts' },
+  external: ['fs', 'path', 'node:fs', 'node:path'],
+});

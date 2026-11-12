@@ -1,0 +1,115 @@
+{
+  "name": "@oaknational/sdk-codegen",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Generation-time workspace for the Oak Curriculum SDK — OpenAPI types, Zod schemas, MCP tool descriptors, bulk data infrastructure, and vocabulary generation",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./api-schema": {
+      "types": "./dist/api-schema.d.ts",
+      "default": "./dist/api-schema.js"
+    },
+    "./mcp-tools": {
+      "types": "./dist/mcp-tools.d.ts",
+      "default": "./dist/mcp-tools.js"
+    },
+    "./zod": {
+      "types": "./dist/zod.d.ts",
+      "default": "./dist/zod.js"
+    },
+    "./bulk": {
+      "types": "./dist/bulk.d.ts",
+      "default": "./dist/bulk.js"
+    },
+    "./vocab": {
+      "types": "./dist/vocab.d.ts",
+      "default": "./dist/vocab.js"
+    },
+    "./vocab-data": {
+      "types": "./dist/vocab-data.d.ts",
+      "default": "./dist/vocab-data.js"
+    },
+    "./graph-corpus": {
+      "types": "./dist/graph-corpus.d.ts",
+      "default": "./dist/graph-corpus.js"
+    },
+    "./widget-constants": {
+      "types": "./dist/widget-constants.d.ts",
+      "default": "./dist/widget-constants.js"
+    },
+    "./synonyms": {
+      "types": "./dist/synonyms.d.ts",
+      "default": "./dist/synonyms.js"
+    }
+  },
+  "scripts": {
+    "sdk-codegen": "pnpm generate:types",
+    "postsdk-codegen": "pnpm -w format:root",
+    "pregenerate:types": "pnpm generate:clean",
+    "generate:types": "pnpm generate:openapi && pnpm generate:zod && pnpm generate:bulk",
+    "generate:openapi": "pnpm exec tsx code-generation/codegen.ts",
+    "generate:zod": "pnpm exec tsx code-generation/zodgen.ts",
+    "generate:bulk": "pnpm exec tsx code-generation/bulkgen.ts",
+    "generate:clean": "rm -rf src/types/generated",
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json && node --experimental-strip-types code-generation/copy-json-assets.ts",
+    "clean": "rm -rf dist .turbo",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "vocab-gen": "pnpm exec tsx vocab-gen/run-vocab-gen.ts",
+    "scan:sitemap": "pnpm exec tsx code-generation/sitemap-scanner.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@oaknational/logger": "workspace:^",
+    "@oaknational/observability": "workspace:*",
+    "@oaknational/openapi-zod-client-adapter": "workspace:*",
+    "@oaknational/result": "workspace:*",
+    "@zod/core": "0.11.6",
+    "openapi-fetch": "0.17.0",
+    "openapi-typescript": "7.13.0",
+    "openapi3-ts": "4.6.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@oaknational/env": "workspace:*",
+    "@types/node": "^24.13.3",
+    "fflate": "^0.8.3",
+    "tsup": "^8.5.1",
+    "typedoc": "^0.28.20",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/codegen"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/codegen#readme",
+  "keywords": [
+    "oak",
+    "curriculum",
+    "sdk",
+    "generation",
+    "openapi",
+    "typescript",
+    "education"
+  ],
+  "license": "MIT"
+}

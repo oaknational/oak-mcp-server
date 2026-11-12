@@ -1,0 +1,9 @@
+.vercel
+.env*.local
+.widget-build/
+public/oak-ds/
+# Brand artwork copied from @oaknational/oak-design-assets at build time.
+public/oak-assets/
+# Transient staging/retired dirs from the copier's atomic publish; only
+# stranded by a crash, never served (dot-prefixed — express ignores dotfiles).
+public/.oak-*

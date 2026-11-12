@@ -1,0 +1,84 @@
+/**
+ * Transforms Zod v3 output from openapi-zod-client to Zod v4.
+ *
+ * This is the SINGLE source of truth for all Zod v3→v4 API transformations.
+ * All deprecated types, methods, and dead code are handled here.
+ *
+ * Transformations performed:
+ * - Import path: kept as `"zod"` (consuming packages have `"zod": "^4"`)
+ * - Type in imports: `ZodSchema` → `ZodType`
+ * - Standalone type usage: `ZodSchema` → `ZodType`
+ * - `.string().url()` → `.url()`: Zod 4 promotes url to a standalone type
+ * - `.passthrough()` removed: enforces strict validation (unknown keys rejected)
+ * - allOf intersection strict fix: `.strict().and(.strict())` → `.and()` without
+ *   strict on either side, preventing mutual key rejection in intersections
+ * - Zodios import removal: completely removed `@zodios/core` dependency
+ * - Zodios dead code removal: `export const api`, `createApiClient`
+ *
+ * Strict schema enforcement:
+ * - `.passthrough()` is REMOVED to ensure unknown keys cause validation errors
+ * - Combined with `strictObjects: true` in generator options, this ensures
+ *   schemas use `.strict()` only - fail fast, never silently ignore keys
+ */
+
+/**
+ * Transforms a generated code string from Zod v3 to Zod v4.
+ *
+ * @param zodV3Output - The raw output string from openapi-zod-client (uses Zod v3)
+ * @returns Fully Zod v4 compliant code string
+ *
+ * @example
+ * ```typescript
+ * const zodV3Code = 'import { z, type ZodSchema } from "zod";';
+ * const zodV4Code = transformZodV3ToV4(zodV3Code);
+ * // zodV4Code === 'import { z, type ZodType } from "zod";'
+ * ```
+ */
+/** Removes all Zodios imports, wrappers, and dead exports from the output. */
+function removeZodiosDependency(input: string): string {
+  let result = input;
+  // Remove full Zodios import
+  result = result.replaceAll(
+    /import\s*\{\s*makeApi\s*,\s*Zodios\s*,\s*type\s+ZodiosOptions\s*\}\s*from\s*["']@zodios\/core["'];?\n?/g,
+    '',
+  );
+  // Remove makeApi-only import
+  result = result.replaceAll(/import\s*\{\s*makeApi\s*\}\s*from\s*["']@zodios\/core["'];?\n?/g, '');
+  // Replace makeApi([...]) with plain array
+  result = result.replaceAll(/\bmakeApi\s*\(/g, '(');
+  // Remove dead exports
+  result = result.replaceAll(/export const api = new Zodios\(endpoints\);?\n?/g, '');
+  result = result.replaceAll(
+    /export function createApiClient\(baseUrl: string, options\?: ZodiosOptions\) \{[\s\S]*?return new Zodios\(baseUrl, endpoints, options\);\s*\}\n?/g,
+    '',
+  );
+  return result;
+}
+
+export function transformZodV3ToV4(zodV3Output: string): string {
+  let result = zodV3Output;
+
+  // 1. Transform deprecated ZodSchema type in imports (import path stays as "zod")
+  result = result.replaceAll(
+    /import\s*\{\s*z\s*,\s*type\s+ZodSchema\s*\}\s*from\s*['"]zod['"]/g,
+    'import { z, type ZodType } from "zod"',
+  );
+
+  // 2. Transform standalone ZodSchema usage to ZodType (not in imports)
+  result = result.replaceAll(/\bZodSchema\b/g, 'ZodType');
+
+  // 3. Transform deprecated z.string().url() → z.url() (Zod 4 standalone type)
+  result = result.replaceAll('z.string().url()', 'z.url()');
+
+  // 4. Remove .passthrough() — strict validation only, not loose parsing
+  result = result.replaceAll('.passthrough()', '');
+
+  // 5. Fix allOf/intersection strict conflict: remove .strict() from .and() sides
+  result = result.replaceAll(/\.strict\(\)(\s*\.and\()/g, '$1');
+  result = result.replaceAll(/\.and\(([\s\S]*?)\.strict\(\)(\s*)\)/g, '.and($1$2)');
+
+  // 6. Remove Zodios dependency (imports, wrappers, dead exports)
+  result = removeZodiosDependency(result);
+
+  return result;
+}

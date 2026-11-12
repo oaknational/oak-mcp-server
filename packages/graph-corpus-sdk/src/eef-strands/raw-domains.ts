@@ -1,0 +1,202 @@
+/**
+ * Raw finite-value domains derived from the EEF corpus — the vocabularies,
+ * headline-metric domains, and edge facts the downstream graph and MCP layers
+ * narrow against.
+ *
+ * Two distinct domain families, each read from its own named source path in the
+ * one corpus:
+ *
+ * - **Observed applicability domains** — the phase/key-stage/priority values
+ *   strands actually carry in `school_context_relevance`. These are the values a
+ *   graph filter can match a strand on.
+ * - **Declared metadata domains** — the enums the corpus *declares* in
+ *   `school_context_schema`. Typed raw metadata; D3 adopts a declared value as a
+ *   filter input after ratification confirms, via {@link declaredVsObservedDivergence},
+ *   that it yields a non-empty result.
+ *
+ * Everything here derives from {@link EEF_TOOLKIT_DATA} by `typeof`/indexed
+ * access and deterministic projection.
+ */
+import { EEF_TOOLKIT_DATA } from './eef-toolkit.external-data.js';
+import type { EefStrand, EefStrandId } from './strand-lookup.js';
+
+// --- Declared metadata domains (from `school_context_schema`) ---------------
+
+/** Declared phase enum (wider than {@link ObservedPhase}; see divergence). */
+export type DeclaredPhase =
+  (typeof EEF_TOOLKIT_DATA.school_context_schema.properties.phase.enum)[number];
+/** Declared key-stage enum (wider than {@link ObservedKeyStage}; see divergence). */
+export type DeclaredKeyStage =
+  (typeof EEF_TOOLKIT_DATA.school_context_schema.properties.key_stage.enum)[number];
+/** Declared priority enum. */
+export type DeclaredPriority =
+  (typeof EEF_TOOLKIT_DATA.school_context_schema.properties.priorities.items.enum)[number];
+
+// --- Observed applicability domains (from strands) --------------------------
+
+/**
+ * The strand union members that carry `school_context_relevance` (17 of 30).
+ * `Extract` selects exactly the members with the key, so the observed-domain
+ * types below index a present-everywhere field rather than failing on the
+ * members that omit it — the exact-union cost cured here at the raw boundary.
+ */
+type StrandWithSchoolContext = Extract<EefStrand, { school_context_relevance: unknown }>;
+type SchoolContextRelevance = StrandWithSchoolContext['school_context_relevance'];
+
+/** Phase values strands actually carry (observed: early_years/primary/secondary). */
+export type ObservedPhase = SchoolContextRelevance['most_relevant_phases'][number];
+/** Key-stage values strands actually carry (observed: EYFS/KS1/KS2/KS3/KS4). */
+export type ObservedKeyStage = SchoolContextRelevance['most_relevant_key_stages'][number];
+/** Priority values strands actually carry. */
+export type ObservedPriority = SchoolContextRelevance['most_relevant_priorities'][number];
+
+// --- Raw headline metric domains (present on all 30 strands) ----------------
+
+/** Months of additional progress; `null` where evidence is insufficient (4 strands). */
+export type HeadlineImpactMonths = EefStrand['headline']['impact_months'];
+/** Implementation cost rating (1–5). */
+export type HeadlineCostRating = EefStrand['headline']['cost_rating'];
+/** Implementation cost label. */
+export type HeadlineCostLabel = EefStrand['headline']['cost_label'];
+/** Evidence-strength rating (padlocks, 0–5). */
+export type HeadlineEvidenceStrengthRating = EefStrand['headline']['evidence_strength_rating'];
+/** Evidence-strength label. */
+export type HeadlineEvidenceStrengthLabel = EefStrand['headline']['evidence_strength_label'];
+
+// --- Declared-vs-observed divergence (a corpus fact for D3/D4) --------------
+
+/** Per-domain lists of declared enum values that no strand actually carries. */
+export interface DeclaredVsObservedDivergence {
+  /** Declared phases with no backing strand (e.g. post_16, all_through, special). */
+  readonly phase: readonly DeclaredPhase[];
+  /** Declared key stages with no backing strand (e.g. KS5). */
+  readonly keyStage: readonly DeclaredKeyStage[];
+  /** Declared priorities with no backing strand. */
+  readonly priority: readonly DeclaredPriority[];
+}
+
+function deriveObservedAxisArrays(): {
+  readonly phases: readonly ObservedPhase[];
+  readonly keyStages: readonly ObservedKeyStage[];
+  readonly priorities: readonly ObservedPriority[];
+} {
+  const phases = new Set<ObservedPhase>();
+  const keyStages = new Set<ObservedKeyStage>();
+  const priorities = new Set<ObservedPriority>();
+  for (const strand of EEF_TOOLKIT_DATA.strands) {
+    if (!('school_context_relevance' in strand)) {
+      continue;
+    }
+    const scr = strand.school_context_relevance;
+    for (const phase of scr.most_relevant_phases) {
+      phases.add(phase);
+    }
+    for (const keyStage of scr.most_relevant_key_stages) {
+      keyStages.add(keyStage);
+    }
+    for (const priority of scr.most_relevant_priorities) {
+      priorities.add(priority);
+    }
+  }
+  return { phases: [...phases], keyStages: [...keyStages], priorities: [...priorities] };
+}
+
+const observedAxisArrays = deriveObservedAxisArrays();
+
+/**
+ * The distinct observed values per axis, in first-seen corpus order — the finite
+ * domains the D6 MCP input schema enumerates for `evidence-for-move` selectors.
+ * "Observed" = values some strand actually carries (equivalently, the declared
+ * enum minus {@link declaredVsObservedDivergence}); never hand-maintained.
+ */
+export const OBSERVED_PHASES: readonly ObservedPhase[] = observedAxisArrays.phases;
+export const OBSERVED_KEY_STAGES: readonly ObservedKeyStage[] = observedAxisArrays.keyStages;
+export const OBSERVED_PRIORITIES: readonly ObservedPriority[] = observedAxisArrays.priorities;
+
+/**
+ * Membership sets over the observed arrays, used to compute
+ * {@link declaredVsObservedDivergence} (a declared value is divergent iff it is
+ * not in the observed set). Typed by the DECLARED unions — the exact domain of the
+ * `.has()` query, which asks of each *declared* value whether it is observed. The
+ * observed values are a subset of the declared ones, so the observed arrays
+ * populate these sets with no widening (and no `string`).
+ */
+const OBSERVED = {
+  phases: new Set<DeclaredPhase>(OBSERVED_PHASES),
+  keyStages: new Set<DeclaredKeyStage>(OBSERVED_KEY_STAGES),
+  priorities: new Set<DeclaredPriority>(OBSERVED_PRIORITIES),
+};
+
+/**
+ * Declared enum values that no strand carries, computed by comparing each
+ * `school_context_schema` enum against the observed domains. A declared value
+ * listed here yields an empty-but-valid filter result, so D3 adopts it as a
+ * filter input only after ratification.
+ */
+export const declaredVsObservedDivergence: DeclaredVsObservedDivergence = {
+  phase: EEF_TOOLKIT_DATA.school_context_schema.properties.phase.enum.filter(
+    (declared) => !OBSERVED.phases.has(declared),
+  ),
+  keyStage: EEF_TOOLKIT_DATA.school_context_schema.properties.key_stage.enum.filter(
+    (declared) => !OBSERVED.keyStages.has(declared),
+  ),
+  priority: EEF_TOOLKIT_DATA.school_context_schema.properties.priorities.items.enum.filter(
+    (declared) => !OBSERVED.priorities.has(declared),
+  ),
+};
+
+// --- Raw related-strand edge facts ------------------------------------------
+
+/** A directed strand→strand relation derived from a strand's `related_strands`. */
+export interface RelatedStrandEdge {
+  readonly source: EefStrandId;
+  readonly target: EefStrandId;
+}
+
+/**
+ * Every `related_strands` reference as a directed edge, derived from the corpus
+ * (17 of 30 strands carry relations). D5 decides how these raw facts become
+ * graph-native edges; D2 only exposes the typed source.
+ */
+export const relatedStrandEdges: readonly RelatedStrandEdge[] = EEF_TOOLKIT_DATA.strands.flatMap(
+  (strand) =>
+    'related_strands' in strand
+      ? strand.related_strands.map((target) => ({ source: strand.id, target }))
+      : [],
+);
+
+// --- Per-strand observed axis index (for evidence-for-move root resolution) -
+
+/**
+ * The observed applicability axes a single strand carries. Present only for the
+ * 17 strands with `school_context_relevance`; floor-only strands are absent
+ * (reachable only by id, never by axis).
+ */
+export interface StrandAxisValues {
+  readonly phases: readonly ObservedPhase[];
+  readonly keyStages: readonly ObservedKeyStage[];
+  readonly priorities: readonly ObservedPriority[];
+}
+
+function deriveStrandAxisIndex(): ReadonlyMap<EefStrandId, StrandAxisValues> {
+  const index = new Map<EefStrandId, StrandAxisValues>();
+  for (const strand of EEF_TOOLKIT_DATA.strands) {
+    if (!('school_context_relevance' in strand)) {
+      continue;
+    }
+    const scr = strand.school_context_relevance;
+    index.set(strand.id, {
+      phases: scr.most_relevant_phases,
+      keyStages: scr.most_relevant_key_stages,
+      priorities: scr.most_relevant_priorities,
+    });
+  }
+  return index;
+}
+
+/**
+ * Per-strand observed axis values keyed by strand id — the source for
+ * `evidenceForMove` axis resolution. Keys are exactly the
+ * `school_context_relevance`-present strands; a floor-only strand has no entry.
+ */
+export const strandAxisIndex: ReadonlyMap<EefStrandId, StrandAxisValues> = deriveStrandAxisIndex();

@@ -1,0 +1,534 @@
+/**
+ * E2E Auth Enforcement Tests
+ *
+ * Configuration: dev + live + auth (production-equivalent)
+ * Purpose: Proves auth enforcement works exactly as in production
+ *
+ * This suite tests the system with auth ENABLED, which mirrors production
+ * configuration. No auth bypass is used here.
+ *
+ * ## Auth Model (Per MCP 2025-11-25 Spec + OpenAI Apps Docs)
+ *
+ * The specs define TWO complementary auth mechanisms:
+ *
+ * 1. **HTTP 401 + WWW-Authenticate** (Transport-level)
+ *    - For unauthenticated requests (no token, invalid token)
+ *    - Triggers OAuth discovery flow
+ *    - Returned BEFORE request reaches MCP SDK
+ *    - "Authorization MUST be included in every HTTP request"
+ *    - Applies to ALL MCP methods including discovery and noauth tools
+ *
+ * 2. **HTTP 200 + _meta["mcp/www_authenticate"]** (Tool-level)
+ *    - For authenticated requests missing required scope
+ *    - Used for per-tool scope refinements
+ *    - Returned FROM tool handlers after auth passes
+ *
+ * Both are needed. HTTP 401 initiates OAuth, _meta handles scope issues.
+ *
+ * ## Proxy OAuth AS
+ *
+ * The PRM names the upstream authorization server, so a client that follows
+ * it holds the issuer that the authorization response's `iss` will carry
+ * (RFC 9207 Section 2.4; MCP-655). The server also acts as a proxy OAuth AS
+ * at its own origin — AS metadata rewritten to self-origin, proxy routes
+ * forwarding to Clerk — for clients that discover the AS from the resource
+ * origin: a confirmed Cursor bug (forum #151331) loses the `resource_metadata`
+ * URL across the browser redirect and re-discovers from the origin.
+ *
+ * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+ * @see https://modelcontextprotocol.io/extensions/apps/overview
+ */
+
+import { describe, it, expect } from 'vitest';
+import type { Express } from 'express';
+import { request } from '../src/test-helpers/loopback-request.js';
+import { createApp } from '../src/application.js';
+import {
+  createMockObservability,
+  createMockRuntimeConfig,
+  createNoOpClerkMiddleware,
+  createUnauthenticatedMcpAuthClerkDeps,
+} from './helpers/test-config.js';
+import { TEST_UPSTREAM_METADATA } from '../src/test-helpers/upstream-metadata-fixture.js';
+import { getScratchStaticRoot } from '../src/test-helpers/static-root-fixture.js';
+import { SCOPES_SUPPORTED } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
+
+/**
+ * Type guard for OAuth Protected Resource metadata response.
+ */
+function isOAuthMetadata(value: unknown): value is {
+  authorization_servers: string[];
+  resource: string;
+  scopes_supported?: string[];
+  bearer_methods_supported?: string[];
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'authorization_servers' in value &&
+    Array.isArray(value.authorization_servers) &&
+    'resource' in value
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function requireRecord(value: unknown, message: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error(message);
+  }
+
+  return value;
+}
+
+interface AuthServerMetadata {
+  issuer: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  registration_endpoint: string;
+}
+
+function isAuthServerMetadata(value: unknown): value is AuthServerMetadata {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  return (
+    'issuer' in value &&
+    'authorization_endpoint' in value &&
+    'token_endpoint' in value &&
+    'registration_endpoint' in value
+  );
+}
+
+/**
+ * Helper: Validates the PRM names the upstream authorization server — the
+ * injected fixture's issuer, byte for byte (RFC 9207 Section 2.4 forbids
+ * normalisation before comparison).
+ */
+async function validatePrmNamesUpstream(app: Express): Promise<string> {
+  const res = await request(app).get('/.well-known/oauth-protected-resource');
+  expect(res.status).toBe(200);
+
+  const metadata: unknown = res.body;
+  if (!isOAuthMetadata(metadata)) {
+    throw new Error('Invalid OAuth metadata response');
+  }
+
+  expect(metadata.authorization_servers.length).toBeGreaterThan(0);
+  const asUrl = metadata.authorization_servers[0];
+
+  expect(asUrl).toBe(TEST_UPSTREAM_METADATA.issuer);
+
+  return asUrl;
+}
+
+/**
+ * Creates a fresh auth-enabled app instance with injected upstream metadata.
+ */
+async function createAuthApp(): Promise<Express> {
+  const runtimeConfig = createMockRuntimeConfig({
+    useStubTools: true,
+    env: {
+      OAK_API_KEY: 'test-api-key',
+      CLERK_PUBLISHABLE_KEY: 'pk_test_123',
+      CLERK_SECRET_KEY: 'sk_test_123',
+      NODE_ENV: 'test',
+      LOG_LEVEL: 'debug',
+      ELASTICSEARCH_URL: 'http://fake-es:9200',
+      ELASTICSEARCH_API_KEY: 'fake-api-key-for-e2e',
+    },
+  });
+  return await createApp({
+    staticRoot: await getScratchStaticRoot(),
+    runtimeConfig,
+    observability: createMockObservability(runtimeConfig),
+    getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
+    upstreamMetadata: TEST_UPSTREAM_METADATA,
+    clerkMiddlewareFactory: createNoOpClerkMiddleware(),
+    mcpAuthClerkDeps: createUnauthenticatedMcpAuthClerkDeps(),
+  });
+}
+
+describe('Auth Enforcement (E2E - Production Equivalent)', () => {
+  describe('Discovery Methods (Auth Required per MCP 2025-11-25)', () => {
+    it('returns HTTP 401 for initialize without Authorization header', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: { name: 'test', version: '1.0.0' },
+          },
+        });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+      expect(wwwAuth).toContain('Bearer');
+      expect(wwwAuth).toContain('resource_metadata=');
+    });
+
+    it('returns HTTP 401 for tools/list via POST without Authorization header', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({ jsonrpc: '2.0', id: '1', method: 'tools/list' });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+      expect(wwwAuth).toContain('Bearer');
+      expect(wwwAuth).toContain('resource_metadata=');
+    });
+  });
+
+  describe('Protected Tools Without Token (HTTP 401 Required)', () => {
+    it('returns HTTP 401 with WWW-Authenticate for protected tools without auth', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'tools/call',
+          params: { name: 'get-key-stages', arguments: {} },
+        });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+      expect(wwwAuth).toContain('Bearer');
+      expect(wwwAuth).toContain('resource_metadata=');
+    });
+
+    it('returns HTTP 401 for invalid Bearer token', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .set('Authorization', 'Bearer invalid-token-12345')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'tools/call',
+          params: { name: 'get-key-stages', arguments: {} },
+        });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+      expect(wwwAuth).toContain('Bearer');
+      expect(wwwAuth).toContain('error=');
+    });
+
+    it('returns HTTP 401 for malformed Authorization header', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .set('Authorization', 'NotBearer xyz')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'tools/call',
+          params: { name: 'get-key-stages', arguments: {} },
+        });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+      expect(wwwAuth).toContain('Bearer');
+    });
+  });
+
+  describe('OAuth Discovery Flow (PRM names the upstream; proxy at the origin)', () => {
+    it('PRM authorization_servers names the upstream authorization server', async () => {
+      const oauthApp = await createAuthApp();
+
+      const step1 = await request(oauthApp)
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'tools/call',
+          params: { name: 'get-key-stages', arguments: {} },
+        });
+
+      expect(step1.status).toBe(401);
+      expect(step1.headers['www-authenticate']).toContain('resource_metadata=');
+
+      await validatePrmNamesUpstream(oauthApp);
+    });
+
+    it('AS metadata endpoints point to self-origin, not Clerk', async () => {
+      const app = await createAuthApp();
+      const res = await request(app).get('/.well-known/oauth-authorization-server');
+
+      expect(res.status).toBe(200);
+
+      const metadata: unknown = res.body;
+
+      if (!isAuthServerMetadata(metadata)) {
+        throw new Error('Invalid authorization server metadata response');
+      }
+
+      expect(metadata.issuer).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+      expect(metadata.authorization_endpoint).toMatch(
+        /^http:\/\/127\.0\.0\.1:\d+\/oauth\/authorize$/,
+      );
+      expect(metadata.token_endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/oauth\/token$/);
+      expect(metadata.registration_endpoint).toMatch(
+        /^http:\/\/127\.0\.0\.1:\d+\/oauth\/register$/,
+      );
+
+      expect(metadata.issuer).not.toContain('clerk');
+      expect(metadata.authorization_endpoint).not.toContain('clerk');
+      expect(metadata.token_endpoint).not.toContain('clerk');
+    });
+
+    it('AS metadata preserves upstream capability fields', async () => {
+      const app = await createAuthApp();
+      const res = await request(app).get('/.well-known/oauth-authorization-server');
+
+      expect(res.status).toBe(200);
+
+      const body = requireRecord(res.body, 'Expected auth server metadata body');
+
+      expect(body.response_types_supported).toEqual(['code']);
+      expect(body.grant_types_supported).toEqual(['authorization_code', 'refresh_token']);
+      expect(body.code_challenge_methods_supported).toEqual(['S256']);
+      expect(body.token_endpoint_auth_methods_supported).toEqual([
+        'client_secret_basic',
+        'none',
+        'client_secret_post',
+      ]);
+    });
+
+    it('AS metadata advertises the PRM scopes, not the upstream list (MCP-345)', async () => {
+      const app = await createAuthApp();
+      const asRes = await request(app).get('/.well-known/oauth-authorization-server');
+      const prmRes = await request(app).get('/.well-known/oauth-protected-resource/mcp');
+
+      expect(asRes.status).toBe(200);
+      expect(prmRes.status).toBe(200);
+
+      const as = requireRecord(asRes.body, 'Expected auth server metadata body');
+      const prm = requireRecord(prmRes.body, 'Expected protected resource metadata body');
+
+      expect(as.scopes_supported).toEqual([...SCOPES_SUPPORTED]);
+      expect(as.scopes_supported).not.toEqual(TEST_UPSTREAM_METADATA.scopes_supported);
+      expect(as.scopes_supported).toEqual(prm.scopes_supported);
+    });
+  });
+
+  describe('OAuth Proxy Endpoints Exist', () => {
+    it('GET /oauth/authorize returns a redirect', async () => {
+      const app = await createAuthApp();
+      const res = await request(app).get('/oauth/authorize?response_type=code&client_id=test');
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('test-instance.clerk.accounts.dev');
+    });
+  });
+
+  describe('OAuth Metadata Endpoints', () => {
+    it('protected resource metadata contains valid authorization_servers array', async () => {
+      const prRes = await request(await createAuthApp()).get(
+        '/.well-known/oauth-protected-resource',
+      );
+      expect(prRes.status).toBe(200);
+
+      const metadata: unknown = prRes.body;
+
+      expect(metadata).toHaveProperty('resource');
+      expect(metadata).toHaveProperty('authorization_servers');
+
+      if (!isOAuthMetadata(metadata)) {
+        throw new Error('Invalid OAuth metadata response');
+      }
+
+      expect(Array.isArray(metadata.authorization_servers)).toBe(true);
+      expect(metadata.authorization_servers.length).toBeGreaterThan(0);
+
+      const asUrl = metadata.authorization_servers[0];
+      expect(asUrl).toBe(TEST_UPSTREAM_METADATA.issuer);
+    });
+
+    it('serves path-qualified PRM at /.well-known/oauth-protected-resource/mcp (RFC 9728 Section 3.1)', async () => {
+      const res = await request(await createAuthApp()).get(
+        '/.well-known/oauth-protected-resource/mcp',
+      );
+      expect(res.status).toBe(200);
+
+      const metadata: unknown = res.body;
+
+      if (!isOAuthMetadata(metadata)) {
+        throw new Error('Invalid OAuth metadata at path-qualified PRM URL');
+      }
+
+      expect(metadata.authorization_servers.length).toBeGreaterThan(0);
+      const asUrl = metadata.authorization_servers[0];
+      expect(asUrl).toBe(TEST_UPSTREAM_METADATA.issuer);
+    });
+
+    it('exposes /.well-known/oauth-protected-resource with advertised scopes metadata', async () => {
+      const res = await request(await createAuthApp()).get('/.well-known/oauth-protected-resource');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('resource');
+      expect(res.body).toHaveProperty('authorization_servers');
+      expect(res.body).toHaveProperty('scopes_supported');
+
+      const body: unknown = res.body;
+      if (!isOAuthMetadata(body)) {
+        throw new Error('Invalid OAuth metadata response');
+      }
+
+      const scopes = body.scopes_supported ?? [];
+      expect(Array.isArray(scopes)).toBe(true);
+      expect(scopes).toEqual(expect.arrayContaining(['email']));
+      expect(scopes.every((scope) => typeof scope === 'string')).toBe(true);
+    });
+  });
+});
+
+describe('Auth Enforcement - RFC Compliance', () => {
+  describe('RFC Compliance', () => {
+    it('oauth-protected-resource conforms to RFC 9728', async () => {
+      const res = await request(await createAuthApp()).get('/.well-known/oauth-protected-resource');
+
+      expect(res.status).toBe(200);
+
+      const body: unknown = res.body;
+
+      expect(body).toHaveProperty('resource');
+      expect(body).toHaveProperty('authorization_servers');
+
+      if (!isOAuthMetadata(body)) {
+        throw new Error('Response does not conform to OAuth metadata structure');
+      }
+
+      expect(typeof body.resource).toBe('string');
+      expect(Array.isArray(body.authorization_servers)).toBe(true);
+      expect(body.authorization_servers.every((s) => typeof s === 'string')).toBe(true);
+
+      if ('scopes_supported' in body && body.scopes_supported) {
+        expect(Array.isArray(body.scopes_supported)).toBe(true);
+      }
+
+      if ('bearer_methods_supported' in body && body.bearer_methods_supported) {
+        expect(Array.isArray(body.bearer_methods_supported)).toBe(true);
+      }
+    });
+
+    it('resource URL identifies the /mcp endpoint as the protected resource', async () => {
+      const res = await request(await createAuthApp()).get('/.well-known/oauth-protected-resource');
+
+      expect(res.status).toBe(200);
+
+      const body: unknown = res.body;
+      expect(body).toHaveProperty('resource');
+
+      if (!isOAuthMetadata(body)) {
+        throw new Error('Response does not conform to OAuth metadata structure');
+      }
+
+      const resource = body.resource;
+
+      expect(resource).toMatch(/^https?:\/\/127\.0\.0\.1:\d+\/mcp$/);
+      expect(resource).toContain('/mcp');
+
+      const resourceUrl = new URL(resource);
+      expect(resourceUrl.hostname).toBe('127.0.0.1');
+      expect(resourceUrl.pathname).toBe('/mcp');
+    });
+
+    it('WWW-Authenticate header conforms to RFC 6750 Bearer scheme', async () => {
+      const res = await request(await createAuthApp())
+        .post('/mcp')
+        .set('Host', 'localhost')
+        .set('Accept', 'application/json, text/event-stream')
+        .send({
+          jsonrpc: '2.0',
+          id: '1',
+          method: 'tools/call',
+          params: { name: 'get-key-stages', arguments: {} },
+        });
+
+      expect(res.status).toBe(401);
+
+      const wwwAuth = res.headers['www-authenticate'];
+      expect(wwwAuth).toBeDefined();
+
+      expect(wwwAuth.toLowerCase()).toMatch(/^bearer\s+/);
+      expect(wwwAuth).toMatch(/resource_metadata/);
+    });
+  });
+});
+
+describe('All Tools Require HTTP Auth (noauth = no scope check, not no token)', () => {
+  it('returns HTTP 401 for get-rate-limit without auth', async () => {
+    const res = await request(await createAuthApp())
+      .post('/mcp')
+      .set('Host', 'localhost')
+      .set('Accept', 'application/json, text/event-stream')
+      .send({
+        jsonrpc: '2.0',
+        id: '1',
+        method: 'tools/call',
+        params: { name: 'get-rate-limit', arguments: {} },
+      });
+
+    expect(res.status).toBe(401);
+
+    const wwwAuth = res.headers['www-authenticate'];
+    expect(wwwAuth).toBeDefined();
+    expect(wwwAuth).toContain('Bearer');
+  });
+});
+
+describe('Host validation on /mcp (auth layer, before the auth challenge)', () => {
+  it('rejects a disallowed Host with 403, not a 401 auth challenge', async () => {
+    const res = await request(await createAuthApp())
+      .post('/mcp')
+      .set('Host', 'evil.example')
+      .set('Accept', 'application/json, text/event-stream')
+      .send({
+        jsonrpc: '2.0',
+        id: '1',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1.0.0' },
+        },
+      });
+
+    // The Host allow-list check (getPRMUrl) runs first inside the auth
+    // middleware, so a disallowed Host is a 403 host rejection — NOT a 401 auth
+    // challenge. allowedHosts defaults to the loopback set, so 'evil.example' is
+    // rejected. A refactor that moved the authorization-header check ahead of
+    // the host check would turn this into a 401 with WWW-Authenticate and fail
+    // this test — which is exactly the regression this pins (see ADR-122/158).
+    expect(res.status).toBe(403);
+    expect(res.body).toHaveProperty('error', 'Forbidden');
+    expect(res.headers['www-authenticate']).toBeUndefined();
+  });
+});

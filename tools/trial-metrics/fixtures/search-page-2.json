@@ -1,0 +1,94 @@
+{
+  "data": {
+    "search": {
+      "issueCount": 9,
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "Y3Vyc29yOjk="
+      },
+      "nodes": [
+        {
+          "number": 105,
+          "title": "feat(tools): add the quiz tool",
+          "body": "Adds a quiz tool. Related to #1050.",
+          "headRefName": "feat/quiz-tool",
+          "createdAt": "2026-10-08T12:00:00Z",
+          "mergedAt": "2026-10-10T12:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000002"
+          },
+          "labels": {
+            "nodes": [
+              {
+                "name": "agent-correction"
+              },
+              {
+                "name": "enhancement"
+              }
+            ]
+          }
+        },
+        {
+          "number": 106,
+          "title": "fix(tools): repair quiz answers",
+          "body": "Repairs the answer order that #105 broke.",
+          "headRefName": "hotfix/quiz-answers",
+          "createdAt": "2026-10-11T08:00:00Z",
+          "mergedAt": "2026-10-11T09:30:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 107,
+          "title": "feat(tools): add the glossary tool",
+          "body": "Adds a glossary tool.",
+          "headRefName": "feat/glossary",
+          "createdAt": "2026-10-19T09:00:00Z",
+          "mergedAt": "2026-10-20T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 108,
+          "title": "Revert \"feat(tools): add the glossary tool\"",
+          "body": "Reverts example-org/example-repo#107\n\nThe glossary tool timed out.",
+          "headRefName": "revert-107-feat/glossary",
+          "createdAt": "2026-10-22T08:00:00Z",
+          "mergedAt": "2026-10-22T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": []
+          }
+        },
+        {
+          "number": 109,
+          "title": "docs(tools): describe the quiz tool",
+          "body": "Documents the quiz tool.",
+          "headRefName": "docs/quiz-tool",
+          "createdAt": "2026-10-27T09:00:00Z",
+          "mergedAt": "2026-10-28T09:00:00Z",
+          "mergeCommit": {
+            "oid": "0000000000000000000000000000000000000001"
+          },
+          "labels": {
+            "nodes": [
+              {
+                "name": "documentation"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

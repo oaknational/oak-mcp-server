@@ -1,0 +1,25 @@
+# @oaknational/observability
+
+Provider-neutral observability helpers for Oak runtimes.
+
+This workspace owns six shared concerns:
+
+- **Recursive telemetry redaction** (`redactTelemetryValue`, `redactTelemetryObject`, `redactHeaderRecord`, `redactHeaderValue`, `REDACTED_VALUE`) — the non-bypassable redaction policy applied before any fan-out path reaches the network. Covers URL/query values and raw form-encoded OAuth bodies as well as already-parsed objects. See [ADR-160](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md).
+- **Value-level redaction primitives** (`redactText`, `redactUnknownValue`, `redactJsonObject`, `redactStringRecord`) — thin wrappers every Sentry adapter (Node today, browser under L-12 tomorrow) composes onto its vendor-typed event shapes. The adapters own their own event-shape wiring because vendor `Event`/`Breadcrumb`/`Exception`/`Log`/`Span` types diverge between runtimes.
+- **JSON sanitisation** (`sanitiseForJson`, `sanitiseObject`, `isJsonValue`) — converts arbitrary values to JSON-safe form (primitives pass through; `undefined` becomes `null`; `Date` becomes ISO string; `Error` becomes `{message, name, stack}`; arrays/objects recurse; unserialisable values become `'[unserializable]'`; circular references become `'[Circular]'`).
+- **OpenTelemetry span context** (`getActiveSpanContextSnapshot`, `withActiveSpan`) — read the active span context and run manual spans without depending on a concrete runtime transport.
+- **Observability selection and diagnostic sinks** (`OBSERVABILITY_SINK_DEFINITIONS`, `OBSERVABILITY_SINK_KINDS`, `DIAGNOSTIC_SINK_KINDS`, `SinkRegistry`) — derive the full app-local selection and diagnostic-only registry from one closed literal source.
+- **Product-analytics capabilities** (`ProductAnalyticsSink`, `McpTransportObserver`, `ProductAnalyticsRuntime`, `createOffProductAnalyticsRuntime`) — expose a closed provider-neutral runtime slot alongside, rather than inside, diagnostic exception and message sinks. The transport observer decorates the transport passed to `server.connect`; applications retain their concrete transport for request handling.
+
+## Canonical JSON-safe type
+
+`JsonValue` and `JsonObject` are the **single canonical** recursive JSON-safe shape for the whole observability pipeline. This shape was previously defined twice — as `JsonValue`/`JsonObject` inside `@oaknational/logger` and as `TelemetryValue`/`TelemetryRecord` inside `@oaknational/observability` — with both pairs structurally identical; the two pairs were consolidated into this single canonical pair on 2026-04-19 (see the [ADR-160 history entry](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md#history)).
+
+## Browser safety
+
+This workspace is browser-safe by construction: no `@sentry/*` imports, no `node:*` imports in runtime source. Enforced structurally by `src/no-node-only-imports.unit.test.ts`. The future `@sentry/browser` widget adapter (Wave 4 L-12) will compose these primitives directly; no intermediate extraction is required.
+
+## Boundaries
+
+- `@oaknational/observability` depends on: `@oaknational/result`, `@opentelemetry/api`. Zero lib-tier dependencies (ADR-041).
+- Consumers: `@oaknational/logger` (for sanitisation + redaction in log context handling), `@oaknational/sentry-node` (for the primitives composed onto Sentry event shapes), apps composing observability directly.

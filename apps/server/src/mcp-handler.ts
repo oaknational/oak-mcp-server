@@ -1,0 +1,221 @@
+/**
+ * Per-request MCP HTTP handler factory.
+ *
+ * Creates a handler that implements the stateless per-request pattern: each
+ * HTTP request creates a fresh `McpServer` + `StreamableHTTPServerTransport`,
+ * connects them, and delegates to `transport.handleRequest()`.
+ *
+ * Auth flows natively via `req.auth` (set by `mcpAuth` middleware) →
+ * the MCP SDK transport propagates it as `extra.authInfo` to tool callbacks.
+ *
+ * @see ADR-112, MCP SDK simpleStatelessStreamableHttp.ts
+ */
+
+import { normalizeError } from '@oaknational/logger';
+import type { Logger } from '@oaknational/logger';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import type { McpServerFactory } from './mcp-request-context.js';
+import { authInfoExtraSchema } from './auth/mcp-auth/auth-info-schema.js';
+import { createChildLogger } from './logging/index.js';
+import type { HttpObservability } from './observability/http-observability.js';
+import { extractMcpMethod, extractMcpToolName } from './observability/mcp-request-metadata.js';
+import {
+  buildMcpSpanAttributes,
+  recordOutboundSize,
+} from './observability/outbound-size-observability.js';
+import { attachResponseByteCounter } from './observability/response-byte-counter.js';
+
+/** Cleanup timeout — prevents indefinite hangs from stalled close operations. */
+const CLEANUP_TIMEOUT_MS = 5000;
+
+/**
+ * Narrow request interface for `createMcpHandler`.
+ *
+ * Contains only the properties the handler accesses. Express `Request`
+ * satisfies this structurally, so the handler can be used as middleware.
+ * Test fakes satisfy it too — plain objects, no assertions.
+ */
+export interface McpHandlerRequest {
+  /** HTTP headers. */
+  readonly headers: Record<string, string | readonly string[] | undefined>;
+  /** HTTP method (GET, POST, etc.). */
+  readonly method?: string;
+  /** URL path (e.g. '/mcp'). */
+  readonly path: string;
+  /** JSON-RPC request body (parsed by Express body-parser middleware). */
+  body: unknown;
+  /** Verified auth context, set by mcpAuth middleware. Mutable for cleanup. */
+  auth?: AuthInfo;
+}
+
+/**
+ * Narrow response interface for `createMcpHandler`.
+ *
+ * Contains only the properties the handler accesses. Express `Response`
+ * satisfies this structurally.
+ */
+export interface McpHandlerResponse {
+  /** HTTP status code. */
+  readonly statusCode: number;
+  /** Express locals — handler reads `correlationId` for logging. */
+  locals: { correlationId?: string; [key: string]: unknown };
+  /** Register event listeners (handler uses 'close' for cleanup). */
+  on(event: string, listener: (...args: unknown[]) => void): unknown;
+  /**
+   * Body write seam — present on the live `ServerResponse`; the outbound
+   * byte counter wraps it to record wire size. Optional so plain-object
+   * test fakes without a body stream still satisfy the interface.
+   */
+  write?(...args: unknown[]): unknown;
+  /** Body end seam — see {@link McpHandlerResponse.write}. */
+  end?(...args: unknown[]): unknown;
+}
+
+/**
+ * Safely logs a cleanup error. Guards against logging/capture failures
+ * so that a broken logger never masks the original resource-leak error.
+ */
+function safeLogCleanupError(
+  error: unknown,
+  log: Logger | undefined,
+  observability: HttpObservability,
+  method: string | undefined,
+  path: string,
+): void {
+  try {
+    log?.error('MCP per-request cleanup failed', normalizeError(error), { method, path });
+  } catch {
+    // Logger failure must not mask the original cleanup error.
+  }
+  try {
+    observability.captureHandledError(error, { boundary: 'mcp_cleanup', method, path });
+  } catch {
+    // Observability failure must not mask the original cleanup error.
+  }
+}
+
+/**
+ * Registers a cleanup handler on the response 'close' event.
+ *
+ * Defence-in-depth: clears auth, closes transport/server with a timeout,
+ * and guards all error-logging paths so failures never swallow silently.
+ */
+function registerCleanupHandler(
+  res: McpHandlerResponse,
+  req: McpHandlerRequest,
+  transport: { close(): Promise<void> },
+  server: { close(): Promise<void> },
+  log: Logger | undefined,
+  observability: HttpObservability,
+): void {
+  res.on('close', () => {
+    req.auth = undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutWithCleanup = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('MCP cleanup timeout')), CLEANUP_TIMEOUT_MS);
+    });
+    void Promise.race([Promise.allSettled([transport.close(), server.close()]), timeoutWithCleanup])
+      .then((results) => {
+        if (!Array.isArray(results)) {
+          return;
+        }
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            safeLogCleanupError(result.reason, log, observability, req.method, req.path);
+          }
+        }
+      })
+      .catch((timeoutError: unknown) => {
+        safeLogCleanupError(timeoutError, log, observability, req.method, req.path);
+      })
+      .finally(() => {
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
+      });
+  });
+}
+
+/**
+ * Enrich the Sentry isolation scope with MCP method and user identity.
+ *
+ * @remarks Called early in the request lifecycle before transport handling.
+ * Uses Zod safeParse for safe userId extraction from `AuthInfo.extra`.
+ *
+ * Privacy posture for the `setUser` call below: the `userId` is an
+ * opaque, stable Clerk-issued identifier. It flows into Sentry's
+ * per-request scope only — not into any structured event-data
+ * envelope a future second-sink adapter would emit. Whether this
+ * identifier is permitted to flow downstream of the redaction
+ * barrier into other sinks (data warehouse Sink 2, PostHog Sink 3)
+ * is an open policy ruling owned by
+ * `docs/explorations/2026-04-19-redaction-policy-clerk-identity-downstream.md`;
+ * see also ADR-160 § History 2026-04-19 entry. The ADR-160 closure
+ * principle (every fan-out path applies the redaction policy)
+ * remains in force unchanged; the open question is what the
+ * redaction policy itself permits.
+ */
+function enrichObservabilityScope(
+  req: McpHandlerRequest,
+  observability: HttpObservability,
+  mcpMethod: string | undefined,
+): void {
+  if (mcpMethod) {
+    observability.setTag('mcp.method', mcpMethod);
+  }
+  const extraResult = authInfoExtraSchema.safeParse(req.auth?.extra);
+  const userId = extraResult.success ? extraResult.data.userId : undefined;
+  if (userId) {
+    observability.setUser({ id: userId });
+  }
+}
+
+/**
+ * Per-request MCP handler (stateless pattern).
+ *
+ * Uses narrow request/response interfaces so test fakes satisfy the types
+ * structurally without assertions (ADR-078).
+ */
+export function createMcpHandler(
+  mcpFactory: McpServerFactory,
+  observability: HttpObservability,
+  logger?: Logger,
+): (req: McpHandlerRequest, res: McpHandlerResponse) => Promise<void> {
+  return async (req: McpHandlerRequest, res: McpHandlerResponse) => {
+    const correlationId: unknown = res.locals['correlationId'];
+    const log =
+      logger && typeof correlationId === 'string'
+        ? createChildLogger(logger, correlationId)
+        : undefined;
+    const mcpMethod = extractMcpMethod(req.body);
+    const mcpToolName = extractMcpToolName(req.body, mcpMethod);
+    log?.debug('MCP request received', { method: req.method, path: req.path, mcpMethod });
+
+    enrichObservabilityScope(req, observability, mcpMethod);
+
+    const { server, transport, connectTransport } = mcpFactory();
+    await server.connect(connectTransport);
+
+    registerCleanupHandler(res, req, transport, server, log, observability);
+
+    // The SDK serialises JSON-RPC responses internally, so wire size is
+    // only observable at the write seam (outbound token health metric).
+    const byteCounter = attachResponseByteCounter(res);
+
+    // Guard withSpan so observability failures never crash the handler.
+    try {
+      await observability.withSpan({
+        name: 'oak.http.request.mcp',
+        attributes: buildMcpSpanAttributes(req.method, req.path, mcpMethod, mcpToolName),
+        run: async (span) => {
+          await transport.handleRequest(req, res, req.body);
+          recordOutboundSize(span, byteCounter, log, mcpMethod, mcpToolName);
+        },
+      });
+    } catch (spanError: unknown) {
+      safeLogCleanupError(spanError, log, observability, req.method, req.path);
+    }
+
+    log?.debug('MCP request completed', { statusCode: res.statusCode, mcpMethod });
+  };
+}

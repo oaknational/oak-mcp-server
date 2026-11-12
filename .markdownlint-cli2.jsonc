@@ -8,6 +8,12 @@
     "MD040": true,
     "MD041": false,
   },
-  "ignores": ["**/node_modules/**", "**/CHANGELOG.md", ".cache/**"],
+  "ignores": [
+    "**/node_modules/**",
+    "**/CHANGELOG.md",
+    ".cache/**",
+    "docs/adr/mcp/**",
+    "docs/engineering/**",
+  ],
   "gitignore": true,
 }

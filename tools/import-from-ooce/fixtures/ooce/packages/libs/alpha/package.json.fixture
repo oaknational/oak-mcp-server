@@ -1,0 +1,14 @@
+{
+  "name": "@source/alpha",
+  "version": "0.0.0-development",
+  "scripts": { "build": "tsup", "lint": "eslint .", "test": "vitest run" },
+  "dependencies": {
+    "@source/beta": "workspace:*",
+    "@source/helpers": "workspace:*",
+    "left-pad": "^1.0.0"
+  },
+  "devDependencies": { "eslint": "^10.0.0", "vitest": "^5.0.0" },
+  "author": { "name": "Fixture Author" },
+  "contributors": [{ "name": "Fixture Contributor" }],
+  "repository": { "type": "git", "url": "git+https://example.test/source.git", "directory": "packages/libs/alpha" }
+}

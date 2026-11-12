@@ -1,0 +1,83 @@
+/* ============================================================
+   Oak National Academy — print & PDF layer
+   Loaded by styles.css (and ds-base.js) so every page is print-
+   ready by default. Because EVERY colour role is a light-dark()
+   pair, one color-scheme declaration reverts the whole system to
+   ink-safe light for paper — dark-theme pages print light.
+   ============================================================ */
+@media print {
+  /* html:root (0,1,1) so the ink-safe flip also beats a dark-first brand's
+     bare :root { color-scheme: dark } (0,1,0) on the no-stored-theme path. */
+  html:root,
+  html:root[data-theme='dark'],
+  html:root[data-theme='system'] {
+    color-scheme: light;
+  }
+  :root {
+    --shadow-standard: none;
+    --shadow-raised: none;
+    --shadow-overlay: none;
+    /* Fluid display slots print at their maxima: a clamp tuned for a
+       320-1920px viewport would resolve against the print page box
+       (~794px at A4/96dpi) and shrink display type on paper. Plain :root
+       deliberately (not html:root): this file loads after
+       colors_and_type.css so it wins the kit-internal tie for
+       parts-driven brands, while a brand that opted OUT via a whole-slot
+       shorthand (loaded after all kit css) still keeps its own fixed
+       print size by cascade order — an html:root pin would wrongly
+       override that opt-out with these derived values. */
+    --type-heading-1: var(--weight-display) calc(var(--type-heading-1-max) * 1rem) /
+      var(--type-heading-1-leading) var(--font-display);
+    --type-heading-2: var(--weight-display) calc(var(--type-heading-2-max) * 1rem) /
+      var(--type-heading-2-leading) var(--font-display);
+    --type-heading-3: var(--weight-display) calc(var(--type-heading-3-max) * 1rem) /
+      var(--type-heading-3-leading) var(--font-display);
+  }
+  /* Meaning-bearing and signature fills must survive "economy" printing */
+  .oak-card,
+  .oak-tag,
+  .oak-chip,
+  .oak-banner,
+  .oak-quiz-answer,
+  .oak-btn,
+  .oak-quiz-answer--correct,
+  .oak-quiz-answer--incorrect {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  /* Never split a semantic unit across a page break */
+  .oak-card,
+  .oak-banner,
+  .oak-quiz-answer,
+  .oak-accordion,
+  .oak-disclosure,
+  .oak-empty,
+  .oak-field {
+    break-inside: avoid;
+  }
+  .oak-table tr {
+    break-inside: avoid;
+  }
+  .oak-table thead {
+    display: table-header-group;
+  } /* repeat header per page */
+  /* Screen-only chrome */
+  .oak-skip-link,
+  .oak-skeleton,
+  .oak-modal {
+    display: none;
+  }
+  /* Disclosure content is part of the document on paper: hide the marker AND
+     reveal closed accordion bodies where the engine supports ::details-content
+     (progressive enhancement; a closed <details> otherwise prints empty). */
+  .oak-accordion:not([open]) > summary::after {
+    display: none;
+  }
+  .oak-disclosure:not([open]) > summary::before,
+  .oak-disclosure details:not([open]) > summary::before {
+    display: none;
+  }
+  details:not([open])::details-content {
+    content-visibility: visible;
+  }
+}

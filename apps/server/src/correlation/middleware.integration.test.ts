@@ -1,0 +1,249 @@
+import express, { type Response } from 'express';
+import { request } from '../test-helpers/loopback-request.js';
+import { describe, expect, it, vi } from 'vitest';
+import type { Logger } from '@oaknational/logger';
+
+import { createCorrelationMiddleware } from './middleware.js';
+import { createFakeLogger } from '../test-helpers/fakes.js';
+
+type CorrelationLocals = { readonly correlationId?: string };
+type CorrelationBody = { readonly correlationId: string };
+
+function createTestApp(logger: Logger): ReturnType<typeof express> {
+  const app = express();
+  app.use(createCorrelationMiddleware(logger));
+
+  app.get('/test', (_req, res: Response<CorrelationBody, CorrelationLocals>) => {
+    if (typeof res.locals.correlationId !== 'string') {
+      throw new TypeError('Expected correlationId in res.locals');
+    }
+    res.json({ correlationId: res.locals.correlationId });
+  });
+
+  return app;
+}
+
+function makeFakeObservability(): {
+  readonly setTag: (key: string, value: string) => void;
+  readonly calls: readonly (readonly [string, string])[];
+} {
+  const calls: (readonly [string, string])[] = [];
+  const setTag = (key: string, value: string): void => {
+    calls.push([key, value]);
+  };
+  return { setTag, calls };
+}
+
+function createTaggingApp(
+  logger: Logger,
+  observability: { readonly setTag: (key: string, value: string) => void },
+): ReturnType<typeof express> {
+  const app = express();
+  app.use(createCorrelationMiddleware(logger, { observability }));
+  app.get('/test', (_req, res: Response<CorrelationBody, CorrelationLocals>) => {
+    if (typeof res.locals.correlationId !== 'string') {
+      throw new TypeError('Expected correlationId in res.locals');
+    }
+    res.json({ correlationId: res.locals.correlationId });
+  });
+  return app;
+}
+
+function isObjectWithStringField(value: unknown, field: string): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && field in value;
+}
+
+describe('createCorrelationMiddleware', () => {
+  it('generates correlation ID in response header and res.locals when none provided', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+
+    const response = await request(app).get('/test');
+    const body: unknown = response.body;
+    expect(isObjectWithStringField(body, 'correlationId')).toBe(true);
+    if (!isObjectWithStringField(body, 'correlationId')) {
+      throw new Error('Expected response body to include correlationId');
+    }
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-correlation-id']).toMatch(/^req_\d+_[a-f0-9]{6}$/);
+    expect(body.correlationId).toBe(response.headers['x-correlation-id']);
+  });
+
+  it('reuses client-provided X-Correlation-ID header', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+    const testCorrelationId = 'test-123';
+
+    const response = await request(app).get('/test').set('X-Correlation-ID', testCorrelationId);
+    const body: unknown = response.body;
+    expect(isObjectWithStringField(body, 'correlationId')).toBe(true);
+    if (!isObjectWithStringField(body, 'correlationId')) {
+      throw new Error('Expected response body to include correlationId');
+    }
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-correlation-id']).toBe(testCorrelationId);
+    expect(body.correlationId).toBe(testCorrelationId);
+  });
+
+  it('generates unique IDs for concurrent requests', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+
+    const responses = await Promise.all([
+      request(app).get('/test'),
+      request(app).get('/test'),
+      request(app).get('/test'),
+    ]);
+
+    const correlationIds = responses.map((r) => {
+      const id = r.headers['x-correlation-id'];
+      return typeof id === 'string' ? id : String(id);
+    });
+
+    const uniqueIds = new Set(correlationIds);
+    expect(uniqueIds.size).toBe(3);
+  });
+
+  it('passes redacted request headers to logger', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+
+    await request(app).get('/test').set('Authorization', 'Bearer secret-token');
+
+    const debugCalls = vi.mocked(logger.debug).mock.calls;
+    const startCall = debugCalls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('Request started'),
+    );
+    expect(startCall).toBeDefined();
+
+    const metadata = startCall?.[1];
+    expect(isObjectWithStringField(metadata, 'requestHeaders')).toBe(true);
+    if (isObjectWithStringField(metadata, 'requestHeaders')) {
+      const headers = metadata.requestHeaders;
+      expect(isObjectWithStringField(headers, 'authorization')).toBe(true);
+      if (isObjectWithStringField(headers, 'authorization')) {
+        expect(headers.authorization).toBe('[REDACTED]');
+      }
+    }
+  });
+
+  it('logs request completion with timing data', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+
+    await request(app).get('/test');
+
+    const debugCalls = vi.mocked(logger.debug).mock.calls;
+    const completedCall = debugCalls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('Request completed'),
+    );
+    expect(completedCall).toBeDefined();
+
+    const metadata = completedCall?.[1];
+    expect(isObjectWithStringField(metadata, 'correlationId')).toBe(true);
+    expect(isObjectWithStringField(metadata, 'durationMs')).toBe(true);
+    expect(isObjectWithStringField(metadata, 'statusCode')).toBe(true);
+    if (isObjectWithStringField(metadata, 'statusCode')) {
+      expect(metadata.statusCode).toBe(200);
+    }
+  });
+
+  it('logs slow requests at WARN level with slowRequest flag', async () => {
+    const logger = createFakeLogger();
+    const app = express();
+    app.use(createCorrelationMiddleware(logger, { slowRequestThresholdMs: 0 }));
+
+    app.get('/test', (_req, res) => {
+      res.json({ ok: true });
+    });
+
+    await request(app).get('/test');
+
+    expect(logger.warn).toHaveBeenCalled();
+    const warnCalls = vi.mocked(logger.warn).mock.calls;
+    const completedCall = warnCalls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('Request completed'),
+    );
+    expect(completedCall).toBeDefined();
+
+    const metadata = completedCall?.[1];
+    expect(isObjectWithStringField(metadata, 'slowRequest')).toBe(true);
+    if (isObjectWithStringField(metadata, 'slowRequest')) {
+      expect(metadata.slowRequest).toBe(true);
+    }
+  });
+
+  it('logs fast requests at DEBUG level without slowRequest flag', async () => {
+    const logger = createFakeLogger();
+    const app = createTestApp(logger);
+
+    await request(app).get('/test');
+
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('Request completed'),
+      expect.not.objectContaining({ slowRequest: true }),
+    );
+  });
+
+  describe('Sentry scope tagging', () => {
+    it('tags the Sentry scope with correlation_id when observability is provided', async () => {
+      const logger = createFakeLogger();
+      const obs = makeFakeObservability();
+      const app = createTaggingApp(logger, obs);
+
+      const response = await request(app).get('/test');
+      const correlationIdHeader = response.headers['x-correlation-id'];
+      const correlationId =
+        typeof correlationIdHeader === 'string' ? correlationIdHeader : String(correlationIdHeader);
+
+      expect(obs.calls).toEqual([['correlation_id', correlationId]]);
+    });
+
+    it('uses the client-provided X-Correlation-ID for the tag value', async () => {
+      const logger = createFakeLogger();
+      const obs = makeFakeObservability();
+      const app = createTaggingApp(logger, obs);
+
+      const incomingId = 'caller-supplied-12345';
+      await request(app).get('/test').set('X-Correlation-ID', incomingId);
+
+      expect(obs.calls).toEqual([['correlation_id', incomingId]]);
+    });
+
+    it('does not tag when observability is not injected (DI optional)', async () => {
+      const logger = createFakeLogger();
+      const app = createTestApp(logger);
+
+      const response = await request(app).get('/test');
+
+      expect(response.status).toBe(200);
+      // No assertion on setTag — the un-injected path simply skips
+      // tagging and continues. This guards against a regression where
+      // the middleware required observability.
+    });
+
+    it('issues one tag per request (concurrent requests stay isolated)', async () => {
+      const logger = createFakeLogger();
+      const obs = makeFakeObservability();
+      const app = createTaggingApp(logger, obs);
+
+      await Promise.all([
+        request(app).get('/test'),
+        request(app).get('/test'),
+        request(app).get('/test'),
+      ]);
+
+      expect(obs.calls).toHaveLength(3);
+      const tagValues = obs.calls.map(([, value]) => value);
+      const uniqueValues = new Set(tagValues);
+      expect(uniqueValues.size).toBe(3);
+      for (const [key] of obs.calls) {
+        expect(key).toBe('correlation_id');
+      }
+    });
+  });
+});

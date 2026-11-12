@@ -1,0 +1,288 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event.action == 'synchronize' }}
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: checks
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned gitleaks
+        run: |
+          version=8.30.0
+          asset="gitleaks_${version}_linux_x64.tar.gz"
+          expected=79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e
+          curl -sSfL --proto '=https' --proto-redir '=https' -o "$asset" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${asset}"
+          echo "${expected}  ${asset}" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f "$asset" gitleaks
+          rm -f "$asset"
+          gitleaks version
+      - run: pnpm check
+      - run: pnpm markdownlint
+      - run: pnpm build
+      - run: pnpm test
+      - name: Regenerate from the committed schema and fail on drift
+        run: pnpm codegen:drift
+
+  server:
+    name: server
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: In-process MCP smoke test
+        run: pnpm --filter @oaknational/mcp-server test:smoke
+      - run: pnpm --filter @oaknational/mcp-server test:e2e
+      - run: pnpm --filter @oaknational/mcp-server test:widget
+      - name: Install the Playwright browser
+        run: pnpm --filter @oaknational/mcp-server exec playwright install --with-deps chromium
+      - run: pnpm --filter @oaknational/mcp-server test:widget:a11y
+      - run: pnpm --filter @oaknational/mcp-server test:widget:ui
+
+  pr-title:
+    name: pr-title
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Check the title and the Linear section
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node tools/repo-checks/pr-title.ts
+
+  pr-size:
+    name: pr-size
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Count authored files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node tools/repo-checks/pr-size.ts
+
+  version-check:
+    name: version-check
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Match the release bump to the diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: git diff --name-only --no-renames -z "$BASE_SHA" HEAD | node tools/repo-checks/version-rules.ts
+
+  secret-scan:
+    name: secret-scan
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned gitleaks
+        run: |
+          version=8.30.0
+          asset="gitleaks_${version}_linux_x64.tar.gz"
+          expected=79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e
+          curl -sSfL --proto '=https' --proto-redir '=https' -o "$asset" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${asset}"
+          echo "${expected}  ${asset}" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f "$asset" gitleaks
+          gitleaks version
+      - name: Scan for secrets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: diff.renameLimit
+          GIT_CONFIG_VALUE_0: '3000'
+        run: |
+          rm -f .gitleaksignore
+          node tools/repo-checks/secret-scan-config.ts "$RUNNER_TEMP/gitleaks.toml"
+          gitleaks detect --config "$RUNNER_TEMP/gitleaks.toml" --ignore-gitleaks-allow --redact=100 --source . --log-opts="-m --branches --remotes --tags HEAD"
+
+  workflow-lint:
+    name: workflow-lint
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned actionlint, shellcheck and zizmor
+        run: |
+          fetch() {
+            curl -sSfL --proto '=https' --proto-redir '=https' -o "$1" "$2"
+            echo "$3  $1" | sha256sum -c -
+          }
+          fetch actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          sudo tar -xz -C /usr/local/bin -f actionlint.tar.gz actionlint
+          fetch zizmor.tar.gz \
+            https://github.com/zizmorcore/zizmor/releases/download/v1.32.0/zizmor-x86_64-unknown-linux-gnu.tar.gz \
+            bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+          sudo tar -xz -C /usr/local/bin -f zizmor.tar.gz
+          fetch shellcheck.tar.gz \
+            https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.gz \
+            b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6
+          mkdir -p "$RUNNER_TEMP/shellcheck"
+          tar -xz -C "$RUNNER_TEMP/shellcheck" --strip-components=1 -f shellcheck.tar.gz shellcheck-v0.11.0/shellcheck
+          actionlint -version
+          zizmor --version
+          "$RUNNER_TEMP/shellcheck/shellcheck" --version
+      # pnpm puts the npm shellcheck wrapper first on PATH. SHELLCHECKJS_BIN makes it run the pinned binary instead of downloading one.
+      - run: pnpm lint:workflows
+        env:
+          SHELLCHECKJS_BIN: ${{ runner.temp }}/shellcheck/shellcheck
+
+  agent-skills:
+    name: agent-skills
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agent-skills.yml # zizmor: ignore[self-repository] a $/ reference fails actionlint
+
+  docs-a11y:
+    name: docs-a11y
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @oaknational/mcp-docs exec playwright install chromium
+      - run: pnpm --filter @oaknational/mcp-docs test:a11y
+
+  ci-gate:
+    name: ci-gate
+    permissions: {}
+    needs:
+      - checks
+      - server
+      - pr-title
+      - pr-size
+      - version-check
+      - secret-scan
+      - workflow-lint
+      - agent-skills
+      - docs-a11y
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every needed job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+          NEED_COUNT: '9'
+        run: |
+          echo "Job results: $RESULTS"
+          IFS=',' read -ra results <<< "$RESULTS"
+          if [ "${#results[@]}" -ne "$NEED_COUNT" ]; then
+            echo "::error::Expected $NEED_COUNT results, got ${#results[@]}. Blocking the merge."
+            exit 1
+          fi
+          for result in "${results[@]}"; do
+            if [ "$result" != "success" ]; then
+              echo "::error::A needed job ended '$result', not 'success'. Blocking the merge."
+              exit 1
+            fi
+          done
+          echo "Every needed job succeeded."

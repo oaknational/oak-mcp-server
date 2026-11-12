@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "include": [
+    // No bare `**/*.test.ts`: the directory globs above already cover their
+    // own tests, and an unscoped glob reaches into widget/, whose tests are
+    // checked by widget/tsconfig.json (its own DOM-bearing project) — dual
+    // membership type-checks them once WITHOUT lib.dom.
+    "operations/**/*.ts",
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "build-scripts/**/*.ts",
+    "runtime-only-scripts/**/*.d.mts",
+    "e2e-tests/**/*.ts",
+    "*.config.ts",
+    "vitest.e2e.config.ts",
+    "bin/**/*.ts",
+    "conformance/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "temp-secrets", "../../.agent/reference/**"]
+}
