@@ -42,6 +42,7 @@
     "@oaknational/build-metadata": "workspace:*",
     "@oaknational/curriculum-sdk": "workspace:*",
     "@oaknational/env": "workspace:*",
+    "@oaknational/graph-corpus-sdk": "workspace:*",
     "@oaknational/logger": "workspace:*",
     "@oaknational/oak-search-sdk": "workspace:*",
     "@oaknational/observability": "workspace:*",

@@ -311,6 +311,9 @@ importers:
       '@oaknational/env':
         specifier: workspace:*
         version: link:../../packages/env
+      '@oaknational/graph-corpus-sdk':
+        specifier: workspace:*
+        version: link:../../packages/graph-corpus-sdk
       '@oaknational/logger':
         specifier: workspace:*
         version: link:../../packages/logger

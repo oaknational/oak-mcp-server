@@ -9,6 +9,8 @@ import type { CreateMcpAuthClerkDeps } from '../auth/mcp-auth/index.js';
 import type { UpstreamAuthServerMetadata } from '../oauth-proxy/index.js';
 import type { SentryExpressErrorHandlerSetup } from './bootstrap-error-handlers.js';
 import type { ServedSurfaceDefinition } from '../served-surface/served-surface.js';
+import type { GraphRefresher } from '../cron/refresh-graph.js';
+import type { GraphHealth } from './graph-health.js';
 
 /**
  * Everything `createApp` needs to build an app instance.
@@ -67,4 +69,6 @@ export interface CreateAppOptions {
    * anyway).
    */
   readonly productAnalyticsSink?: ProductAnalyticsSink;
+  readonly readGraphHealth?: () => Promise<GraphHealth>;
+  readonly graphRefresher?: GraphRefresher;
 }

@@ -1,11 +1,16 @@
 import { request } from '../test-helpers/loopback-request.js';
-import { beforeAll, describe, expect, it } from 'vitest';
-import type { Express } from 'express';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import express, { type Express } from 'express';
 
 import { createApp } from '../application.js';
 import { getScratchStaticRoot } from '../test-helpers/static-root-fixture.js';
 import { createFakeHttpObservability } from '../test-helpers/observability-fakes.js';
 import { createMockRuntimeConfig } from '../test-helpers/auth-error-test-helpers.js';
+import { createFakeLogger } from '../test-helpers/fakes.js';
+import { addHealthEndpoints } from './health-endpoints.js';
+import { GRAPH_STALE_AFTER_MS, createGraphHealthReader } from './graph-health.js';
+
+const GRAPH_GENERATED_AT = '2026-11-08T00:05:00.000Z';
 
 /**
  * The health endpoint has to be reachable on the surface that is actually
@@ -56,6 +61,7 @@ describe('health endpoint inside the routed surface (MCP-580)', () => {
     status: 'ok',
     mode: 'streamable-http',
     auth: 'required-for-post',
+    graph: { generatedAt: GRAPH_GENERATED_AT, stale: false },
   };
 
   beforeAll(async () => {
@@ -67,6 +73,7 @@ describe('health endpoint inside the routed surface (MCP-580)', () => {
       }),
       observability: createFakeHttpObservability(),
       getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
+      readGraphHealth: () => Promise.resolve({ generatedAt: GRAPH_GENERATED_AT, stale: false }),
     });
   });
 
@@ -133,5 +140,76 @@ describe('health endpoint inside the routed surface (MCP-580)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(HEALTH_BODY);
+  });
+});
+
+describe('graph field on /healthz', () => {
+  const generatedAtMs = Date.parse(GRAPH_GENERATED_AT);
+
+  function snapshotText(generatedAt: string): string {
+    return JSON.stringify({
+      schemaVersion: 1,
+      downloadedAt: '2026-11-08T00:00:00.000Z',
+      generatedAt,
+      corpus: { nodes: [], edges: [], stats: { totalNodes: 0, totalEdges: 0 } },
+    });
+  }
+
+  function buildApp(options: {
+    readonly now: number;
+    readonly readLatest: () => Promise<string | null>;
+  }) {
+    const onBecameStale = vi.fn();
+    const app = express();
+    addHealthEndpoints(
+      app,
+      createFakeLogger(),
+      createGraphHealthReader({
+        readLatest: options.readLatest,
+        now: () => options.now,
+        onBecameStale,
+      }),
+    );
+    return { app, onBecameStale };
+  }
+
+  it('reports a fresh graph with 200', async () => {
+    const { app, onBecameStale } = buildApp({
+      now: generatedAtMs + 60_000,
+      readLatest: () => Promise.resolve(snapshotText(GRAPH_GENERATED_AT)),
+    });
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.graph).toEqual({ generatedAt: GRAPH_GENERATED_AT, stale: false });
+    expect(onBecameStale).not.toHaveBeenCalled();
+  });
+
+  it('reports a stale graph with 200 and raises one staleness alert', async () => {
+    const { app, onBecameStale } = buildApp({
+      now: generatedAtMs + GRAPH_STALE_AFTER_MS + 1,
+      readLatest: () => Promise.resolve(snapshotText(GRAPH_GENERATED_AT)),
+    });
+
+    const first = await request(app).get('/healthz');
+    const second = await request(app).get('/healthz');
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.body.graph).toEqual({ generatedAt: GRAPH_GENERATED_AT, stale: true });
+    expect(onBecameStale).toHaveBeenCalledOnce();
+  });
+
+  it('reports a missing snapshot as stale with 200', async () => {
+    const { app } = buildApp({
+      now: generatedAtMs,
+      readLatest: () => Promise.reject(new Error('no store configured')),
+    });
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
   });
 });
