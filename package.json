@@ -24,6 +24,7 @@
     "codegen:drift": "pnpm codegen && drift=\"$(git diff --name-only -- packages/codegen packages/search; git ls-files --others --exclude-standard -- packages/codegen packages/search)\" && if [ -n \"$drift\" ]; then printf 'Codegen changed the committed tree:\\n%s\\n' \"$drift\"; exit 1; fi",
     "codegen:online": "SDK_CODEGEN_MODE=online pnpm codegen",
     "format": "prettier --check .",
+    "graph:refresh": "tsx packages/codegen/vocab-gen/scripts/run-graph-refresh.ts",
     "format:fix": "prettier --write .",
     "import:ooce": "node tools/import-from-ooce/import.ts",
     "knip": "knip --treat-config-hints-as-errors",

@@ -219,6 +219,38 @@ describe('import from OOCE', () => {
     expect(beta['exports']).toEqual({ '.': './dist/index.js', './gamma': './dist/gamma.js' });
   });
 
+  it('adds manifest dependencies to the package.json in sorted order', () => {
+    run({
+      ...manifestJson,
+      packages: manifestJson.packages.map((spec) =>
+        spec.name === 'beta'
+          ? {
+              ...spec,
+              addDependencies: {
+                dependencies: { 'a-pad': '^1.0.0' },
+                devDependencies: { 'dev-pad': '^2.0.0' },
+              },
+            }
+          : spec,
+      ),
+    });
+    const beta = readJson('packages/beta/package.json');
+    expect(Object.keys(beta['dependencies'] as object)).toEqual(['a-pad', 'mid-pad', 'right-pad']);
+    expect(beta['devDependencies']).toMatchObject({ 'dev-pad': '^2.0.0' });
+  });
+
+  it('refuses to add a dependency the source package already declares', () => {
+    const manifest = {
+      ...manifestJson,
+      packages: manifestJson.packages.map((spec) =>
+        spec.name === 'beta'
+          ? { ...spec, addDependencies: { dependencies: { 'mid-pad': '^9.0.0' } } }
+          : spec,
+      ),
+    };
+    expect(() => run(manifest)).toThrow(/already has mid-pad/);
+  });
+
   it('fails when a merged file is neither moved nor dropped', () => {
     const partial = { ...gamma, drop: [{ path: 'package.json', reason: 'Dependencies merged.' }] };
     const manifest = {
@@ -492,13 +524,10 @@ describe('import from OOCE', () => {
       '@target/beta': 'workspace:*',
       vitest: '^5.0.0',
     });
-    const stray = { dependencies: { '@source/helpers': 'workspace:^' } };
+    const stray = { dependencies: { '@source/unmoved': 'workspace:*' } };
     expect(() =>
-      run({
-        ...manifestJson,
-        packages: [{ ...alpha, removeDependencies: [], addDependencies: stray }, beta],
-      }),
-    ).toThrow(/is "workspace:\*" and "workspace:\^"|not moved/);
+      run({ ...manifestJson, packages: [{ ...alpha, addDependencies: stray }, beta] }),
+    ).toThrow(/@source\/unmoved is a workspace reference to a package that is not moved/);
   });
 });
 

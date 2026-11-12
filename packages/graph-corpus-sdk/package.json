@@ -25,6 +25,14 @@
     "./curriculum": {
       "types": "./dist/curriculum/index.d.ts",
       "default": "./dist/curriculum/index.js"
+    },
+    "./load": {
+      "types": "./dist/load.d.ts",
+      "default": "./dist/load.js"
+    },
+    "./store": {
+      "types": "./dist/store/index.d.ts",
+      "default": "./dist/store/index.js"
     }
   },
   "scripts": {
@@ -37,7 +45,8 @@
   "dependencies": {
     "@oaknational/graph-core": "workspace:*",
     "@oaknational/result": "workspace:*",
-    "@oaknational/sdk-codegen": "workspace:*"
+    "@oaknational/sdk-codegen": "workspace:*",
+    "@vercel/blob": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

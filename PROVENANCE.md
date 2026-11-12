@@ -117,7 +117,7 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Modified `src/synonyms/README.md`. The search app stays in OOCE, so the link points at its file at the pinned SHA.
 - Modified `src/zod.ts`. The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11).
 - Modified `tsconfig.lint.json`. The type-check covers the generated vocab modules too, as the repository's type-check coverage test requires. They type-check clean.
-- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`.
+- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`, `vocab-gen/scripts/graph-refresh.integration.test.ts`, `vocab-gen/scripts/graph-refresh.ts`, `vocab-gen/scripts/run-graph-refresh.ts`.
 - Dropped `packages/sdks/oak-sdk-codegen/code-generation/typegen/admin/` (2 files). Moved to packages/search with the search SDK (P11).
 - Dropped `packages/sdks/oak-sdk-codegen/code-generation/typegen/observability/` (2 files). Moved to packages/search with the search SDK (P11).
 - Dropped `packages/sdks/oak-sdk-codegen/code-generation/typegen/query-parser/`. Moved to packages/search with the search SDK (P11).
@@ -140,6 +140,9 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Source: `packages/sdks/graph-corpus-sdk` at `d5846cf6f37270c73291640a526124429369ee97`.
 - Copied unchanged: 34 files.
 - Modified by the tool: `package.json`, `README.md`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Modified `README.md`. Documents the supplied ./store and ./load exports and pnpm graph:refresh.
+- Modified `tsup.config.ts`. The supplied snapshot store under src/store is built into dist for the ./store export.
+- Supplied from this repository: `src/load.integration.test.ts`, `src/load.ts`, `src/store/index.ts`, `src/store/object-store.ts`, `src/store/snapshot-store.integration.test.ts`, `src/store/snapshot-store.ts`.
 - Dropped `packages/sdks/graph-corpus-sdk/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
 ### `packages/search`
