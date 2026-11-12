@@ -167,6 +167,7 @@ overrides:
   openapi-zod-client>zod: 4.6.7
   '@zodios/core>zod': 4.6.7
   '@vercel/cli-config>zod': 4.6.7
+  undici@5>@fastify/busboy: 3.2.5
 
 importers:
 
@@ -1539,9 +1540,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@fastify/busboy@2.1.1':
-    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
-    engines: {node: '>=14'}
+  '@fastify/busboy@3.2.5':
+    resolution: {integrity: sha512-y8MTAeBlEQUNVnskmZQwpseZN3EgCksQNOULlfxWY6o6VEqh01+oExMgbM7gN6YLQ8pNDYeweNPKJRt8jQm2ZQ==}
 
   '@felipecrs/decompress-tarxz@5.0.4':
     resolution: {integrity: sha512-a+nAnDsiUA84Sy/a+FKYJtjOjFvNtW8Jcbi3NwE8kJKPpYAxINFLYsC9mev9/wngiNEBA3jfHn0qNFwICeZNJw==}
@@ -6033,7 +6033,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@fastify/busboy@2.1.1': {}
+  '@fastify/busboy@3.2.5': {}
 
   '@felipecrs/decompress-tarxz@5.0.4(supports-color@10.2.2)':
     dependencies:
@@ -9794,7 +9794,7 @@ snapshots:
 
   undici@5.29.0:
     dependencies:
-      '@fastify/busboy': 2.1.1
+      '@fastify/busboy': 3.2.5
 
   undici@6.29.1: {}
 
