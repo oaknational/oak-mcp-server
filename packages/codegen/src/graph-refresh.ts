@@ -1,10 +1,3 @@
-/**
- * Subpath barrel: `@oaknational/sdk-codegen/graph-refresh`
- *
- * The bulk side of the graph refresh: fetch or read the bulk files, digest
- * them, and build the graph corpus. Writing the snapshot lives in
- * `@oaknational/graph-corpus-sdk/store`, which owns the snapshot shape.
- */
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -73,8 +66,7 @@ export interface RefreshRefusal {
 }
 
 export interface BulkFiles {
-  /** When this copy was fetched or, for a directory, what its manifest says. Not a source date. */
-  readonly downloadedAt: string;
+  readonly fetchedAt: string;
   readonly names: readonly string[];
   read(name: string): Promise<string>;
 }
@@ -106,7 +98,7 @@ export async function fetchBulkFiles(options: {
   } catch (error) {
     return refuse('fetch-failed', `bulk download failed: ${messageOf(error)}`);
   }
-  const downloadedAt = (options.now?.() ?? new Date()).toISOString();
+  const fetchedAt = (options.now?.() ?? new Date()).toISOString();
   const names: string[] = [];
   try {
     unzipSync(zip, {
@@ -119,7 +111,7 @@ export async function fetchBulkFiles(options: {
     return refuse('bulk-parse-failed', `bulk download is not a ZIP: ${messageOf(error)}`);
   }
   return ok({
-    downloadedAt,
+    fetchedAt,
     names,
     read: (name) => {
       const entry = unzipSync(zip, { filter: (candidate) => candidate.name === name })[name];
@@ -146,7 +138,11 @@ export async function readBulkDirectory(dir: string): Promise<Result<BulkFiles, 
   if (typeof downloadedAt !== 'string' || Number.isNaN(Date.parse(downloadedAt))) {
     return refuse('bulk-parse-failed', `${dir}/manifest.json has no ISO downloadedAt`);
   }
-  return ok({ downloadedAt, names, read: (name) => readFile(path.join(dir, name), 'utf8') });
+  return ok({
+    fetchedAt: downloadedAt,
+    names,
+    read: (name) => readFile(path.join(dir, name), 'utf8'),
+  });
 }
 
 export function resolveBulkFiles(options: {
@@ -174,9 +170,8 @@ const dataFileNames = (bulk: BulkFiles): readonly string[] =>
   bulk.names.filter((name) => extractSubjectPhase(name) !== undefined).sort();
 
 /**
- * SHA-256 over the subject data files, by name. The bulk download carries no
- * date of its own, so this digest is how a refresh tells an unchanged source
- * from a changed one.
+ * The bulk download carries no date of its own, so this digest is how a
+ * refresh tells an unchanged source from a changed one.
  */
 export async function digestBulkFiles(bulk: BulkFiles): Promise<string> {
   const hash = createHash('sha256');
@@ -232,7 +227,7 @@ export async function buildGraphCorpus(
       unitLessons: extractUnitLessons(units.map((entry) => entry.unit)),
       misconceptions: extractMisconceptions(lessons),
       keywords: extractKeywords(lessons),
-      sourceVersion: bulk.downloadedAt,
+      sourceVersion: bulk.fetchedAt,
     }),
   );
 }

@@ -15,9 +15,9 @@ import {
 
 export const DEFAULT_MIN_RETENTION_RATIO = 0.5;
 
-export type { RefreshGuard, RefreshRefusal } from '@oaknational/sdk-codegen/graph-refresh';
+export type { RefreshRefusal } from '@oaknational/sdk-codegen/graph-refresh';
 
-export interface RefreshedSnapshot extends WrittenSnapshot {
+interface RefreshedSnapshot extends WrittenSnapshot {
   readonly status: 'refreshed';
   readonly nodes: number;
   readonly edges: number;
@@ -26,7 +26,7 @@ export interface RefreshedSnapshot extends WrittenSnapshot {
   readonly sourceDigest: string;
 }
 
-export interface SkippedRefresh {
+interface SkippedRefresh {
   readonly status: 'skipped';
   readonly sourceDigest: string;
 }
@@ -109,7 +109,7 @@ export async function refreshGraphCorpus(options: {
   }
   const written = await options.store.write({
     schemaVersion: GRAPH_CORPUS_SCHEMA_VERSION,
-    downloadedAt: bulk.downloadedAt,
+    downloadedAt: bulk.fetchedAt,
     generatedAt: corpus.generatedAt,
     sourceDigest,
     corpus,
@@ -118,7 +118,7 @@ export async function refreshGraphCorpus(options: {
     status: 'refreshed',
     nodes,
     edges,
-    downloadedAt: bulk.downloadedAt,
+    downloadedAt: bulk.fetchedAt,
     generatedAt: corpus.generatedAt,
     sourceDigest,
     ...written,

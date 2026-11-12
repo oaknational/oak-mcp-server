@@ -17,7 +17,6 @@ export const REFRESH_GRAPH_PATH = '/api/cron/refresh-graph';
 
 export type GraphRefresher = () => Promise<Result<RefreshOutcome, RefreshRefusal>>;
 
-/** The production refresher: fetch the bulk download, then refresh the stored snapshot. */
 export function createGraphRefresher(deps: {
   readonly apiKey: string;
   readonly store: GraphCorpusSnapshotStore;

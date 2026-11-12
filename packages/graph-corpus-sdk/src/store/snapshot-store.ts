@@ -81,7 +81,6 @@ export interface WrittenSnapshot {
   readonly prunedKeys: readonly string[];
 }
 
-/** How long `readLatest` waits for the object store before it rejects. */
 const DEFAULT_READ_TIMEOUT_MS = 30_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
