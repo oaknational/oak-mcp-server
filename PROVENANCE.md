@@ -1,6 +1,8 @@
 # Provenance
 
-This repository's code is imported from the `oak-open-curriculum-ecosystem` repository (OOCE) by the import tool, never by hand.
+This repository's code was imported from the `oak-open-curriculum-ecosystem` repository (OOCE) by the import tool, never by hand.
+
+The import is finished. Later changes to `apps/` and `packages/` are made in this repository, and the import tool refuses to run ([MCP-875](https://linear.app/oaknational/issue/MCP-875)). This file and `tools/import-from-ooce/imported.json` stay as the record of what was moved.
 
 Pinned OOCE import SHA: `d5846cf6f37270c73291640a526124429369ee97`
 
@@ -16,11 +18,7 @@ Each entry covers one package directory in this repository. It records:
 
 `tools/import-from-ooce/imported.json` holds the SHA-256 hash of each file copied unchanged. Modified and supplied files have no hash there.
 
-Only the import tool writes entries. Nobody edits the entries by hand. A pull request that changes an entry without running the tool fails review.
-
-## Package directories belong to the tool
-
-The tool owns each package directory named in `tools/import-from-ooce/manifest.json`. A re-import deletes every file in that directory that the import does not write, tracked or not. Only `node_modules`, `dist`, `coverage` and `.turbo` are left alone. To change an imported package, change the manifest and re-import. The tool refuses to write or delete through a symlink.
+The entries below are the record of the finished import. Nobody edits them.
 
 ## Entries
 
