@@ -50,6 +50,8 @@ jobs:
       - run: pnpm test
       - name: Diff the served surface against the OOCE baseline
         run: pnpm surface:diff
+      - name: Fail when the committed served surface is stale
+        run: pnpm surface:snapshot --check
       - name: Regenerate from the committed schema and fail on drift
         run: pnpm codegen:drift
 

@@ -451,7 +451,7 @@ function hasClientFactory(
   );
 }
 
-async function captureInMemory(): Promise<SurfaceSnapshot> {
+export async function captureInMemory(): Promise<SurfaceSnapshot> {
   const module: unknown = await tsImport(IN_MEMORY_CLIENT.href, import.meta.url);
   if (!hasClientFactory(module)) {
     throw new Error(`${IN_MEMORY_CLIENT.pathname} exports no createConnectedClient`);
@@ -467,10 +467,14 @@ async function captureInMemory(): Promise<SurfaceSnapshot> {
   }
 }
 
-async function writeBaseline(snapshot: SurfaceSnapshot, source: string): Promise<void> {
-  const text = JSON.stringify({ source, surface: snapshot });
-  const options = (await resolveConfig(BASELINE_PATH)) ?? {};
-  writeFileSync(BASELINE_PATH, await format(text, { ...options, filepath: BASELINE_PATH }));
+export async function renderSurfaceFile(
+  snapshot: SurfaceSnapshot,
+  source: string,
+  path: string,
+): Promise<string> {
+  const text = JSON.stringify({ source, surface: normaliseSnapshot(snapshot) });
+  const options = (await resolveConfig(path)) ?? {};
+  return format(text, { ...options, filepath: path });
 }
 
 async function main(argv: readonly string[]): Promise<number> {
@@ -485,7 +489,7 @@ async function main(argv: readonly string[]): Promise<number> {
       : await captureTarget(new URL(values.target));
   const source = values['write-baseline'];
   if (source !== undefined) {
-    await writeBaseline(current, source);
+    writeFileSync(BASELINE_PATH, await renderSurfaceFile(current, source, BASELINE_PATH));
     process.stdout.write(`wrote ${relative(process.cwd(), BASELINE_PATH)} from ${source}\n`);
     return 0;
   }

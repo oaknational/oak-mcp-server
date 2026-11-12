@@ -35,6 +35,7 @@
     "prepare": "git config core.hooksPath .husky",
     "skills:check": "node tools/repo-checks/skills-check.ts",
     "surface:diff": "node tools/surface-diff/surface-diff.ts",
+    "surface:snapshot": "node tools/surface-diff/surface-snapshot.ts",
     "test": "vitest run && node packages/posthog-node/src/posthog-mcp-logger.smoke.ts && pnpm --filter @oaknational/mcp-server test",
     "trial:metrics": "node tools/trial-metrics/collect.ts",
     "typecheck": "tsc --project tsconfig.base.json --noEmit && pnpm --recursive --if-present run type-check"
