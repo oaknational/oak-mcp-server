@@ -10,7 +10,7 @@ import { ok, err } from '@oaknational/result';
 import { runBrowseTool } from './execution.js';
 import type { UniversalToolExecutorDependencies } from '../universal-tool-shared.js';
 import type { SearchRetrievalService } from '../search-retrieval-types.js';
-import type { SearchFacets } from '@oaknational/sdk-codegen/search';
+import type { SearchFacets } from '@oaknational/oak-search-sdk/contract';
 import { createNullGeneratedToolRegistry } from '../test-helpers/null-generated-tool-registry.js';
 
 function createFakeRetrieval(facets?: SearchFacets): SearchRetrievalService {

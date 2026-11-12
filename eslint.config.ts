@@ -36,8 +36,24 @@ const importedRuleGaps: Record<string, string[]> = {
     'require-await',
     'unbound-method',
   ],
+  search: [
+    'no-unnecessary-boolean-literal-compare',
+    'no-unnecessary-condition',
+    'no-unnecessary-type-arguments',
+    'no-unnecessary-type-conversion',
+    'no-unsafe-argument',
+    'no-unsafe-call',
+    'no-unsafe-member-access',
+    'require-await',
+    'restrict-template-expressions',
+    'return-await',
+    'unbound-method',
+  ],
   'sentry-node': ['require-await', 'restrict-template-expressions', 'unbound-method'],
 };
+
+const searchBoundary =
+  'Outside packages/search, import only @oaknational/oak-search-sdk/contract. Only the server composition root, apps/server/src/composition/search.ts, builds the search service.';
 
 export default defineConfig(
   {
@@ -84,6 +100,21 @@ export default defineConfig(
     files: [`packages/${name}/**/*.ts`],
     rules: Object.fromEntries(rules.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const])),
   })),
+  {
+    files: ['**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
+    ignores: ['packages/search/**', 'apps/server/src/composition/search.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: '@oaknational/oak-search-sdk', message: searchBoundary }],
+          patterns: [
+            { regex: '^@oaknational/oak-search-sdk/(?!contract$)', message: searchBoundary },
+          ],
+        },
+      ],
+    },
+  },
   { files: ['**/*.mjs'], extends: [tseslint.configs.disableTypeChecked] },
   prettier,
 );

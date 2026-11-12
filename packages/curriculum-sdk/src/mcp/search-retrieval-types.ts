@@ -26,7 +26,7 @@ import type {
   SearchThreadIndexDoc,
   SearchFacets,
   SearchSuggestionItem,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 // ---------------------------------------------------------------------------
 // Error type (structurally matches search-sdk RetrievalError)
@@ -179,7 +179,7 @@ export interface SuggestionResponse {
  * We re-export the type here so search-retrieval-types is self-contained
  * for consumers that need the full result shape.
  */
-export type { SearchUnitsIndexDoc } from '@oaknational/sdk-codegen/search';
+export type { SearchUnitsIndexDoc } from '@oaknational/oak-search-sdk/contract';
 
 // ---------------------------------------------------------------------------
 // The search retrieval service interface

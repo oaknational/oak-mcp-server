@@ -9,7 +9,7 @@
  */
 
 import { KEY_STAGES } from '@oaknational/sdk-codegen/api-schema';
-import { KS4_SCIENCE_VARIANTS } from '@oaknational/sdk-codegen/search';
+import { KS4_SCIENCE_VARIANTS } from '@oaknational/oak-search-sdk/contract';
 import { rawCurriculumSchemas } from '@oaknational/sdk-codegen/zod';
 import { describe, expect, it } from 'vitest';
 import { ontologyData } from './ontology-data.js';

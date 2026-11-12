@@ -13,7 +13,7 @@
 
 import { threadProgressionStats } from '@oaknational/graph-corpus-sdk/curriculum';
 import { KEY_STAGES } from '@oaknational/sdk-codegen/api-schema';
-import { KS4_SCIENCE_VARIANTS } from '@oaknational/sdk-codegen/search';
+import { KS4_SCIENCE_VARIANTS } from '@oaknational/oak-search-sdk/contract';
 import { conceptGraph } from '@oaknational/sdk-codegen/vocab';
 import { rawCurriculumSchemas } from '@oaknational/sdk-codegen/zod';
 import { toolGuidanceData } from './tool-guidance-data.js';

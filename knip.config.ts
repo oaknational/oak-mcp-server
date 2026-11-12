@@ -14,7 +14,13 @@ const config: KnipConfig = {
     'packages/openapi-zod-client-adapter': { project: ['src/**/*.ts'] },
     'packages/graph-core': { project: ['src/**/*.ts'] },
     'packages/graph-corpus-sdk': {
-      entry: ['src/index.ts', 'src/eef-strands/index.ts', 'src/curriculum/index.ts'],
+      entry: [
+        'src/index.ts',
+        'src/eef-strands/index.ts',
+        'src/curriculum/index.ts',
+        'src/load.ts',
+        'src/store/index.ts',
+      ],
       project: ['src/**/*.ts'],
     },
     'packages/curriculum-sdk': {
@@ -29,6 +35,10 @@ const config: KnipConfig = {
       ],
       project: ['src/**/*.ts'],
       ignoreDependencies: ['@zod/core'],
+    },
+    'packages/search': {
+      entry: ['src/**/*.ts', 'code-generation/**/*.ts', 'tests/**/*.ts'],
+      project: ['src/**/*.ts', 'code-generation/**/*.ts', 'tests/**/*.ts'],
     },
     'packages/codegen': {
       entry: ['src/**/*.ts', 'code-generation/**/*.ts', 'vocab-gen/**/*.ts'],
