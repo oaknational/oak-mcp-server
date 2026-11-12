@@ -1,9 +1,14 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { loadReference } from '../reference/load.ts';
+
 const PAGES = [
   { name: 'home', path: '/' },
   { name: 'not found', path: '/page-that-does-not-exist/' },
+  { name: 'tools', path: '/tools/' },
+  { name: 'resources', path: '/resources/' },
+  { name: 'prompts', path: '/prompts/' },
 ] as const;
 
 const THEMES = ['light', 'dark'] as const;
@@ -130,6 +135,9 @@ test.describe('docs shell accessibility', () => {
         'Oak MCP server docs',
         'Home',
         'Quick start',
+        'Tools',
+        'Resources',
+        'Prompts',
         'Dark theme',
       ];
       for (const name of expected) {
@@ -185,5 +193,45 @@ test.describe('docs shell accessibility', () => {
     for (let i = 0; i < 10; i += 1) await page.keyboard.press('ArrowRight');
     await expect.poll(() => block.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
     await expectNoHorizontalScroll(page);
+  });
+
+  test('@a11y each tool is a heading with its annotations as text and a focusable input schema', async ({
+    page,
+  }) => {
+    const { tools } = loadReference();
+    await page.goto('/tools/');
+    const headings = page.getByRole('heading', { level: 2 });
+    await expect(headings).toHaveText([
+      'On this page',
+      ...tools.map((tool) => tool.title ?? tool.name),
+    ]);
+    for (const tool of tools) {
+      const section = page.getByRole('region', { name: tool.title ?? tool.name, exact: true });
+      await expect(section.getByRole('definition').first()).toHaveText(tool.name);
+      if (tool.annotations?.readOnlyHint !== undefined) {
+        await expect(section.getByRole('term').filter({ hasText: 'Read only' })).toBeVisible();
+      }
+      const schema = section.getByRole('region', { name: `Input schema for ${tool.name}` });
+      await expect(schema).toHaveAttribute('tabindex', '0');
+    }
+  });
+
+  test('@a11y keyboard reaches the first tool link and input schema with a visible focus ring', async ({
+    page,
+  }) => {
+    const [first] = loadReference().tools;
+    if (first === undefined) throw new Error('the reference lists no tools');
+    await page.goto('/tools/');
+    const link = page.getByRole('link', { name: first.title ?? first.name, exact: true });
+    const schema = page.getByRole('region', { name: `Input schema for ${first.name}` });
+    for (const target of [link, schema]) {
+      for (let presses = 0; presses < 200; presses += 1) {
+        if (await target.evaluate((element) => element === document.activeElement)) break;
+        await page.keyboard.press('Tab');
+      }
+      await expect(target).toBeFocused();
+      const outline = await target.evaluate((element) => getComputedStyle(element).outlineStyle);
+      expect(outline).not.toBe('none');
+    }
   });
 });

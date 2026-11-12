@@ -6,7 +6,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "build": "next build && node scripts/csp.mts",
+    "build": "node scripts/generate-reference.ts && next build && node scripts/csp.mts",
     "preview": "node scripts/serve.mts",
     "test": "pnpm run build && vitest run --root ../.. apps/docs",
     "test:a11y": "playwright test",

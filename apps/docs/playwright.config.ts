@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const PORT = 4173;
+const PORT = Number(process.env['DOCS_PORT'] ?? 4173);
 
 export default defineConfig({
   testDir: './tests',
