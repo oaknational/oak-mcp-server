@@ -16,8 +16,20 @@ overrides:
   'openapi-zod-client>zod': 4.6.7
   '@zodios/core>zod': 4.6.7
   '@vercel/cli-config>zod': 4.6.7
+  # @ai-sdk/provider-utils 3 (dev only, under @mcpjam/cli) pins undici ^5, open to
+  # several high advisories fixed by 6.29.1, and to GHSA-x8mw-p69m-v3mx through
+  # @fastify/busboy 2. It uses only Agent and fetch, which undici 6 keeps.
+  '@ai-sdk/provider-utils>undici': 6.29.1
+  # @mcpjam/sdk 2.4.0 (dev only, conformance runner) pins @modelcontextprotocol/client
+  # 2.0.0, open to GHSA-6qxp-vccf-f47h (fixed in 2.2.0).
+  '@mcpjam/sdk>@modelcontextprotocol/client': 2.4.0
+  # @posthog/mcp (runtime, via posthog-node) and @mcpjam/cli (dev) resolve the
+  # @modelcontextprotocol/server peer to 2.0.0, open to GHSA-46jr-4wx8-v453,
+  # GHSA-jm63-cq47-j5jp and GHSA-f897-62hf-6gxq (all fixed by 2.3.0).
+  '@modelcontextprotocol/server': 2.4.0
 
 allowBuilds:
+  '@sentry/cli': false
   esbuild: true
   shellcheck: true
 

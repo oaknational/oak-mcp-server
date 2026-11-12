@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": [
+    // Directory-scoped, deliberately — no bare `**/*.test.*` glob: widget/
+    // tests belong to widget/tsconfig.json (its own DOM-bearing project),
+    // and an unscoped glob would pull them in here and type-check them
+    // WITHOUT lib.dom. `src/**/*.tsx` already covers src test .tsx files.
+    "build-scripts/**/*.ts",
+    "build-scripts/**/*.d.mts",
+    "operations/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.mts",
+    "scripts/**/*.ts",
+    "e2e-tests/**/*.ts",
+    "*.config.ts",
+    "vitest.e2e.config.ts",
+    "vitest.e2e.base.ts",
+    "vitest.no-network.setup.ts",
+    "conformance/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "temp-secrets", "../../.agent/reference/**"]
+}

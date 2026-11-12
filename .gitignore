@@ -17,3 +17,5 @@ test-results/
 **/.typedoc
 **/_typedoc_*
 packages/codegen/reference/*.json
+
+**/test-results/

@@ -6,18 +6,38 @@ import { describe, expect, it } from 'vitest';
 
 const root = realpathSync(join(import.meta.dirname, '..', '..'));
 const packagesDirectory = join(root, 'packages');
-const names = readdirSync(packagesDirectory, { withFileTypes: true })
-  .filter(
-    (entry) =>
-      entry.isDirectory() && existsSync(join(packagesDirectory, entry.name, 'package.json')),
-  )
-  .map((entry) => entry.name);
 
 function lines(command: string, args: string[], cwd: string): string[] {
   return execFileSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
     .split('\n')
     .filter(Boolean);
 }
+
+function typeScriptFiles(directory: string): string[] {
+  return lines(
+    'git',
+    [
+      'ls-files',
+      '--cached',
+      '--others',
+      '--exclude-standard',
+      '--',
+      '*.ts',
+      '*.tsx',
+      '*.mts',
+      '*.cts',
+    ],
+    directory,
+  ).map((file) => join(directory, file));
+}
+
+const names = readdirSync(packagesDirectory, { withFileTypes: true })
+  .filter(
+    (entry) =>
+      entry.isDirectory() && existsSync(join(packagesDirectory, entry.name, 'package.json')),
+  )
+  .map((entry) => entry.name)
+  .filter((name) => typeScriptFiles(join(packagesDirectory, name)).length > 0);
 
 describe.each(names)('packages/%s type-check coverage', (name) => {
   const directory = join(packagesDirectory, name);
@@ -33,21 +53,7 @@ describe.each(names)('packages/%s type-check coverage', (name) => {
     const checked = new Set(
       lines('pnpm', ['exec', 'tsc', '-p', 'tsconfig.lint.json', '--listFilesOnly'], directory),
     );
-    const present = lines(
-      'git',
-      [
-        'ls-files',
-        '--cached',
-        '--others',
-        '--exclude-standard',
-        '--',
-        '*.ts',
-        '*.tsx',
-        '*.mts',
-        '*.cts',
-      ],
-      directory,
-    ).map((file) => join(directory, file));
+    const present = typeScriptFiles(directory);
     expect(present.filter((file) => !checked.has(file))).toEqual([]);
   }, 60_000);
 });

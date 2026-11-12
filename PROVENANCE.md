@@ -227,13 +227,15 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 ### `packages/curriculum-sdk`
 
 - Source: `packages/sdks/oak-curriculum-sdk` at `d5846cf6f37270c73291640a526124429369ee97`.
-- Copied unchanged: 174 files.
-- Modified by the tool: `docs/architecture.md`, `docs/logging-guide.md`, `docs/mcp/README.md`, `package.json`, `README.md`, `src/elasticsearch.ts`, `src/index.ts`, `src/mcp/aggregated-browse/execution.integration.test.ts`, `src/mcp/aggregated-browse/execution.ts`, `src/mcp/aggregated-browse/formatting.ts`, `src/mcp/aggregated-browse/formatting.unit.test.ts`, `src/mcp/ontology-data.ts`, `src/mcp/ontology-data.unit.test.ts`, `src/mcp/search-retrieval-types.ts`, `src/types/helpers/type-helpers.ts`, `src/types/index.ts`, `src/validation/search-response-validators.ts`, `src/validation/search-response-validators.unit.test.ts`, `src/validation/types.ts`, `tsconfig.json`, `tsconfig.lint.json`, `tsup.config.ts`.
+- Copied unchanged: 172 files.
+- Modified by the tool: `docs/architecture.md`, `docs/logging-guide.md`, `docs/mcp/README.md`, `package.json`, `README.md`, `src/elasticsearch.ts`, `src/index.ts`, `src/mcp/agent-support-tool-metadata.ts`, `src/mcp/agent-support-tool-metadata.unit.test.ts`, `src/mcp/aggregated-browse/execution.integration.test.ts`, `src/mcp/aggregated-browse/execution.ts`, `src/mcp/aggregated-browse/formatting.ts`, `src/mcp/aggregated-browse/formatting.unit.test.ts`, `src/mcp/ontology-data.ts`, `src/mcp/ontology-data.unit.test.ts`, `src/mcp/search-retrieval-types.ts`, `src/types/helpers/type-helpers.ts`, `src/types/index.ts`, `src/validation/search-response-validators.ts`, `src/validation/search-response-validators.unit.test.ts`, `src/validation/types.ts`, `tsconfig.json`, `tsconfig.lint.json`, `tsup.config.ts`.
 - Modified `docs/logging-guide.md`. The HTTP server has not moved yet, so the link points at its OOCE README at the pinned SHA.
 - Modified `docs/logging-guide.md`. The logger package moved to packages/logger in this repository.
 - Modified `docs/mcp/README.md`. The list continues after an unindented code block, which the repository's markdownlint rejects. The disable pair keeps OOCE's text and rendering.
 - Modified `src/elasticsearch.ts`. The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11).
 - Modified `src/index.ts`. The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11).
+- Modified `src/mcp/agent-support-tool-metadata.ts`. The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move.
+- Modified `src/mcp/agent-support-tool-metadata.unit.test.ts`. The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move.
 - Modified `src/mcp/aggregated-browse/execution.integration.test.ts`. The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11).
 - Modified `src/mcp/aggregated-browse/execution.ts`. The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11).
 - Modified `src/mcp/aggregated-browse/formatting.ts`. The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11).
@@ -249,3 +251,51 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Modified `tsconfig.lint.json`. The type-check covers the client example too, as the repository's type-check coverage test requires. It type-checks clean.
 - Supplied from this repository: `src/types/helpers/type-safe.ts`.
 - Dropped `packages/sdks/oak-curriculum-sdk/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+
+### `packages/widget-tokens`
+
+- Source: `packages/design/oak-design-assets`, `packages/design/oak-design-system` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 150 files.
+- Modified by the tool: `design-system/LICENCES.md`, `design-system/LICENSING-MANIFEST.md`, `LICENCES.md`, `package.json`.
+- Modified `design-system/LICENSING-MANIFEST.md`. The studio sources stay in OOCE, so the link points there at the pinned SHA.
+- Supplied from this repository: `index.css`.
+
+### `apps/server`
+
+- Source: `apps/oak-curriculum-mcp-streamable-http`, `agent-tools` at `d5846cf6f37270c73291640a526124429369ee97`.
+- Copied unchanged: 369 files.
+- Modified by the tool: `.env.example`, `build-scripts/copy-oak-ds.ts`, `build-scripts/run-sentry-configured-build.ts`, `conformance/src/bin/mcp-conformance.ts`, `conformance/src/mcp-conformance/baseline-schema.ts`, `conformance/src/mcp-conformance/baseline.ts`, `docs/dev-server-management.md`, `docs/manual-uat-guide.md`, `docs/observability.md`, `docs/operational-debugging.md`, `docs/uat-reports/README.md`, `docs/vercel-environment-config.md`, `e2e-tests/server.e2e.test.ts`, `e2e-tests/web-security-selective.e2e.test.ts`, `package.json`, `README.md`, `scripts/dev-widget-in-host.sh`, `scripts/probe-sentry-error-capture.sh`, `scripts/restart-dev-server.sh`, `scripts/start-server.sh`, `served-tool-table.md`, `src/app/core-endpoints.ts`, `src/dev-boot-without-observability.integration.test.ts`, `src/env.unit.test.ts`, `src/handlers-tool-registration.integration.test.ts`, `src/handlers.ts`, `src/host-header-validation.unit.test.ts`, `src/host-validation-error.unit.test.ts`, `src/oauth-proxy/oauth-proxy-redirect-uri-validation.unit.test.ts`, `src/oauth-proxy/oauth-proxy-response.ts`, `src/observability/http-observability.integration.test.ts`, `src/observability/http-observability.unit.test.ts`, `src/registration-proof/current-source-registration-proof.ts`, `src/runtime-config-support.ts`, `src/runtime-config.integration.test.ts`, `src/runtime-config.ts`, `src/search-retrieval-factory.integration.test.ts`, `src/security-config.integration.test.ts`, `src/served-surface/filter-guidance-content.ts`, `src/served-surface/served-surface-registration.integration.test.ts`, `src/served-surface/served-surface.ts`, `src/served-surface/served-surface.unit.test.ts`, `tests/tsconfig.json`, `tsconfig.json`, `tsconfig.lint.json`, `vitest.config.ts`, `vitest.e2e.config.ts`, `widget/src/BrandBanner.tsx`, `widget/src/index.css`, `widget/tsconfig.json`.
+- Modified `.env.example`. The placeholder Sentry DSN uses localhost, as the other moved packages do.
+- Modified `conformance/src/bin/mcp-conformance.ts`. Points the default baseline directory at its new home.
+- Modified `docs/dev-server-management.md`. TESTING.md has no such heading in OOCE either, so the link points at the file.
+- Modified `e2e-tests/server.e2e.test.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `e2e-tests/server.e2e.test.ts`. The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move.
+- Modified `e2e-tests/web-security-selective.e2e.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `scripts/dev-widget-in-host.sh`. Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash.
+- Modified `scripts/probe-sentry-error-capture.sh`. Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash.
+- Modified `scripts/restart-dev-server.sh`. Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash.
+- Modified `scripts/start-server.sh`. Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash.
+- Modified `served-tool-table.md`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `src/app/core-endpoints.ts`. The search factory moves to the composition root, src/composition/search.ts, the one file allowed to import the search SDK.
+- Modified `src/env.unit.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `src/handlers.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `src/host-header-validation.unit.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `src/host-validation-error.unit.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `src/oauth-proxy/oauth-proxy-redirect-uri-validation.unit.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `src/security-config.integration.test.ts`. Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses.
+- Modified `src/served-surface/served-surface-registration.integration.test.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `src/served-surface/served-surface.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `src/served-surface/served-surface.unit.test.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Modified `tsconfig.json`. Extends OOCE's root compiler options, copied into the app, instead of this repository's stricter base.
+- Modified `vitest.config.ts`. Runs the conformance runner tests with the app suites.
+- Modified `widget/src/index.css`. The widget and pages read the Oak design files from packages/widget-tokens.
+- Kept OOCE's relative paths in `tsconfig.json`. Its ../../.agent/ path is an exclude glob, not a link.
+- Kept OOCE's relative paths in `tsconfig.lint.json`. Its ../../.agent/ path is an exclude glob, not a link.
+- Kept OOCE's relative paths in `vitest.config.ts`. Its ../../.agent/ path is an exclude glob, not a link.
+- Supplied from this repository: `.markdownlint-cli2.jsonc`, `conformance/src/core/type-helpers.ts`, `e2e-tests/in-process.smoke.e2e.test.ts`, `src/composition/search.ts`, `src/type-helpers.ts`, `tsconfig.base.json`, `vitest.e2e.base.ts`, `vitest.no-network.setup.ts`.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/docs/archive/` (4 files). Historical OOCE deployment notes. Their links to sibling docs were already broken in OOCE.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/e2e-tests/oak-under-the-hood.e2e.test.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/eslint.config.ts`. The root eslint.config.ts lints packages/**.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/src/generated/oak-under-the-hood-content.ts`. Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/src/oak-under-the-hood/` (3 files). Removes the oak-under-the-hood tool, which describes OOCE rather than this repository.
+- Dropped `apps/oak-curriculum-mcp-streamable-http/src/search-retrieval-factory.ts`. Replaced by the composition root, src/composition/search.ts, which carries the same factory.

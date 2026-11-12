@@ -529,6 +529,27 @@ describe('import from OOCE', () => {
       run({ ...manifestJson, packages: [{ ...alpha, addDependencies: stray }, beta] }),
     ).toThrow(/@source\/unmoved is a workspace reference to a package that is not moved/);
   });
+
+  it('sets, keeps and deletes scripts per package after the shared removals', () => {
+    const scripts = { lint: 'eslint .', smoke: 'vitest run smoke', test: null };
+    run({ ...manifestJson, packages: [{ ...alpha, scripts }, beta] });
+    expect(readJson('packages/alpha/package.json')['scripts']).toEqual({
+      build: 'tsup',
+      lint: 'eslint .',
+      smoke: 'vitest run smoke',
+    });
+  });
+
+  it('sets and deletes top-level package.json fields, but not the managed ones', () => {
+    const fields = { description: 'Replaced.', version: null };
+    run({ ...manifestJson, packages: [{ ...alpha, fields }, beta] });
+    const json = readJson('packages/alpha/package.json');
+    expect(json['description']).toBe('Replaced.');
+    expect(json).not.toHaveProperty('version');
+    expect(() =>
+      run({ ...manifestJson, packages: [{ ...alpha, fields: { name: 'x' } }, beta] }),
+    ).toThrow(/fields cannot set name/);
+  });
 });
 
 describe('manifest boundary', () => {

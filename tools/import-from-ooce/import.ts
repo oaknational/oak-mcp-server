@@ -69,6 +69,8 @@ interface PackageSpec {
   exports: Exports;
   removeDependencies: string[];
   addDependencies: Partial<Record<DependencySection, Record<string, string>>>;
+  scripts: Record<string, string | null>;
+  fields: Record<string, unknown>;
 }
 interface Manifest {
   scope: { from: string; to: string };
@@ -120,6 +122,17 @@ const PIN_PREFIX = 'Pinned OOCE import SHA: `';
 const ENTRIES_HEADING = '## Entries';
 const UNMANAGED_DIRECTORIES = new Set(['node_modules', 'dist', 'coverage', '.turbo']);
 const DEPENDENCY_SECTIONS = ['dependencies', 'devDependencies', 'peerDependencies'] as const;
+const MANAGED_FIELDS = new Set([
+  'name',
+  'scripts',
+  'exports',
+  'repository',
+  'bugs',
+  'homepage',
+  'author',
+  'contributors',
+  ...DEPENDENCY_SECTIONS,
+]);
 
 function fail(message: string): never {
   throw new Error(message);
@@ -317,6 +330,23 @@ function parseAddDependencies(value: unknown, where: string): PackageSpec['addDe
   );
 }
 
+function parseScripts(value: unknown, where: string): PackageSpec['scripts'] {
+  return Object.fromEntries(
+    Object.entries(asRecord(value ?? {}, where)).map(([name, command]) => [
+      name,
+      command === null ? null : asString(command, `${where}.${name}`),
+    ]),
+  );
+}
+
+function parseFields(value: unknown, where: string): PackageSpec['fields'] {
+  const record = asRecord(value ?? {}, where);
+  const managed = Object.keys(record).filter((key) => MANAGED_FIELDS.has(key));
+  return managed.length === 0
+    ? record
+    : fail(`${where} fields cannot set ${managed.join(', ')}, which the tool manages`);
+}
+
 function parseSupplied(value: unknown, where: string): SuppliedFile {
   const record = asRecord(value, where, ['from', 'to']);
   return {
@@ -337,6 +367,8 @@ function parsePackage(value: unknown, where: string): PackageSpec {
     'exports',
     'removeDependencies',
     'addDependencies',
+    'scripts',
+    'fields',
   ]);
   const sources = asList(record['sources'], `${where}.sources`, parseSource);
   if (sources.length === 0) {
@@ -360,6 +392,8 @@ function parsePackage(value: unknown, where: string): PackageSpec {
       asString,
     ),
     addDependencies: parseAddDependencies(record['addDependencies'], `${where}.addDependencies`),
+    scripts: parseScripts(record['scripts'], `${where}.scripts`),
+    fields: parseFields(record['fields'], `${where}.fields`),
   };
 }
 
@@ -515,6 +549,23 @@ function transformPackageJson(
   const scripts = asRecord(out['scripts'] ?? {}, `${owner} scripts`);
   for (const script of manifest.removeScripts) {
     Reflect.deleteProperty(scripts, script);
+  }
+  for (const [script, command] of Object.entries(spec.scripts)) {
+    if (command === null) {
+      Reflect.deleteProperty(scripts, script);
+    } else {
+      scripts[script] = command;
+    }
+  }
+  if (out['scripts'] !== undefined || Object.keys(scripts).length > 0) {
+    out['scripts'] = scripts;
+  }
+  for (const [field, value] of Object.entries(spec.fields)) {
+    if (value === null) {
+      Reflect.deleteProperty(out, field);
+    } else {
+      out[field] = value;
+    }
   }
   for (const [section, entries] of Object.entries(spec.addDependencies)) {
     const current = asRecord(out[section] ?? {}, `${owner} ${section}`);
@@ -966,6 +1017,7 @@ function vitestCount(directory: string, { exclude, include }: CountFilter): Test
         'vitest',
         'run',
         '--reporter=json',
+        '--passWithNoTests',
         `--outputFile=${outputFile}`,
         ...exclude.map((path) => `--exclude=${path}`),
         ...include,

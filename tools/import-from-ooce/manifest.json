@@ -57,6 +57,26 @@
     {
       "find": "../../../apps/oak-curriculum-mcp-streamable-http/docs/observability.md",
       "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/apps/oak-curriculum-mcp-streamable-http/docs/observability.md"
+    },
+    {
+      "find": "../../docs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/docs/"
+    },
+    {
+      "find": "../../.agent/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/.agent/"
+    },
+    {
+      "find": "../../packages/libs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/packages/libs/"
+    },
+    {
+      "find": "../../../packages/libs/",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/packages/libs/"
+    },
+    {
+      "find": "../../../BRANDING.md",
+      "replace": "https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/{sha}/BRANDING.md"
     }
   ],
   "edits": [
@@ -1383,6 +1403,18 @@
           "find": "import type { SearchSuggestionResponse, SearchScopeWithAll } from '@oaknational/oak-search-sdk/contract';",
           "replace": "import type {\n  SearchSuggestionResponse,\n  SearchScopeWithAll,\n} from '@oaknational/oak-search-sdk/contract';",
           "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/agent-support-tool-metadata.ts",
+          "find": "For questions that are not about curriculum content — about the mechanisms by which the content is delivered, about this MCP app or its associated services, or about the repository itself — use the oak-under-the-hood tool to orient yourself to the Oak Open Curriculum Ecosystem.\n\n",
+          "replace": "",
+          "reason": "The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move."
+        },
+        {
+          "path": "src/mcp/agent-support-tool-metadata.unit.test.ts",
+          "find": "  it('routes non-curriculum / mechanism / MCP-app / repo questions to the oak-under-the-hood tool', () => {\n    const instructions = generateServerInstructions();\n\n    // A connecting agent reads these instructions at conversation start, so this\n    // discovery surface is where the orientation capability must be findable. For\n    // questions that are NOT about curriculum content — the mechanisms delivering\n    // the content, this MCP app and its services, or the repository itself — the\n    // surface points at oak-under-the-hood. Without this the tool is invisible to a\n    // first-session prior (the curriculum↔orientation separation taken too far).\n    expect(instructions).toContain('oak-under-the-hood');\n    expect(instructions).toContain('not about curriculum content');\n  });",
+          "replace": "  it('does not point at the removed oak-under-the-hood tool', () => {\n    expect(generateServerInstructions()).not.toContain('oak-under-the-hood');\n  });",
+          "reason": "The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move."
         }
       ],
       "addDependencies": {
@@ -1390,6 +1422,427 @@
           "@oaknational/oak-search-sdk": "workspace:*"
         }
       }
+    },
+    {
+      "name": "widget-tokens",
+      "to": "packages/widget-tokens",
+      "sources": [
+        {
+          "from": "packages/design/oak-design-assets"
+        },
+        {
+          "from": "packages/design/oak-design-system",
+          "pick": true,
+          "moves": {
+            "styles.css": "design-system/styles.css",
+            "colors_and_type.css": "design-system/colors_and_type.css",
+            "oak-icons.css": "design-system/oak-icons.css",
+            "components.css": "design-system/components.css",
+            "print.css": "design-system/print.css",
+            "oak-theme.js": "design-system/oak-theme.js",
+            "LICENCES.md": "design-system/LICENCES.md",
+            "LICENSING-MANIFEST.md": "design-system/LICENSING-MANIFEST.md",
+            "fonts/": "design-system/fonts/",
+            "assets/": "design-system/assets/"
+          }
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/widget-tokens-index.css",
+          "to": "index.css"
+        }
+      ],
+      "edits": [
+        {
+          "path": "design-system/LICENSING-MANIFEST.md",
+          "find": "](studio-source/README.md)",
+          "replace": "](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/packages/design/oak-design-system/studio-source/README.md)",
+          "reason": "The studio sources stay in OOCE, so the link points there at the pinned SHA."
+        }
+      ],
+      "exports": {
+        "./index.css": "./index.css",
+        "./design-system/*": "./design-system/*"
+      },
+      "fields": {
+        "description": "Built Oak token CSS, the design-system runtime files and the brand artwork that the MCP server's widget and pages use, copied from OOCE packages/design."
+      }
+    },
+    {
+      "name": "mcp-server",
+      "to": "apps/server",
+      "sources": [
+        {
+          "from": "apps/oak-curriculum-mcp-streamable-http"
+        },
+        {
+          "from": "agent-tools",
+          "pick": true,
+          "moves": {
+            "src/mcp-conformance/": "conformance/src/mcp-conformance/",
+            "src/core/json.ts": "conformance/src/core/json.ts",
+            "src/core/repo-root.ts": "conformance/src/core/repo-root.ts",
+            "src/core/schema-parse.ts": "conformance/src/core/schema-parse.ts",
+            "src/core/cli-arg-parser.ts": "conformance/src/core/cli-arg-parser.ts",
+            "src/bin/mcp-conformance.ts": "conformance/src/bin/mcp-conformance.ts",
+            "src/bin/mcp-conformance-help.ts": "conformance/src/bin/mcp-conformance-help.ts",
+            "tests/mcp-conformance/": "conformance/tests/mcp-conformance/"
+          }
+        }
+      ],
+      "drop": [
+        {
+          "path": "src/oak-under-the-hood/",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/generated/oak-under-the-hood-content.ts",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "e2e-tests/oak-under-the-hood.e2e.test.ts",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "docs/archive/",
+          "reason": "Historical OOCE deployment notes. Their links to sibling docs were already broken in OOCE."
+        },
+        {
+          "path": "src/search-retrieval-factory.ts",
+          "reason": "Replaced by the composition root, src/composition/search.ts, which carries the same factory."
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "src/type-helpers.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "conformance/src/core/type-helpers.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-tsconfig.base.json",
+          "to": "tsconfig.base.json"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-vitest.e2e.base.ts",
+          "to": "vitest.e2e.base.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-vitest-no-network.setup.ts",
+          "to": "vitest.no-network.setup.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-composition-search.ts",
+          "to": "src/composition/search.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-in-process-smoke.test-source.ts",
+          "to": "e2e-tests/in-process.smoke.e2e.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/server-markdownlint-cli2.jsonc",
+          "to": ".markdownlint-cli2.jsonc"
+        }
+      ],
+      "keepText": [
+        {
+          "path": "tsconfig.json",
+          "reason": "Its ../../.agent/ path is an exclude glob, not a link."
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "reason": "Its ../../.agent/ path is an exclude glob, not a link."
+        },
+        {
+          "path": "vitest.config.ts",
+          "reason": "Its ../../.agent/ path is an exclude glob, not a link."
+        }
+      ],
+      "removeDependencies": [
+        "@oaknational/env-resolution",
+        "@oaknational/type-helpers",
+        "@oaknational/oak-design-assets",
+        "@oaknational/oak-design-system",
+        "@oaknational/oak-design-tokens",
+        "@eslint/js",
+        "eslint-plugin-import-x",
+        "typescript-eslint"
+      ],
+      "addDependencies": {
+        "devDependencies": {
+          "@oaknational/widget-tokens": "workspace:*",
+          "@types/supertest": "^7.2.1"
+        }
+      },
+      "scripts": {
+        "test:e2e": "vitest run --config vitest.e2e.config.ts",
+        "conformance": "tsx conformance/src/bin/mcp-conformance.ts",
+        "test:smoke": "vitest run --config vitest.e2e.config.ts e2e-tests/in-process.smoke.e2e.test.ts"
+      },
+      "edits": [
+        {
+          "path": "src/oauth-proxy/oauth-proxy-response.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/registration-proof/current-source-registration-proof.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/filter-guidance-content.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/served-surface-registration.integration.test.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/mcp-conformance/baseline-schema.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../core/type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/mcp-conformance/baseline.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../core/type-helpers.js'"
+        },
+        {
+          "path": "conformance/src/bin/mcp-conformance.ts",
+          "find": "'agent-tools/src/mcp-conformance/baselines'",
+          "replace": "'apps/server/conformance/src/mcp-conformance/baselines'",
+          "reason": "Points the default baseline directory at its new home."
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "import { registerOakUnderTheHoodTool } from './oak-under-the-hood/oak-under-the-hood-tool.js';",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "  isAppLocalToolLive,",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "src/handlers.ts",
+          "find": "\n  // Additive, app-local effort-orientation tool (not in the SDK generated\n  // registry); own served-surface row; curriculum firewall in its result.\n  if (isAppLocalToolLive(servedSurface, 'oak-under-the-hood')) {\n    const { logger, observability } = options;\n    registerOakUnderTheHoodTool(server, { logger, observability });\n  }\n",
+          "replace": "",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "export type AppLocalToolName = 'oak-under-the-hood';",
+          "replace": "export type AppLocalToolName = never;",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/served-surface/served-surface.ts",
+          "find": "  appLocalTools: {\n    'oak-under-the-hood': 'live',\n  },",
+          "replace": "  appLocalTools: {},"
+        },
+        {
+          "path": "src/served-surface/served-surface.unit.test.ts",
+          "find": "  it('serves the app-local orientation tool live', () => {\n    expect(SERVED_SURFACE.appLocalTools['oak-under-the-hood']).toBe('live');",
+          "replace": "  it('serves no app-local tool, since oak-under-the-hood is removed', () => {\n    expect(SERVED_SURFACE.appLocalTools).toEqual({});",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/handlers-tool-registration.integration.test.ts",
+          "find": "    'oak-under-the-hood': 'live',",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "e2e-tests/server.e2e.test.ts",
+          "find": "const appLocalTools = ['oak-under-the-hood'];",
+          "replace": "const appLocalTools: string[] = [];",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "served-tool-table.md",
+          "find": "- `oak-under-the-hood` — Oak: Under the Hood",
+          "replace": "",
+          "wholeLine": true
+        },
+        {
+          "path": "served-tool-table.md",
+          "find": "38 tools served.",
+          "replace": "37 tools served.",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/served-surface/served-surface-registration.integration.test.ts",
+          "find": "expect(registered.size).toBe(universalCount + 1 - stillDormant);",
+          "replace": "expect(registered.size).toBe(universalCount - stillDormant);",
+          "reason": "Removes the oak-under-the-hood tool, which describes OOCE rather than this repository."
+        },
+        {
+          "path": "src/host-validation-error.unit.test.ts",
+          "find": "@evil.com",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "src/host-header-validation.unit.test.ts",
+          "find": "@evil.com",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "e2e-tests/web-security-selective.e2e.test.ts",
+          "find": "@evil.com",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "src/env.unit.test.ts",
+          "find": "@evil.example",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "src/security-config.integration.test.ts",
+          "find": "@evil.example",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "src/oauth-proxy/oauth-proxy-redirect-uri-validation.unit.test.ts",
+          "find": "@evil.example",
+          "replace": "@203.0.113.9",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": "src/oauth-proxy/oauth-proxy-redirect-uri-validation.unit.test.ts",
+          "find": "@client.example",
+          "replace": "@203.0.113.10",
+          "reason": "Swaps the foreign host in a userinfo fixture for the TEST-NET address 203.0.113.9, so it keeps its meaning but no longer reads as an email address, which the personal-data scrub refuses."
+        },
+        {
+          "path": ".env.example",
+          "find": "@your-org.ingest.sentry.io",
+          "replace": "@localhost",
+          "reason": "The placeholder Sentry DSN uses localhost, as the other moved packages do."
+        },
+        {
+          "path": "scripts/dev-widget-in-host.sh",
+          "find": "#!/usr/bin/env bash\n",
+          "replace": "#!/usr/bin/env bash\n# shellcheck disable=SC3010,SC3040,SC3043 # Bash script; the pre-commit hook lints every .sh as POSIX sh.\n",
+          "reason": "Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash."
+        },
+        {
+          "path": "scripts/probe-sentry-error-capture.sh",
+          "find": "#!/usr/bin/env bash\n",
+          "replace": "#!/usr/bin/env bash\n# shellcheck disable=SC3010,SC3014,SC3040 # Bash script; the pre-commit hook lints every .sh as POSIX sh.\n",
+          "reason": "Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash."
+        },
+        {
+          "path": "scripts/restart-dev-server.sh",
+          "find": "#!/usr/bin/env bash\n",
+          "replace": "#!/usr/bin/env bash\n# shellcheck disable=SC3040 # Bash script; the pre-commit hook lints every .sh as POSIX sh.\n",
+          "reason": "Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash."
+        },
+        {
+          "path": "scripts/start-server.sh",
+          "find": "#!/usr/bin/env bash\n",
+          "replace": "#!/usr/bin/env bash\n# shellcheck disable=SC3040 # Bash script; the pre-commit hook lints every .sh as POSIX sh.\n",
+          "reason": "Names the bash-only constructs the script uses, because the pre-commit hook lints every .sh file as POSIX sh. The script passes shellcheck as bash."
+        },
+        {
+          "path": "docs/dev-server-management.md",
+          "find": "../TESTING.md#two-tier-authentication-testing",
+          "replace": "../TESTING.md",
+          "reason": "TESTING.md has no such heading in OOCE either, so the link points at the file."
+        },
+        {
+          "path": "src/app/core-endpoints.ts",
+          "find": "'../search-retrieval-factory.js'",
+          "replace": "'../composition/search.js'",
+          "reason": "The search factory moves to the composition root, src/composition/search.ts, the one file allowed to import the search SDK."
+        },
+        {
+          "path": "src/search-retrieval-factory.integration.test.ts",
+          "find": "import {\n  createSearchRetrieval,\n  type SearchRetrievalFactories,\n} from './search-retrieval-factory.js';",
+          "replace": "import { createSearchRetrieval, type SearchRetrievalFactories } from './composition/search.js';"
+        },
+        {
+          "path": "widget/src/index.css",
+          "find": "@oaknational/oak-design-tokens/index.css",
+          "replace": "@oaknational/widget-tokens/index.css",
+          "reason": "The widget and pages read the Oak design files from packages/widget-tokens."
+        },
+        {
+          "path": "widget/src/BrandBanner.tsx",
+          "find": "'@oaknational/oak-design-system/assets/logo-wide-black.svg?raw'",
+          "replace": "'@oaknational/widget-tokens/design-system/assets/logo-wide-black.svg?raw'"
+        },
+        {
+          "path": "build-scripts/copy-oak-ds.ts",
+          "find": "require.resolve('@oaknational/oak-design-system')",
+          "replace": "require.resolve('@oaknational/widget-tokens/design-system/styles.css')"
+        },
+        {
+          "path": "build-scripts/copy-oak-ds.ts",
+          "find": "'@oaknational/oak-design-assets/assets/oak-national-academy-logo-512.png'",
+          "replace": "'@oaknational/widget-tokens/assets/oak-national-academy-logo-512.png'"
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "\"extends\": \"../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"./tsconfig.base.json\",",
+          "reason": "Extends OOCE's root compiler options, copied into the app, instead of this repository's stricter base."
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "    \"bin/**/*.ts\"",
+          "replace": "    \"bin/**/*.ts\",\n    \"conformance/**/*.ts\""
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "find": "    \"vitest.e2e.config.ts\"\n",
+          "replace": "    \"vitest.e2e.config.ts\",\n    \"vitest.e2e.base.ts\",\n    \"vitest.no-network.setup.ts\",\n    \"conformance/**/*.ts\"\n"
+        },
+        {
+          "path": "widget/tsconfig.json",
+          "find": "\"extends\": \"../../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"../tsconfig.base.json\","
+        },
+        {
+          "path": "tests/tsconfig.json",
+          "find": "\"extends\": \"../../../tsconfig.base.json\",",
+          "replace": "\"extends\": \"../tsconfig.base.json\","
+        },
+        {
+          "path": "vitest.config.ts",
+          "find": "      'src/**/*.integration.test.ts',\n",
+          "replace": "      'src/**/*.integration.test.ts',\n      'conformance/**/*.unit.test.ts',\n      'conformance/**/*.integration.test.ts',\n",
+          "reason": "Runs the conformance runner tests with the app suites."
+        },
+        {
+          "path": "vitest.e2e.config.ts",
+          "find": "'@oaknational/workspace-config/vitest-e2e'",
+          "replace": "'./vitest.e2e.base'"
+        },
+        {
+          "path": "e2e-tests/server.e2e.test.ts",
+          "find": "    // A connecting client must be able to discover the orientation capability\n    // from the very first response: the discovery surface points non-curriculum\n    // / mechanism / MCP-app / repo questions at oak-under-the-hood (O5).\n    expect(initResult.instructions).toContain('oak-under-the-hood');\n    expect(initResult.instructions).toContain('not about curriculum content');",
+          "replace": "    expect(initResult.instructions).not.toContain('oak-under-the-hood');",
+          "reason": "The server instructions stop pointing at oak-under-the-hood, which this repository removes with the server move."
+        }
+      ]
     }
   ]
 }

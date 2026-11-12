@@ -52,6 +52,14 @@
     "@oaknational/curriculum-sdk": {
       "tests": 773,
       "skipped": 0
+    },
+    "@oaknational/widget-tokens": {
+      "tests": 0,
+      "skipped": 0
+    },
+    "@oaknational/mcp-server": {
+      "tests": 1313,
+      "skipped": 0
     }
   }
 }

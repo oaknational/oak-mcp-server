@@ -42,6 +42,7 @@
     "**/dist",
     "**/coverage",
     "tools/import-from-ooce/supplied",
+    "apps/server",
     "apps/docs"
   ]
 }

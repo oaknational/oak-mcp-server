@@ -1,0 +1,74 @@
+/**
+ * Determines if a tool requires OAuth authentication.
+ *
+ * This pure function reads security metadata from generated tool descriptors
+ * and aggregated tool definitions to determine authentication requirements.
+ *
+ * **Architecture**: All security metadata is generated at sdk-codegen time or
+ * defined for aggregated tools. This function only READS that metadata — it
+ * never computes or decides policy.
+ *
+ * **Decision Logic (deny-by-default)**:
+ * - If `securitySchemes` is absent or empty → `true` (scope check runs)
+ * - If every scheme is `noauth` → `false` (no per-tool scope check)
+ * - Otherwise → `true` (scope check runs)
+ *
+ * Only an explicit, non-empty array of all-`noauth` schemes skips the
+ * per-tool OAuth scope check. This decides the scope check alone: HTTP
+ * bearer authentication has already been enforced at ingress (ADR-113),
+ * so `false` never means anonymous access.
+ *
+ * @param toolName - Universal tool name (generated or aggregated tool)
+ * @returns `true` if the tool's OAuth scope check runs, `false` if the
+ *   tool skips it (bearer authentication still applies at the transport)
+ *
+ * @example
+ * ```typescript
+ * // Generated OAuth-protected tool
+ * toolRequiresAuth('get-lessons')  // => true
+ *
+ * // Generated public tool
+ * toolRequiresAuth('get-rate-limit')  // => false
+ *
+ * // Aggregated OAuth-protected tool
+ * toolRequiresAuth('search')  // => true
+ * ```
+ *
+ * @see Sub-Phase 2.3 of schema-first-security-implementation.md
+ * @public
+ */
+
+import {
+  type SecurityScheme,
+  type UniversalToolName,
+  isAggregatedToolName,
+  AGGREGATED_TOOL_DEFS,
+  getToolFromToolName,
+} from '@oaknational/curriculum-sdk/public/mcp-tools.js';
+
+/**
+ * Resolves whether authentication is required from a `securitySchemes` value.
+ *
+ * Implements deny-by-default: only an explicit, non-empty array where every
+ * entry is `noauth` permits unauthenticated access. All other cases —
+ * including `undefined`, empty arrays, and arrays containing any non-`noauth`
+ * scheme — require authentication.
+ *
+ * @param schemes - Security schemes from a tool descriptor
+ * @returns `true` if auth is required, `false` only if all schemes are `noauth`
+ */
+export function resolveAuthRequired(schemes: readonly SecurityScheme[] | undefined): boolean {
+  if (schemes === undefined || schemes.length === 0) {
+    return true;
+  }
+
+  return !schemes.every((scheme) => scheme.type === 'noauth');
+}
+
+export function toolRequiresAuth(toolName: UniversalToolName): boolean {
+  const schemes = isAggregatedToolName(toolName)
+    ? AGGREGATED_TOOL_DEFS[toolName].securitySchemes
+    : getToolFromToolName(toolName).securitySchemes;
+
+  return resolveAuthRequired(schemes);
+}

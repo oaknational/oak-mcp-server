@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "kind": "oauth-conformance",
+  "name": "OAuth Conformance",
+  "passed": false,
+  "durationMs": 1131,
+  "groups": [
+    {
+      "id": "oauth-1",
+      "title": "2025-11-25/dcr",
+      "target": "https://curriculum-mcp-alpha.oaknational.dev/mcp",
+      "passed": false,
+      "durationMs": 1131,
+      "summary": "OAuth conformance failed at received_authorization_code: Headless authorization requires auto-consent. The authorization endpoint returned a 200 response instead of redirecting back with a code.",
+      "cases": [
+        {
+          "id": "request_without_token",
+          "title": "Initial MCP Request",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 1,
+          "description": "The client sends an unauthenticated initialize request to discover whether OAuth is required.",
+          "details": {
+            "teachableMoments": [
+              "OAuth flows usually begin with a protected resource request that deliberately lacks credentials.",
+              "The response determines which discovery path the client must follow."
+            ]
+          },
+          "output": "POST https://curriculum-mcp-alpha.oaknational.dev/mcp → 401 Unauthorized"
+        },
+        {
+          "id": "received_401_unauthorized",
+          "title": "401 Unauthorized Received",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 81,
+          "description": "The MCP server indicates OAuth is required and often provides discovery hints in WWW-Authenticate.",
+          "details": {
+            "teachableMoments": [
+              "Look for the resource metadata URL or realm in the header to understand where discovery begins."
+            ]
+          },
+          "output": "POST https://curriculum-mcp-alpha.oaknational.dev/mcp → 401 Unauthorized"
+        },
+        {
+          "id": "request_resource_metadata",
+          "title": "Request Resource Metadata",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 0,
+          "description": "The client requests RFC9728 resource metadata to learn which authorization server to use.",
+          "details": {
+            "teachableMoments": [
+              "Protected resource metadata links the resource to one or more authorization servers.",
+              "If this step fails, check the MCP server's well-known configuration and headers."
+            ]
+          },
+          "output": "GET https://curriculum-mcp-alpha.oaknational.dev/.well-known/oauth-protected-resource/mcp → No response"
+        },
+        {
+          "id": "received_resource_metadata",
+          "title": "Resource Metadata Received",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 55,
+          "description": "The response describes supported authorization servers, scopes, and Bearer [REDACTED] details.",
+          "details": {
+            "teachableMoments": [
+              "Validate that the authorization server URL looks correct for the environment you're targeting."
+            ]
+          },
+          "output": "GET https://curriculum-mcp-alpha.oaknational.dev/.well-known/oauth-protected-resource/mcp → 200 OK"
+        },
+        {
+          "id": "request_authorization_server_metadata",
+          "title": "Request Authorization Server Metadata",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 0,
+          "description": "The client requests the authorization server's well-known metadata endpoint (RFC8414 or OIDC).",
+          "details": {
+            "teachableMoments": [
+              "Different protocol versions prioritize different discovery strategies (path insertion, appending, etc.).",
+              "Failure here often points to misconfigured issuer URLs or CORS/proxy issues."
+            ]
+          },
+          "output": "GET https://curriculum-mcp-alpha.oaknational.dev/.well-known/oauth-authorization-server → 200 OK"
+        },
+        {
+          "id": "received_authorization_server_metadata",
+          "title": "Authorization Server Metadata Received",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 53,
+          "description": "Inspector validates the authorization, token, and optional registration endpoints.",
+          "details": {
+            "teachableMoments": [
+              "Confirm PKCE methods include S256 for modern flows.",
+              "Check the available scopes and grant types to ensure the server supports what you need."
+            ]
+          },
+          "output": "GET https://curriculum-mcp-alpha.oaknational.dev/.well-known/oauth-authorization-server → 200 OK"
+        },
+        {
+          "id": "request_client_registration",
+          "title": "Request Dynamic Client Registration",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 0,
+          "description": "The client submits metadata to register a public client with the authorization server.",
+          "details": {
+            "teachableMoments": [
+              "Dynamic registration is optional in draft flows but required in earlier specs unless you pre-register.",
+              "Watch for HTTP 4xx responses that indicate validation failures."
+            ]
+          },
+          "output": "POST https://curriculum-mcp-alpha.oaknational.dev/oauth/register → No response"
+        },
+        {
+          "id": "received_client_credentials",
+          "title": "Client Credentials Received",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 307,
+          "description": "The client stores client_id (and optionally client_secret) for the remainder of the flow.",
+          "details": {
+            "teachableMoments": [
+              "Keep an eye on whether the server returned a secret; public clients should use PKCE instead."
+            ]
+          },
+          "output": "POST https://curriculum-mcp-alpha.oaknational.dev/oauth/register → 201 Created"
+        },
+        {
+          "id": "generate_pkce_parameters",
+          "title": "Generate PKCE Parameters",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 1,
+          "description": "The client creates a code verifier and challenge to protect the authorization code exchange.",
+          "details": {
+            "teachableMoments": [
+              "PKCE S256 is required in draft specs and strongly recommended everywhere else."
+            ]
+          }
+        },
+        {
+          "id": "authorization_request",
+          "title": "Authorization Request Ready",
+          "category": "oauth",
+          "status": "passed",
+          "durationMs": 0,
+          "description": "The client composes the authorization URL and waits for the user to approve access.",
+          "details": {
+            "teachableMoments": [
+              "Inspect the URL to ensure scopes and redirect URI are what you expect."
+            ]
+          }
+        },
+        {
+          "id": "received_authorization_code",
+          "title": "Authorization Code Received",
+          "category": "oauth",
+          "status": "failed",
+          "durationMs": 632,
+          "description": "The user completed consent and the client captured the returned authorization code.",
+          "error": "Headless authorization requires auto-consent. The authorization endpoint returned a 200 response instead of redirecting back with a code.",
+          "details": {
+            "teachableMoments": [
+              "State mismatches here usually indicate multiple concurrent authorizations or stale popups."
+            ]
+          },
+          "output": "GET https://curriculum-mcp-alpha.oaknational.dev/oauth/authorize?response_type=code&client_id=ahGhzVyovUjgnqOZ&redirect_uri=http%3A%2F%2F127.0.0.1%3A30851%2Fcallback&code_challenge=NgcBGfngN7-TZCBgty8b0vQsCs3chCYQNi9b1M_zGRY&code_challenge_method=S256&state=0k%7EKSpnC3zBI_3V5&resource=https%3A%2F%2Fcurriculum-mcp-alpha.oaknational.dev%2Fmcp&scope=email → 307 Temporary Redirect\nGET https://native-hippo-15.clerk.accounts.dev/oauth/authorize?response_type=code&client_id=ahGhzVyovUjgnqOZ&redirect_uri=http%3A%2F%2F127.0.0.1%3A30851%2Fcallback&code_challenge=NgcBGfngN7-TZCBgty8b0vQsCs3chCYQNi9b1M_zGRY&code_challenge_method=S256&state=0k%7EKSpnC3zBI_3V5&resource=https%3A%2F%2Fcurriculum-mcp-alpha.oaknational.dev%2Fmcp&scope=email → 302 Found\nGET https://native-hippo-15.accounts.dev/sign-in?redirect_url=https%3A%2F%2Fnative-hippo-15.clerk.accounts.dev%2Foauth%2Fauthorize-with-immediate-redirect%3Fclient_id%3DahGhzVyovUjgnqOZ%26code_challenge%3DNgcBGfngN7-TZCBgty8b0vQsCs3chCYQNi9b1M_zGRY%26code_challenge_method%3DS256%26redirect_uri%3Dhttp%253A%252F%252F127.0.0.1%253A30851%252Fcallback%26resource%3Dhttps%253A%252F%252Fcurriculum-mcp-alpha.oaknational.dev%252Fmcp%26response_type%3Dcode%26scope%3Demail%26state%3D0k~KSpnC3zBI_3V5 → 200 OK"
+        }
+      ]
+    }
+  ]
+}
