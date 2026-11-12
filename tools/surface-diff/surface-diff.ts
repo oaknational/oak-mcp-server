@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { format, resolveConfig } from 'prettier';
+import { tsImport } from 'tsx/esm/api';
 
 export type Json = null | boolean | number | string | readonly Json[] | JsonObject;
 export interface JsonObject {
@@ -49,12 +50,25 @@ export type DifferenceLocation =
 export interface ExpectedDifference {
   readonly location: DifferenceLocation;
   readonly reason: string;
+  readonly accepts?: (difference: Difference) => boolean;
 }
+
+const UNDER_THE_HOOD_REASON = 'the program deletes the under-the-hood tool, which describes OOCE';
+const UNDER_THE_HOOD_INSTRUCTIONS =
+  'For questions that are not about curriculum content — about the mechanisms by which the content is delivered, about this MCP app or its associated services, or about the repository itself — use the oak-under-the-hood tool to orient yourself to the Oak Open Curriculum Ecosystem.\n\n';
 
 export const EXPECTED_DIFFERENCES: readonly ExpectedDifference[] = [
   {
     location: { kind: 'removed', collection: 'tools', id: 'oak-under-the-hood' },
-    reason: 'the program deletes the under-the-hood tool, which describes OOCE',
+    reason: UNDER_THE_HOOD_REASON,
+  },
+  {
+    location: { kind: 'server-changed', path: ['instructions'] },
+    reason: `${UNDER_THE_HOOD_REASON}, so the instructions drop its paragraph`,
+    accepts: (difference) =>
+      difference.kind === 'server-changed' &&
+      typeof difference.before === 'string' &&
+      difference.before.replace(UNDER_THE_HOOD_INSTRUCTIONS, '') === difference.after,
   },
 ];
 
@@ -65,6 +79,10 @@ export interface SurfaceReport {
 }
 
 const BASELINE_PATH = fileURLToPath(new URL('baseline.json', import.meta.url));
+const IN_MEMORY_CLIENT = new URL(
+  '../../apps/server/src/registration-proof/connected-client.ts',
+  import.meta.url,
+);
 
 function isObjectNode(value: Json | undefined): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -181,7 +199,30 @@ async function collectPages<T>(
 
 const pageParams = (cursor: string | undefined) => (cursor === undefined ? {} : { cursor });
 
-export async function captureSurface(client: Client): Promise<SurfaceSnapshot> {
+const SURFACE_METHODS = [
+  'getServerCapabilities',
+  'getServerVersion',
+  'getInstructions',
+  'listTools',
+  'listResources',
+  'listResourceTemplates',
+  'listPrompts',
+  'close',
+] as const;
+
+export type SurfaceClient = Pick<Client, (typeof SURFACE_METHODS)[number]>;
+
+function isSurfaceClient(value: unknown): value is SurfaceClient {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    SURFACE_METHODS.every(
+      (method) => method in value && typeof Reflect.get(value, method) === 'function',
+    )
+  );
+}
+
+export async function captureSurface(client: SurfaceClient): Promise<SurfaceSnapshot> {
   const capabilities = client.getServerCapabilities() ?? {};
   const implementation = client.getServerVersion();
   if (implementation === undefined) {
@@ -292,14 +333,22 @@ export function judgeDifferences(
   differences: readonly Difference[],
   expected: readonly ExpectedDifference[],
 ): SurfaceReport {
-  const expectedByLocation = new Map(
-    expected.map((entry) => [describeLocation(entry.location), entry]),
-  );
-  const seen = new Set(differences.map(describeLocation));
+  const matched = new Set<ExpectedDifference>();
+  const unexpected = differences.filter((difference) => {
+    const entry = expected.find(
+      (candidate) =>
+        describeLocation(candidate.location) === describeLocation(difference) &&
+        (candidate.accepts?.(difference) ?? true),
+    );
+    if (entry !== undefined) {
+      matched.add(entry);
+    }
+    return entry === undefined;
+  });
   return {
-    unexpected: differences.filter((d) => !expectedByLocation.has(describeLocation(d))),
-    expectedPresent: expected.filter((entry) => seen.has(describeLocation(entry.location))),
-    expectedAbsent: expected.filter((entry) => !seen.has(describeLocation(entry.location))),
+    unexpected,
+    expectedPresent: expected.filter((entry) => matched.has(entry)),
+    expectedAbsent: expected.filter((entry) => !matched.has(entry)),
   };
 }
 
@@ -391,6 +440,33 @@ async function captureTarget(target: URL): Promise<SurfaceSnapshot> {
   }
 }
 
+function hasClientFactory(
+  module: unknown,
+): module is { readonly createConnectedClient: () => Promise<unknown> } {
+  return (
+    typeof module === 'object' &&
+    module !== null &&
+    'createConnectedClient' in module &&
+    typeof module.createConnectedClient === 'function'
+  );
+}
+
+async function captureInMemory(): Promise<SurfaceSnapshot> {
+  const module: unknown = await tsImport(IN_MEMORY_CLIENT.href, import.meta.url);
+  if (!hasClientFactory(module)) {
+    throw new Error(`${IN_MEMORY_CLIENT.pathname} exports no createConnectedClient`);
+  }
+  const client = await module.createConnectedClient();
+  if (!isSurfaceClient(client)) {
+    throw new Error('createConnectedClient did not return an MCP client');
+  }
+  try {
+    return await captureSurface(client);
+  } finally {
+    await client.close();
+  }
+}
+
 async function writeBaseline(snapshot: SurfaceSnapshot, source: string): Promise<void> {
   const text = JSON.stringify({ source, surface: snapshot });
   const options = (await resolveConfig(BASELINE_PATH)) ?? {};
@@ -403,13 +479,10 @@ async function main(argv: readonly string[]): Promise<number> {
     options: { target: { type: 'string' }, 'write-baseline': { type: 'string' } },
     strict: true,
   });
-  if (values.target === undefined) {
-    process.stderr.write(
-      'surface-diff: pass --target <url> of a running MCP endpoint, for example http://localhost:3333/mcp.\n',
-    );
-    return 2;
-  }
-  const current = await captureTarget(new URL(values.target));
+  const current =
+    values.target === undefined
+      ? await captureInMemory()
+      : await captureTarget(new URL(values.target));
   const source = values['write-baseline'];
   if (source !== undefined) {
     await writeBaseline(current, source);

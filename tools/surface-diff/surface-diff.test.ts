@@ -143,6 +143,25 @@ describe('surface diff', () => {
     );
   });
 
+  it('accepts only the under-the-hood paragraph leaving the instructions', () => {
+    const baseline = parseBaseline(readFileSync(new URL('baseline.json', import.meta.url), 'utf8'));
+    const instructions = baseline.server['instructions'];
+    if (typeof instructions !== 'string') {
+      throw new Error('the baseline has no instructions');
+    }
+    const withInstructions = (text: string): SurfaceSnapshot => ({
+      ...baseline,
+      server: { ...baseline.server, instructions: text },
+    });
+    const trimmed = instructions.replace(
+      /For questions that are not about curriculum content[^\n]*\n\n/,
+      '',
+    );
+    expect(trimmed).not.toBe(instructions);
+    expect(report(baseline, withInstructions(trimmed)).unexpected).toEqual([]);
+    expect(report(baseline, withInstructions(`${trimmed} Extra.`)).unexpected).toHaveLength(1);
+  });
+
   it('round-trips a snapshot through the baseline file format', async () => {
     const snapshot = await surfaceOf(BASE_TOOLS);
     const text = JSON.stringify({ source: 'fixture', surface: snapshot });
