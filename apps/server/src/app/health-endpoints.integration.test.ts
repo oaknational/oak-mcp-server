@@ -212,4 +212,52 @@ describe('graph field on /healthz', () => {
     expect(res.status).toBe(200);
     expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
   });
+
+  it('answers 200 within the bound when the store never answers, without a staleness alert', async () => {
+    const { app, onBecameStale } = buildApp({
+      now: generatedAtMs,
+      readLatest: () => new Promise<never>(() => undefined),
+    });
+
+    const started = performance.now();
+    const res = await request(app).get('/healthz');
+    const elapsedMs = performance.now() - started;
+
+    expect(res.status).toBe(200);
+    expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
+    expect(elapsedMs).toBeLessThan(1500);
+    expect(onBecameStale).not.toHaveBeenCalled();
+  });
+
+  it('reports an unparseable generatedAt as stale', async () => {
+    const { app } = buildApp({
+      now: generatedAtMs,
+      readLatest: () => Promise.resolve(snapshotText('not-a-date')),
+    });
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.graph).toEqual({ generatedAt: 'not-a-date', stale: true });
+  });
+
+  it('still answers 200 when the staleness alert throws', async () => {
+    const app = express();
+    addHealthEndpoints(
+      app,
+      createFakeLogger(),
+      createGraphHealthReader({
+        readLatest: () => Promise.resolve(null),
+        now: () => generatedAtMs,
+        onBecameStale: () => {
+          throw new Error('sentry unavailable');
+        },
+      }),
+    );
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
+  });
 });

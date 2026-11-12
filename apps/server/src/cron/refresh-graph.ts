@@ -36,7 +36,8 @@ function hasBearer(req: Request, secret: string): boolean {
 }
 
 function isNewer(candidate: string, stored: string | null): boolean {
-  return stored === null || Date.parse(candidate) > Date.parse(stored);
+  const storedMs = stored === null ? Number.NaN : Date.parse(stored);
+  return Number.isNaN(storedMs) || Date.parse(candidate) > storedMs;
 }
 
 async function runRefresh(

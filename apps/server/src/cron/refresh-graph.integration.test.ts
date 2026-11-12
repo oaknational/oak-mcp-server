@@ -80,6 +80,17 @@ describe('GET /api/cron/refresh-graph', () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
+  it('refreshes when the stored downloadedAt does not parse', async () => {
+    const { app, refresh } = buildApp({
+      readStoredDownloadedAt: () => Promise.resolve('not-a-date'),
+    });
+
+    const res = await request(app).get(REFRESH_GRAPH_PATH).set('Authorization', `Bearer ${SECRET}`);
+
+    expect(res.status).toBe(200);
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
   it('skips when the bulk downloadedAt equals the stored one', async () => {
     const { app, refresh } = buildApp({ readBulkDownloadedAt: () => Promise.resolve(ok(STORED)) });
 
