@@ -37,5 +37,11 @@
     "apps/**/*.mts",
     "apps/**/*.cts"
   ],
-  "exclude": ["**/node_modules", "**/dist", "**/coverage", "tools/import-from-ooce/supplied"]
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/coverage",
+    "tools/import-from-ooce/supplied",
+    "apps/docs"
+  ]
 }
