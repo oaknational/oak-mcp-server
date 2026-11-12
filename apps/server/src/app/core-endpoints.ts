@@ -34,7 +34,11 @@ import {
   createGraphSnapshotStoreFromEnv,
   type GraphHealth,
 } from './graph-health.js';
-import { registerRefreshGraphRoute, type GraphRefresher } from '../cron/refresh-graph.js';
+import {
+  createGraphRefresher,
+  registerRefreshGraphRoute,
+  type GraphRefresher,
+} from '../cron/refresh-graph.js';
 
 /**
  * Narrow options for {@link initializeCoreEndpoints}. Contains only the
@@ -97,7 +101,7 @@ function mountGraphAndHealthRoutes(app: Express, options: CoreEndpointOptions, l
     registerRefreshGraphRoute({
       app,
       secret: env.CRON_SECRET,
-      refresher: options.graphRefresher,
+      refresher: options.graphRefresher ?? createGraphRefresher({ apiKey: env.OAK_API_KEY, store }),
       observability,
       log,
     });

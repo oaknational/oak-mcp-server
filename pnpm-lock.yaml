@@ -332,6 +332,9 @@ importers:
       '@oaknational/result':
         specifier: workspace:*
         version: link:../../packages/result
+      '@oaknational/sdk-codegen':
+        specifier: workspace:*
+        version: link:../../packages/codegen
       '@oaknational/sentry-node':
         specifier: workspace:*
         version: link:../../packages/sentry-node
@@ -366,9 +369,6 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.12.1
         version: 4.14.0(playwright-core@1.64.1)
-      '@oaknational/sdk-codegen':
-        specifier: workspace:*
-        version: link:../../packages/codegen
       '@oaknational/widget-tokens':
         specifier: workspace:*
         version: link:../../packages/widget-tokens
@@ -493,6 +493,9 @@ importers:
       '@zod/core':
         specifier: 0.11.6
         version: 0.11.6
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       openapi-fetch:
         specifier: 0.17.0
         version: 0.17.0
@@ -512,9 +515,6 @@ importers:
       '@types/node':
         specifier: ^24.13.3
         version: 24.19.2
-      fflate:
-        specifier: ^0.8.3
-        version: 0.8.3
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.32)(supports-color@10.2.2)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
