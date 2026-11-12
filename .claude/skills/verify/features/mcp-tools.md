@@ -16,10 +16,10 @@ A teacher's AI client connects to `/mcp` over streamable HTTP, after OAuth throu
 INSPECT="npx @modelcontextprotocol/inspector --cli http://localhost:3333/mcp --transport http"
 $INSPECT --method tools/list --header "Authorization: Bearer $TOKEN"
 $INSPECT --method tools/call --tool-name get-key-stages --header "Authorization: Bearer $TOKEN"
-$INSPECT --method resources/read --uri ui://widget/oak-curriculum-app.html --header "Authorization: Bearer $TOKEN"
+$INSPECT --method resources/read --uri ui://widget/oak-curriculum-app-v1.html --header "Authorization: Bearer $TOKEN"
 ```
 
-Drop `--header` only when the operator approved `DANGEROUSLY_DISABLE_AUTH=true`.
+Drop `--header` only when the operator approved the `dev:observe:noauth` launch.
 
 Pass: `tools/list` lists the tools in the served tool table. Each call returns a result with no `isError`.
 

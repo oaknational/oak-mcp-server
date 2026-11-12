@@ -13,7 +13,7 @@ Run from the repository root after `pnpm install --frozen-lockfile` and `pnpm bu
 
 Set `RUN` to a fresh scratch directory, for example `RUN=$(mktemp -d)/verify`, and `mkdir -p "$RUN/graph" "$RUN/evidence"`.
 
-Auth stays on by default. Boot needs a real Clerk development instance, because start-up fetches `/.well-known/oauth-authorization-server` from the Clerk frontend API and stops on any error. Ask the operator for the keys, or for approval to add `DANGEROUSLY_DISABLE_AUTH=true`. Never add that flag on your own.
+Auth stays on by default. Boot needs a real Clerk development instance, because start-up fetches `/.well-known/oauth-authorization-server` from the Clerk frontend API and stops on any error. Ask the operator for the keys. Without keys, ask the operator for approval to launch with `pnpm --filter @oaknational/mcp-server dev:observe:noauth` in place of `dev`, keeping the same environment variables. That script turns auth off. `dev` always forces `DANGEROUSLY_DISABLE_AUTH=false`, so setting the flag yourself does nothing. Never launch without auth on your own.
 
 ```bash
 export CRON_SECRET=local-cron-secret-0123456789
@@ -39,7 +39,7 @@ Only one instance fits on port 3333. If the port is already answering and this r
 curl -si localhost:3333/healthz
 ```
 
-Expect 200 and a JSON body with `status: "ok"`, `mode: "streamable-http"` and `graph: { generatedAt, stale }`. The process in `$RUN/server.pid` must be alive. A `graph.generatedAt` of `null` means no snapshot is stored under `GRAPH_CORPUS_LOCAL_PATH`. `pnpm graph:refresh --store local --bulk-dir <dir>` writes one.
+Expect 200 and a JSON body with `status: "ok"`, `mode: "streamable-http"` and `graph: { generatedAt, stale }`. The process in `$RUN/server.pid` must be alive. A `graph.generatedAt` of `null` means no snapshot is stored under `GRAPH_CORPUS_LOCAL_PATH`. `GRAPH_CORPUS_LOCAL_PATH="$RUN/graph" pnpm graph:refresh --store local --bulk-dir <dir>` writes one. Without that variable, the refresh writes to `.cache/graph-corpus`, which the server does not read.
 
 ## Drive
 

@@ -6,7 +6,7 @@ Each file covers one surface of the MCP server. Start the server with the skill'
 | --------------------------------------- | ------------------------------------------------------------ |
 | [Health and graph](health-and-graph.md) | `/healthz`, `/mcp/healthz`, `/api/cron/refresh-graph`        |
 | [MCP tools](mcp-tools.md)               | `tools/list`, `tools/call`, `resources/read`, auth on `/mcp` |
-| [Widget](widget.md)                     | The `ui://widget/oak-curriculum-app.html` MCP App            |
+| [Widget](widget.md)                     | The `ui://widget/oak-curriculum-app-v1.html` MCP App         |
 
 ## Proof rules
 
