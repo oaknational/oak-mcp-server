@@ -168,6 +168,7 @@ overrides:
   '@zodios/core>zod': 4.6.7
   '@vercel/cli-config>zod': 4.6.7
   undici@5>@fastify/busboy: 3.2.5
+  '@mcpjam/sdk>@modelcontextprotocol/client': 2.4.0
 
 importers:
 
@@ -1621,12 +1622,16 @@ packages:
       '@sentry/node':
         optional: true
 
-  '@modelcontextprotocol/client@2.0.0':
-    resolution: {integrity: sha512-8f1OghQ2rjzIOfqgUCP+8GiUWqRs89njoWLNqAe8kWmDePv3s1fZXseej+QXemssEuuOvLLmLO/kqM3IQHtISw==}
+  '@modelcontextprotocol/client@2.4.0':
+    resolution: {integrity: sha512-LgrD2OphHuG12vfKFKz6SOnq7bKHQmhGJIAYdD+MZBn2npHEyry6uD8zvktodtl5CQM85MO0anUyD9JwmUmxww==}
     engines: {node: '>=20'}
 
   '@modelcontextprotocol/core@2.0.0':
     resolution: {integrity: sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA==}
+    engines: {node: '>=20'}
+
+  '@modelcontextprotocol/core@2.4.0':
+    resolution: {integrity: sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q==}
     engines: {node: '>=20'}
 
   '@modelcontextprotocol/ext-apps@1.7.5':
@@ -6137,7 +6142,7 @@ snapshots:
       '@ai-sdk/openai': 2.0.140(zod@4.6.7)
       '@ai-sdk/xai': 2.0.102(zod@4.6.7)
       '@cfworker/json-schema': 4.1.6
-      '@modelcontextprotocol/client': 2.0.0
+      '@modelcontextprotocol/client': 2.4.0
       '@modelcontextprotocol/ext-apps': 1.7.5(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.6)(supports-color@10.2.2)(zod@4.6.7))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(zod@4.6.7)
       '@openrouter/ai-sdk-provider': 2.10.0(ai@6.0.323(zod@4.6.7))(zod@4.6.7)
       '@xmldom/xmldom': 0.8.15
@@ -6155,9 +6160,9 @@ snapshots:
       - react-dom
       - rxjs
 
-  '@modelcontextprotocol/client@2.0.0':
+  '@modelcontextprotocol/client@2.4.0':
     dependencies:
-      '@modelcontextprotocol/core': 2.0.0
+      '@modelcontextprotocol/core': 2.4.0
       cross-spawn: 7.0.6
       eventsource: 3.0.7
       eventsource-parser: 3.1.1
@@ -6166,6 +6171,10 @@ snapshots:
       zod: 4.6.7
 
   '@modelcontextprotocol/core@2.0.0':
+    dependencies:
+      zod: 4.6.7
+
+  '@modelcontextprotocol/core@2.4.0':
     dependencies:
       zod: 4.6.7
 
