@@ -1,8 +1,10 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import { resolveEnv } from '@oaknational/env/resolution';
 import { err, isOk, ok, type Result } from '@oaknational/result';
 import { strFromU8, unzipSync } from 'fflate';
+import { z } from 'zod';
 
 import {
   GRAPH_CORPUS_SCHEMA_VERSION,
@@ -200,6 +202,32 @@ export async function buildGraphCorpus(
       sourceVersion: bulk.downloadedAt,
     }),
   );
+}
+
+const graphRefreshEnvSchema = z.object({
+  OAK_API_KEY: z.string().optional(),
+  OAK_BULK_URL: z.string().optional(),
+  GRAPH_CORPUS_LOCAL_PATH: z.string().optional(),
+  GRAPH_MIN_RETENTION_RATIO: z.string().optional(),
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+});
+
+export type GraphRefreshEnv = z.infer<typeof graphRefreshEnvSchema>;
+
+/**
+ * Reads repo-root `.env` and `.env.local`, then the process environment, as
+ * the server does. Every key is optional so a missing `OAK_API_KEY` reaches
+ * the `missing-api-key` guard.
+ */
+export function resolveGraphRefreshEnv(
+  processEnv: Readonly<Record<string, string | undefined>>,
+  startDir: string,
+): GraphRefreshEnv {
+  const result = resolveEnv({ schema: graphRefreshEnvSchema, processEnv, startDir });
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+  return result.value;
 }
 
 export function parseRetentionRatio(value: string | undefined): number {

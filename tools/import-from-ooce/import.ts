@@ -568,6 +568,12 @@ function transformPackageJson(
     }
   }
   for (const [section, entries] of Object.entries(spec.addDependencies)) {
+    const current = asRecord(out[section] ?? {}, `${owner} ${section}`);
+    for (const name of Object.keys(entries)) {
+      if (name in current) {
+        fail(`${owner} ${section} already has ${name}, so the manifest must not add it`);
+      }
+    }
     mergeSection(out, entries, section, owner);
   }
   const moved = destinationPackageNames(manifest);
