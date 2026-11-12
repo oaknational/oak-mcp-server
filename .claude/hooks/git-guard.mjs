@@ -165,6 +165,8 @@ const isEnvPath = (path) => {
   const name = path.split('/').pop() ?? '';
   return name.startsWith('.env') && !ENV_TEMPLATE.test(name);
 };
+const ENV_FILE_NAME = /^\.env(?:rc)?(?!\w)/;
+const namesEnvFile = (word) => isEnvPath(word) && ENV_FILE_NAME.test(word.split('/').pop() ?? '');
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
 const HOOK_FILES = /(?:^|\/)(?:\.husky(?:\/|$)|\.git\/config(?:\.worktree)?$)/;
@@ -590,7 +592,7 @@ function checkSegment(words, startDir, depth) {
     checkCommand(args.join(' '), callDir, depth + 1);
   }
   if (!['git', 'echo', 'printf'].includes(command)) {
-    const secret = args.find((word) => isEnvPath(word.replace(/^\d*[<>]+/, '')));
+    const secret = args.find((word) => namesEnvFile(word.replace(/^\d*[<>]+/, '')));
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
     }
