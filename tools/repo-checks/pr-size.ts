@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync } from 'node:fs';
 
+import { diffFromMergeBase } from './changed-files.ts';
 import { section } from './pr-title.ts';
 
 const BAND_ACCEPTABLE = 10;
@@ -129,15 +130,7 @@ function markedPaths(base: string, paths: readonly string[]): Set<string> {
 }
 
 function main(): void {
-  const base = process.env['BASE_SHA'] ?? '';
-  if (base === '') {
-    throw new Error('BASE_SHA is not set');
-  }
-  const diff = git(['diff', '--name-only', '--no-renames', '-z', base, 'HEAD']);
-  if (!diff.ok) {
-    throw new Error('git diff failed');
-  }
-  const changed = diff.stdout.toString('utf8').split('\0').filter(Boolean);
+  const { mergeBase: base, changed } = diffFromMergeBase(process.env['BASE_SHA'] ?? '');
   const importedFile = git(['show', `${base}:${IMPORTED_PATH}`]);
   const importedHashes = importedFile.ok
     ? vouchedImports(base, parseImported(importedFile.stdout.toString('utf8')))
