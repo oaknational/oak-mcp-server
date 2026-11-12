@@ -1,0 +1,40 @@
+name: preview-probe
+
+on:
+  deployment_status:
+
+concurrency:
+  group: preview-probe-${{ github.event.deployment.sha }}-${{ github.event.deployment.environment }}-${{ github.event.deployment_status.id }}
+  cancel-in-progress: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  preview-probe:
+    name: preview-probe
+    # Only vercel[bot] can create a deployment under that login, so a hand-made deployment cannot drive this job.
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.creator.login == 'vercel[bot]' &&
+      startsWith(github.event.deployment.environment, 'Preview') &&
+      contains(github.event.deployment.environment, 'oak-mcp-server-function')
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Probe the preview
+        env:
+          PREVIEW_URL: ${{ github.event.deployment_status.environment_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: node tools/preview-probe/probe.ts

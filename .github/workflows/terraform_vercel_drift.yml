@@ -1,0 +1,42 @@
+name: Terraform Drift Detection
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: terraform-vercel-drift
+  cancel-in-progress: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-drift:
+    name: check-drift (${{ matrix.workspace }})
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - oak-mcp-server-project-function
+          - oak-mcp-server-project-docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run drift detection
+        uses: oaknational/oak-terraform-actions/actions/terraform-vercel-drift@9f75b4438580bc2ce29c75096446b48f57fc7357 # v1.13.3
+        with:
+          TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+          TF_CLOUD_ORGANIZATION: oak-national-academy
+          TF_WORKSPACE: ${{ matrix.workspace }}
+          VERCEL_DRIFT_DETECTION_SLACK_TOKEN: ${{ secrets.VERCEL_DRIFT_DETECTION_SLACK_TOKEN }}
+          VERCEL_DRIFT_DETECTION_SLACK_CHANNEL_ID: ${{ secrets.VERCEL_DRIFT_DETECTION_SLACK_CHANNEL_ID }}

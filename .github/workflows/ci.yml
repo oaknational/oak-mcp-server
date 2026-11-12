@@ -260,6 +260,25 @@ jobs:
       - run: pnpm --filter @oaknational/mcp-docs exec playwright install chromium
       - run: pnpm --filter @oaknational/mcp-docs test:a11y
 
+  infra:
+    name: infra
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - name: Plan or validate the Vercel project Terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+        run: sh infrastructure/plan.sh
+
   ci-gate:
     name: ci-gate
     permissions: {}
@@ -273,6 +292,7 @@ jobs:
       - workflow-lint
       - agent-skills
       - docs-a11y
+      - infra
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -280,7 +300,7 @@ jobs:
       - name: Require every needed job to succeed
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-          NEED_COUNT: '9'
+          NEED_COUNT: '10'
         run: |
           echo "Job results: $RESULTS"
           IFS=',' read -ra results <<< "$RESULTS"

@@ -5,6 +5,9 @@
   "description": "Developer documentation site for Oak National Academy's MCP server.",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build": "next build && node scripts/csp.mts",
     "preview": "node scripts/serve.mts",
