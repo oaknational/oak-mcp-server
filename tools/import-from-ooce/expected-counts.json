@@ -38,11 +38,15 @@
       "skipped": 0
     },
     "@oaknational/sdk-codegen": {
-      "tests": 1036,
+      "tests": 833,
       "skipped": 0
     },
     "@oaknational/graph-corpus-sdk": {
       "tests": 101,
+      "skipped": 0
+    },
+    "@oaknational/oak-search-sdk": {
+      "tests": 490,
       "skipped": 0
     },
     "@oaknational/curriculum-sdk": {

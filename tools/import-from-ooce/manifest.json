@@ -449,6 +449,182 @@
           "find": "users/{id}",
           "replace": "members/{id}",
           "reason": "The example path matches the pre-commit personal-data scrub pattern for home directories, so it is renamed. No test reads it."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "from './typegen/search/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "from './typegen/observability/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "from './typegen/admin/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "from './typegen/query-parser/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "  const search",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "    ...search",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "esMappings",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "queryParserModules",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "zeroHitFixtures",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "adminStreamFixtures",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/index.ts",
+          "find": "from './search/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/index.ts",
+          "find": "from './observability/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/index.ts",
+          "find": "from './admin/",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/index.ts",
+          "find": "// Subject hierarchy (ADR-101)",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": "// Curated search types",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": "from './search.js';",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": " * - `@oaknational/sdk-codegen/search`",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": " * - `@oaknational/sdk-codegen/query-parser`",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": " * - `@oaknational/sdk-codegen/observability`",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": " * - `@oaknational/sdk-codegen/admin`",
+          "replace": "",
+          "wholeLine": true,
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen-core.ts",
+          "find": "  };\n\n\n  // Error types for Result pattern",
+          "replace": "  };\n\n  // Error types for Result pattern",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/index.ts",
+          "find": "generate-widget-constants.js';\n\n\n// Error types",
+          "replace": "generate-widget-constants.js';\n\n// Error types",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": "} from './api-schema.js';\n\n\nexport { WIDGET_URI }",
+          "replace": "} from './api-schema.js';\n\nexport { WIDGET_URI }",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen.ts",
+          "find": "import { generateWidgetConstants, generateSubjectHierarchy } from './typegen/index.js';",
+          "replace": "import { generateWidgetConstants } from './typegen/index.js';",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "code-generation/codegen.ts",
+          "find": "\nlogger.info('Generating subject hierarchy...');\ngenerateSubjectHierarchy(logger);\n",
+          "replace": "",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
+        },
+        {
+          "path": "src/zod.ts",
+          "find": "\nexport {\n  SequenceFacetUnitSchema,\n  SequenceFacetSchema,\n} from './types/generated/zod/search/index.js';\n",
+          "replace": "",
+          "reason": "The search, admin-stream, query-parser and zero-hit generators moved to packages/search (P11)."
         }
       ],
       "drop": [
@@ -459,20 +635,58 @@
         {
           "path": "e2e-tests/scripts/codegen-core.e2e.test.ts",
           "reason": "Its config is dropped. The codegen e2e lane is deferred to MCP-861."
-        }
-      ],
-      "keepText": [
-        {
-          "path": "code-generation/typegen/search/generate-search-index-docs.ts",
-          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
         },
         {
-          "path": "code-generation/typegen/search/generate-search-modules.unit.test.ts",
-          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+          "path": "code-generation/typegen/search/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
         },
         {
-          "path": "code-generation/typegen/search/generate-search-response-docs.ts",
-          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+          "path": "code-generation/typegen/admin/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "code-generation/typegen/observability/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "code-generation/typegen/query-parser/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/types/generated/search/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/types/generated/admin/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/types/generated/observability/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/types/generated/query-parser/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/types/generated/zod/search/",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/search.ts",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/admin.ts",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/observability.ts",
+          "reason": "Moved to packages/search with the search SDK (P11)."
+        },
+        {
+          "path": "src/query-parser.ts",
+          "reason": "Moved to packages/search with the search SDK (P11)."
         }
       ],
       "addDependencies": {
@@ -480,6 +694,12 @@
           "@oaknational/env": "workspace:*",
           "fflate": "^0.8.3"
         }
+      },
+      "exports": {
+        "./search": null,
+        "./admin": null,
+        "./observability": null,
+        "./query-parser": null
       }
     },
     {
@@ -547,6 +767,483 @@
       ]
     },
     {
+      "name": "oak-search-sdk",
+      "to": "packages/search",
+      "sources": [
+        {
+          "from": "packages/sdks/oak-search-sdk"
+        },
+        {
+          "from": "packages/libs/search-contracts",
+          "moves": {
+            "src/": "src/contracts/",
+            "README.md": "src/contracts/README.md"
+          },
+          "drop": [
+            {
+              "path": "package.json",
+              "reason": "Dependencies merged into the search package.json."
+            },
+            {
+              "path": "tsconfig.json",
+              "reason": "The search package's own file covers the merged tree."
+            },
+            {
+              "path": "tsconfig.build.json",
+              "reason": "The search package's own file covers the merged tree."
+            },
+            {
+              "path": "tsconfig.lint.json",
+              "reason": "The search package's own file covers the merged tree."
+            },
+            {
+              "path": "tsup.config.ts",
+              "reason": "The search package's own file covers the merged tree."
+            },
+            {
+              "path": "vitest.config.ts",
+              "reason": "The search package's own file covers the merged tree."
+            }
+          ]
+        },
+        {
+          "from": "packages/sdks/oak-sdk-codegen",
+          "pick": true,
+          "moves": {
+            "code-generation/typegen/search/": "code-generation/typegen/search/",
+            "code-generation/typegen/admin/": "code-generation/typegen/admin/",
+            "code-generation/typegen/observability/": "code-generation/typegen/observability/",
+            "code-generation/typegen/query-parser/": "code-generation/typegen/query-parser/",
+            "src/types/generated/search/": "src/types/generated/search/",
+            "src/types/generated/admin/": "src/types/generated/admin/",
+            "src/types/generated/observability/": "src/types/generated/observability/",
+            "src/types/generated/query-parser/": "src/types/generated/query-parser/",
+            "src/types/generated/zod/search/": "src/types/generated/zod/search/",
+            "code-generation/typegen/extraction-types.ts": "code-generation/typegen/extraction-types.ts",
+            "code-generation/typegen/schema-input.ts": "code-generation/typegen/schema-input.ts",
+            "code-generation/create-codegen-logger.ts": "code-generation/create-codegen-logger.ts",
+            "src/search.ts": "src/contract.ts"
+          }
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/type-helpers.ts",
+          "to": "src/type-safe.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-prettier.config.mjs",
+          "to": "prettier.config.mjs"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/searchgen.ts",
+          "to": "code-generation/searchgen.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/search-drift.test-source.ts",
+          "to": "tests/drift.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/search-contract.test-source.ts",
+          "to": "tests/contract.test.ts"
+        }
+      ],
+      "removeDependencies": ["@oaknational/type-helpers"],
+      "addDependencies": {
+        "devDependencies": {
+          "openapi3-ts": "4.6.1"
+        }
+      },
+      "exports": {
+        "./contract": {
+          "types": "./dist/contract.d.ts",
+          "default": "./dist/contract.js"
+        }
+      },
+      "edits": [
+        {
+          "path": "README.md",
+          "find": "(../../../apps/oak-search-cli/docs/ARCHITECTURE.md)",
+          "replace": "(https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-search-cli/docs/ARCHITECTURE.md)",
+          "reason": "The search CLI stays in OOCE, so the link points at its file at the pinned SHA."
+        },
+        {
+          "path": "README.md",
+          "find": "while keeping Elasticsearch-specific retrieval logic behind typed SDK boundaries.\n",
+          "replace": "while keeping Elasticsearch-specific retrieval logic behind typed SDK boundaries.\n\n## Boundary in this repository\n\nThis package moves to its own `oak-semantic-search` repository under ADR-231, Rollout item 2. Until then, the rest of this repository uses it only through two seams:\n\n- `SearchRetrievalService` in `@oaknational/curriculum-sdk`, the contract that the search tools call.\n- `@oaknational/oak-search-sdk/contract`, the generated search request, response and index-document types and schemas that the contract is written in.\n\nThe server builds the service from this package in one composition-root file, `apps/server/src/composition/search.ts`. The move to `oak-semantic-search` replaces only that adapter. A rule in the root `eslint.config.ts` rejects any other import of this package from outside `packages/search`.\n\nThis package also owns the search code generators under `code-generation/`. They read the schema that `packages/codegen` generates, so `pnpm codegen` runs them after it.\n",
+          "reason": "States the boundary and the planned move to oak-semantic-search (P11)."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-facet-types.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-facet-zod.ts",
+          "find": "'../../../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-index-docs.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-requests.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-responses.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-suggestions.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/admin/admin-index-operations.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/admin/alias-operations.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'",
+          "reason": "The helpers come from a supplied copy, as in the other moved packages."
+        },
+        {
+          "path": "src/admin/index-meta-mapping-contract.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/admin/index-meta.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/admin/lifecycle-meta-alias-coherence.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'",
+          "reason": "The helpers come from a supplied copy, as in the other moved packages."
+        },
+        {
+          "path": "src/admin/lifecycle-rollback.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/admin/lifecycle-swap-builders.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/admin/versioned-index-operations.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'",
+          "reason": "The helpers come from a supplied copy, as in the other moved packages."
+        },
+        {
+          "path": "src/contract.ts",
+          "find": "  isAllSubject,\n} from './types/generated/search/index.js';\nexport type {",
+          "replace": "  isAllSubject,\n} from './types/generated/search/index.js';\nexport {\n  SequenceFacetUnitSchema,\n  SequenceFacetSchema,\n} from './types/generated/zod/search/index.js';\nexport type {",
+          "reason": "curriculum-sdk took these two schemas from `@oaknational/sdk-codegen/zod`, whose search part moved here."
+        },
+        {
+          "path": "src/contract.ts",
+          "find": "Subpath barrel: `@oaknational/sdk-codegen/search`",
+          "replace": "Subpath barrel: `@oaknational/oak-search-sdk/contract`",
+          "reason": "The barrel is this package's contract entry point."
+        },
+        {
+          "path": "src/contracts/field-inventory.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/contracts/field-inventory.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'",
+          "reason": "The helpers come from a supplied copy, as in the other moved packages."
+        },
+        {
+          "path": "src/create-search-sdk.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'./contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/observability/create-observability-service.ts",
+          "find": "'@oaknational/sdk-codegen/observability'",
+          "replace": "'../types/generated/observability/index.js'",
+          "reason": "The zero-hit codegen moved into this package."
+        },
+        {
+          "path": "src/observability/zero-hit-telemetry.ts",
+          "find": "'@oaknational/sdk-codegen/observability'",
+          "replace": "'../types/generated/observability/index.js'",
+          "reason": "The zero-hit codegen moved into this package."
+        },
+        {
+          "path": "src/retrieval/create-retrieval-service.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/rrf-query-helpers.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/rrf-score-processing.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/rrf-score-processing.unit.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/search-field-integrity.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/search-field-integrity.integration.test.ts",
+          "find": "'@oaknational/search-contracts'",
+          "replace": "'../contracts/index.js'",
+          "reason": "search-contracts merged into this package as src/contracts."
+        },
+        {
+          "path": "src/retrieval/search-field-integrity.unit.test.ts",
+          "find": "'@oaknational/search-contracts'",
+          "replace": "'../contracts/index.js'",
+          "reason": "search-contracts merged into this package as src/contracts."
+        },
+        {
+          "path": "src/retrieval/search-sequences.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/search-sequences.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/search-sequences.ts",
+          "find": "'@oaknational/type-helpers'",
+          "replace": "'../type-safe.js'",
+          "reason": "The helpers come from a supplied copy, as in the other moved packages."
+        },
+        {
+          "path": "src/retrieval/search-threads.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/sequence-facets.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/sequence-facets.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/suggest-bool-prefix.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/suggest-completion.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/suggestions.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/suggestions.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/retrieval/unit-doc-mapper.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/types/admin.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/types/generated/search/facets.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/index-documents.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/natural-requests.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/parsed-query.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/requests.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/responses.lessons.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/responses.units.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/search/suggestions.ts",
+          "find": "'../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/generated/zod/search/output/sequence-facets.ts",
+          "find": "'../../../api-schema/path-parameters.js'",
+          "replace": "'@oaknational/sdk-codegen/api-schema'",
+          "reason": "The generated API schema stays in packages/codegen, so the search modules and their generators import it by package name."
+        },
+        {
+          "path": "src/types/index-lifecycle-types.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/types/observability.ts",
+          "find": "'@oaknational/sdk-codegen/observability'",
+          "replace": "'./generated/observability/index.js'",
+          "reason": "The zero-hit codegen moved into this package."
+        },
+        {
+          "path": "src/types/retrieval-params.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/types/retrieval-results.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "src/types/retrieval.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'../contract.js'",
+          "reason": "The search codegen barrel moved into this package as src/contract.ts."
+        },
+        {
+          "path": "tsconfig.json",
+          "find": "\"include\": [\"src/**/*.ts\", \"**/*.test.ts\", \"*.config.ts\"],",
+          "replace": "\"include\": [\n    \"src/**/*.ts\",\n    \"code-generation/**/*.ts\",\n    \"tests/**/*.ts\",\n    \"**/*.test.ts\",\n    \"*.config.ts\"\n  ],",
+          "reason": "The type-check covers the moved search generators and the tests directory."
+        },
+        {
+          "path": "tsconfig.lint.json",
+          "find": "\"include\": [\"src/**/*.ts\", \"**/*.test.ts\", \"*.config.ts\"],",
+          "replace": "\"include\": [\n    \"src/**/*.ts\",\n    \"code-generation/**/*.ts\",\n    \"tests/**/*.ts\",\n    \"**/*.test.ts\",\n    \"*.config.ts\"\n  ],",
+          "reason": "The type-check covers the moved search generators and the tests directory."
+        },
+        {
+          "path": "tsup.config.ts",
+          "find": "    'src/admin.ts',\n",
+          "replace": "    'src/admin.ts',\n    'src/contract.ts',\n    'src/contracts/**/*.ts',\n    'src/type-safe.ts',\n",
+          "reason": "The build emits the contract barrel and the merged search-contracts modules."
+        },
+        {
+          "path": "vitest.config.ts",
+          "find": "include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],",
+          "replace": "include: [\n      'src/**/*.test.ts',\n      'src/**/*.spec.ts',\n      'tests/**/*.test.ts',\n      'code-generation/**/*.test.ts',\n    ],",
+          "reason": "The moved search generators keep their tests under code-generation, and the contract and drift tests live under tests."
+        },
+        {
+          "path": "README.md",
+          "find": "\n| Service                  | Purpose                                                                                                                                                                                                                                                                                                                                              |\n| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| **RetrievalService**     | Hybrid BM25 + ELSER search (lessons, units, threads) plus current lexical-only sequence retrieval, suggestions, and facets. Lessons/units use 4-way RRF; threads use 2-way RRF; sequences stay lexical-only until `sequence_semantic` is populated ([ADR-110](../../../docs/architecture/architectural-decisions/110-thread-search-architecture.md)) |\n| **AdminService**         | ES setup, connection, synonyms, index metadata                                                                                                                                                                                                                                                                                                       |\n| **ObservabilityService** | Zero-hit event recording, ES persistence, telemetry queries                                                                                                                                                                                                                                                                                          |\n\n",
+          "replace": "\n| Service                  | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| **RetrievalService**     | Hybrid BM25 + ELSER search (lessons, units, threads) plus current lexical-only sequence retrieval, suggestions, and facets. Lessons/units use 4-way RRF; threads use 2-way RRF; sequences stay lexical-only until `sequence_semantic` is populated ([ADR-110](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/110-thread-search-architecture.md)) |\n| **AdminService**         | ES setup, connection, synonyms, index metadata                                                                                                                                                                                                                                                                                                                                                                                                         |\n| **ObservabilityService** | Zero-hit event recording, ES persistence, telemetry queries                                                                                                                                                                                                                                                                                                                                                                                            |\n\n",
+          "reason": "Prettier aligns the service table, which is misaligned in OOCE."
+        }
+      ],
+      "keepText": [
+        {
+          "path": "code-generation/typegen/search/generate-search-index-docs.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-modules.unit.test.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        },
+        {
+          "path": "code-generation/typegen/search/generate-search-response-docs.ts",
+          "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
+        }
+      ]
+    },
+    {
       "name": "curriculum-sdk",
       "to": "packages/curriculum-sdk",
       "sources": [
@@ -596,8 +1293,103 @@
           "find": "(../../../../apps/oak-curriculum-mcp-streamable-http/README.md)",
           "replace": "(https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/apps/oak-curriculum-mcp-streamable-http/README.md)",
           "reason": "The HTTP server has not moved yet, so the link points at its OOCE README at the pinned SHA."
+        },
+        {
+          "path": "src/elasticsearch.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/index.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/aggregated-browse/execution.integration.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/aggregated-browse/execution.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/aggregated-browse/formatting.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/aggregated-browse/formatting.unit.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/ontology-data.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/ontology-data.unit.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/mcp/search-retrieval-types.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/types/index.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/validation/search-response-validators.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/validation/search-response-validators.unit.test.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/validation/types.ts",
+          "find": "'@oaknational/sdk-codegen/search'",
+          "replace": "'@oaknational/oak-search-sdk/contract'",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/types/index.ts",
+          "find": "export { SequenceFacetUnitSchema, SequenceFacetSchema } from '@oaknational/sdk-codegen/zod';",
+          "replace": "export { SequenceFacetUnitSchema, SequenceFacetSchema } from '@oaknational/oak-search-sdk/contract';",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
+        },
+        {
+          "path": "src/validation/search-response-validators.ts",
+          "find": "import type { SearchSuggestionResponse, SearchScopeWithAll } from '@oaknational/oak-search-sdk/contract';",
+          "replace": "import type {\n  SearchSuggestionResponse,\n  SearchScopeWithAll,\n} from '@oaknational/oak-search-sdk/contract';",
+          "reason": "The search codegen moved to packages/search, which exposes it to other packages only as `@oaknational/oak-search-sdk/contract` (P11)."
         }
-      ]
+      ],
+      "addDependencies": {
+        "dependencies": {
+          "@oaknational/oak-search-sdk": "workspace:*"
+        }
+      }
     }
   ]
 }

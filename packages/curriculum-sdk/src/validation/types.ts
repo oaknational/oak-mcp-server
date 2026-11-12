@@ -20,7 +20,7 @@ import {
   SearchUnitsResponseSchema,
   type SearchSuggestionResponse,
   type SearchScopeWithAll,
-} from '@oaknational/sdk-codegen/search';
+} from '@oaknational/oak-search-sdk/contract';
 
 /**
  * Result type for validation operations

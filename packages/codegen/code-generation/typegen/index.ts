@@ -41,22 +41,10 @@ export { generateValidPathsByParameters } from '../typegen-writers.js';
 export { extractPathParameters } from '../typegen-extraction.js';
 export { generateCompleteMcpTools } from './mcp-tools/index.js';
 export { generateUrlHelpers } from './routing/generate-url-helpers.js';
-export { generateSearchRequestModules } from './search/generate-search-requests.js';
-export { generateSearchResponseModules } from './search/generate-search-responses.js';
-export { generateSearchSuggestionModules } from './search/generate-search-suggestions.js';
-export { generateSearchScopeModules } from './search/generate-search-scopes.js';
-export { generateSearchFixtureModules } from './search/generate-search-fixtures.js';
-export { generateSearchIndexModule } from './search/generate-search-index.js';
-export { generateSearchIndexDocumentModules } from './search/generate-search-index-docs.js';
-export { generateZeroHitFixtureModules } from './observability/generate-zero-hit-fixtures.js';
-export { generateAdminStreamFixtureModules } from './admin/generate-admin-fixtures.js';
 
 // Cross-domain constants
 export { BASE_WIDGET_URI } from './cross-domain-constants.js';
 export { generateWidgetConstants } from './generate-widget-constants.js';
-
-// Subject hierarchy (ADR-101)
-export { generateSubjectHierarchy } from './search/generate-subject-hierarchy.js';
 
 // Error types (ADR-088)
 export { generateSdkErrorTypes } from './error-types/index.js';

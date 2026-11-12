@@ -26,10 +26,6 @@
       "types": "./dist/mcp-tools.d.ts",
       "default": "./dist/mcp-tools.js"
     },
-    "./search": {
-      "types": "./dist/search.d.ts",
-      "default": "./dist/search.js"
-    },
     "./zod": {
       "types": "./dist/zod.d.ts",
       "default": "./dist/zod.js"
@@ -49,18 +45,6 @@
     "./graph-corpus": {
       "types": "./dist/graph-corpus.d.ts",
       "default": "./dist/graph-corpus.js"
-    },
-    "./query-parser": {
-      "types": "./dist/query-parser.d.ts",
-      "default": "./dist/query-parser.js"
-    },
-    "./observability": {
-      "types": "./dist/observability.d.ts",
-      "default": "./dist/observability.js"
-    },
-    "./admin": {
-      "types": "./dist/admin.d.ts",
-      "default": "./dist/admin.js"
     },
     "./widget-constants": {
       "types": "./dist/widget-constants.d.ts",

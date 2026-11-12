@@ -17,12 +17,8 @@
  *
  * - `@oaknational/sdk-codegen/api-schema`
  * - `@oaknational/sdk-codegen/mcp-tools`
- * - `@oaknational/sdk-codegen/search`
  * - `@oaknational/sdk-codegen/zod`
  * - `@oaknational/sdk-codegen/bulk`
- * - `@oaknational/sdk-codegen/query-parser`
- * - `@oaknational/sdk-codegen/observability`
- * - `@oaknational/sdk-codegen/admin`
  * - `@oaknational/sdk-codegen/widget-constants`
  *
  * @see `docs/architecture/architectural-decisions/108-sdk-workspace-decomposition.md` — ADR-108
@@ -58,9 +54,5 @@ export type {
   SchemaBase,
   OakApiPathBasedClient,
 } from './api-schema.js';
-
-// Curated search types
-export { SEARCH_SCOPES, isSearchScope, isSearchScopeWithAll } from './search.js';
-export type { SearchScope, SearchScopeWithAll, SearchSubjectSlug } from './search.js';
 
 export { WIDGET_URI } from './widget-constants.js';

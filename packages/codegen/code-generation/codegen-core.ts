@@ -27,20 +27,6 @@ import { emitResponseValidators } from './typegen/response-map/emit-response-val
 import { emitRequestValidatorMap } from './typegen/validation/emit-request-validator-map.js';
 import { runAllCrossValidations } from './typegen/validation/cross-validate.js';
 import type { FileMap } from './typegen/extraction-types.js';
-import { generateSearchFacetTypeModules } from './typegen/search/generate-search-facet-types.js';
-import { generateSearchFacetZodModules } from './typegen/search/generate-search-facet-zod.js';
-import { generateSearchRequestModules } from './typegen/search/generate-search-requests.js';
-import { generateSearchResponseModules } from './typegen/search/generate-search-responses.js';
-import { generateSearchResponseDocsModules } from './typegen/search/generate-search-response-docs.js';
-import { generateSearchSuggestionModules } from './typegen/search/generate-search-suggestions.js';
-import { generateSearchScopeModules } from './typegen/search/generate-search-scopes.js';
-import { generateSearchFixtureModules } from './typegen/search/generate-search-fixtures.js';
-import { generateSearchIndexModule } from './typegen/search/generate-search-index.js';
-import { generateSearchIndexDocumentModules } from './typegen/search/generate-search-index-docs.js';
-import { generateEsMappingModules } from './typegen/search/generate-es-mappings.js';
-import { generateZeroHitFixtureModules } from './typegen/observability/generate-zero-hit-fixtures.js';
-import { generateAdminStreamFixtureModules } from './typegen/admin/generate-admin-fixtures.js';
-import { generateQueryParserModules } from './typegen/query-parser/generate-query-parser.js';
 import { generateSdkErrorTypes } from './typegen/error-types/index.js';
 import { generateClientTypes } from './typegen/client-types/generate-client-types.js';
 import { getEndpointDefinitions } from './adapter/index.js';
@@ -77,40 +63,11 @@ export function createFileMap(
     'routing/url-helpers.ts': generateUrlHelpers(),
   };
 
-  const searchFacetTypes = generateSearchFacetTypeModules();
-  const searchFacetZod = generateSearchFacetZodModules();
-  const searchRequests = generateSearchRequestModules(sdkSchema);
-  const searchResponses = generateSearchResponseModules(sdkSchema);
-  const searchResponseDocs = generateSearchResponseDocsModules(sdkSchema);
-  const searchSuggestions = generateSearchSuggestionModules(sdkSchema);
-  const searchScopes = generateSearchScopeModules(sdkSchema);
-  const searchFixtures = generateSearchFixtureModules(sdkSchema);
-  const searchIndex = generateSearchIndexModule(sdkSchema);
-  const searchIndexDocuments = generateSearchIndexDocumentModules(sdkSchema);
-  const esMappings = generateEsMappingModules(sdkSchema);
-  const queryParserModules = generateQueryParserModules();
-  const zeroHitFixtures = generateZeroHitFixtureModules(sdkSchema);
-  const adminStreamFixtures = generateAdminStreamFixtureModules(sdkSchema);
-
   // Error types for Result pattern (ADR-088)
   const errorTypes = { 'error-types/sdk-error-types.ts': generateSdkErrorTypes() };
 
   return {
     ...baseFiles,
-    ...searchFacetTypes,
-    ...searchFacetZod,
-    ...searchRequests,
-    ...searchResponses,
-    ...searchResponseDocs,
-    ...searchSuggestions,
-    ...searchScopes,
-    ...searchFixtures,
-    ...searchIndex,
-    ...searchIndexDocuments,
-    ...esMappings,
-    ...queryParserModules,
-    ...zeroHitFixtures,
-    ...adminStreamFixtures,
     ...errorTypes,
   };
 }

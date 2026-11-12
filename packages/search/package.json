@@ -1,0 +1,79 @@
+{
+  "name": "@oaknational/oak-search-sdk",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "TypeScript SDK for Oak semantic search — retrieval, admin, and observability services",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./read": {
+      "types": "./dist/read.d.ts",
+      "default": "./dist/read.js"
+    },
+    "./admin": {
+      "types": "./dist/admin.d.ts",
+      "default": "./dist/admin.js"
+    },
+    "./contract": {
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
+    "clean": "rm -rf dist .turbo",
+    "type-check": "tsc -p tsconfig.lint.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "@oaknational/logger": "workspace:*",
+    "@oaknational/observability": "workspace:*",
+    "@oaknational/result": "workspace:*",
+    "@oaknational/sdk-codegen": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "@elastic/elasticsearch": "^9.3.4"
+  },
+  "devDependencies": {
+    "@elastic/elasticsearch": "^9.5.0",
+    "@elastic/transport": "^9.4.0",
+    "@types/node": "^24.13.3",
+    "openapi3-ts": "4.6.1",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaknational/oak-mcp-server.git",
+    "directory": "packages/search"
+  },
+  "bugs": {
+    "url": "https://github.com/oaknational/oak-mcp-server/issues"
+  },
+  "homepage": "https://github.com/oaknational/oak-mcp-server/tree/main/packages/search#readme",
+  "keywords": [
+    "oak",
+    "search",
+    "semantic",
+    "elasticsearch",
+    "sdk",
+    "education",
+    "typescript"
+  ],
+  "license": "MIT"
+}

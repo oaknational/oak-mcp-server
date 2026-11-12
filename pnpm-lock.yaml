@@ -339,6 +339,9 @@ importers:
       '@oaknational/logger':
         specifier: workspace:*
         version: link:../logger
+      '@oaknational/oak-search-sdk':
+        specifier: workspace:*
+        version: link:../search
       '@oaknational/result':
         specifier: workspace:*
         version: link:../result
@@ -560,6 +563,46 @@ importers:
       '@types/node':
         specifier: ^24.13.3
         version: 24.19.2
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.32)(supports-color@10.2.2)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.5
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/search:
+    dependencies:
+      '@oaknational/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@oaknational/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@oaknational/result':
+        specifier: workspace:*
+        version: link:../result
+      '@oaknational/sdk-codegen':
+        specifier: workspace:*
+        version: link:../codegen
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@elastic/elasticsearch':
+        specifier: ^9.5.0
+        version: 9.5.1(supports-color@10.2.2)
+      '@elastic/transport':
+        specifier: ^9.4.0
+        version: 9.4.1(supports-color@10.2.2)
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.19.2
+      openapi3-ts:
+        specifier: 4.6.1
+        version: 4.6.1
       tsup:
         specifier: ^8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.32)(supports-color@10.2.2)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
