@@ -85,6 +85,11 @@ export default defineConfig(
       'apps/server/.widget-build/**',
       'apps/server/public/oak-ds/**',
       'apps/server/public/oak-assets/**',
+      'apps/docs/.next/**',
+      'apps/docs/out/**',
+      'apps/docs/test-results/**',
+      'apps/docs/playwright-report/**',
+      'apps/docs/next-env.d.ts',
     ],
   },
   eslint.configs.recommended,
@@ -125,6 +130,10 @@ export default defineConfig(
     ),
   },
   { files: ['apps/server/**/*.mjs'], languageOptions: { globals: { process: 'readonly' } } },
+  {
+    files: ['apps/docs/**/*.{ts,tsx,mts}'],
+    languageOptions: { parserOptions: { project: ['./apps/docs/tsconfig.json'] } },
+  },
   ...Object.entries(importedRuleGaps).map(([name, rules]) => ({
     files: [`packages/${name}/**/*.ts`],
     rules: Object.fromEntries(rules.map((rule) => [`@typescript-eslint/${rule}`, 'off' as const])),
