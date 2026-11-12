@@ -7,7 +7,7 @@ import {
   type JsonObject,
   type SurfaceSnapshot,
 } from '../surface-diff/surface-diff.ts';
-import { changedSinceMergeBase } from './changed-files.ts';
+import { diffFromMergeBase } from './changed-files.ts';
 
 const HEADER = /^(?:[A-Z][A-Z0-9]*-\d+: )?(\w+)(?:\([^)]*\))?(!)?: /;
 const BREAKING_FOOTER = /^BREAKING[ -]CHANGES?\b/m;
@@ -146,10 +146,10 @@ function readBaselineAt(baseSha: string | undefined): SurfaceSnapshot | undefine
 }
 
 if (import.meta.main) {
-  const changed = changedSinceMergeBase(process.env['BASE_SHA'] ?? '');
+  const { mergeBase, changed } = diffFromMergeBase(process.env['BASE_SHA'] ?? '');
   const title = process.env['PR_TITLE'] ?? '';
   const surface: SurfaceChange = {
-    before: readBaselineAt(process.env['BASE_SHA']),
+    before: readBaselineAt(mergeBase),
     after: parseBaseline(readFileSync(BASELINE, 'utf8')),
   };
   const errors = checkVersion({ title, body: process.env['PR_BODY'] ?? '', changed, surface });
