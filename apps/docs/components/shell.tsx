@@ -87,6 +87,9 @@ const NavLink = styled.a`
 const NAV_ITEMS = [
   { href: '/', label: 'Home' },
   { href: '/#quick-start', label: 'Quick start' },
+  { href: '/tools/', label: 'Tools' },
+  { href: '/resources/', label: 'Resources' },
+  { href: '/prompts/', label: 'Prompts' },
 ] as const;
 
 const FOOTER_LINKS = [

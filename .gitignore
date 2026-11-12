@@ -19,3 +19,5 @@ test-results/
 packages/codegen/reference/*.json
 
 **/test-results/
+
+apps/docs/reference/generated/

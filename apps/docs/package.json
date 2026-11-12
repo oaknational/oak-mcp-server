@@ -6,9 +6,10 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "build": "next build && node scripts/csp.mts",
+    "build": "tsx scripts/generate-reference.ts && next build && node scripts/csp.mts",
+    "build:server-deps": "pnpm --filter '@oaknational/mcp-server^...' build",
     "preview": "node scripts/serve.mts",
-    "test": "pnpm run build && vitest run --root ../.. apps/docs",
+    "test": "pnpm run build:server-deps && pnpm run build && vitest run --root ../.. apps/docs",
     "test:a11y": "playwright test",
     "type-check": "tsc --noEmit"
   },
@@ -21,8 +22,13 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@oaknational/mcp-server": "workspace:*",
     "@playwright/test": "^1.64.1",
+    "@types/express": "^5.0.6",
     "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0"
+    "@types/react-dom": "^19.3.0",
+    "express": "5.2.1",
+    "tsx": "^4.23.15"
   }
 }
