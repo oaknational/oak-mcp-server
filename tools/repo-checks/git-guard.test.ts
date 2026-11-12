@@ -459,6 +459,11 @@ describe('git-guard review fixes', () => {
     'cat apps/server/.env',
     'cat .envrc',
     'cat .env-prod',
+    'cat .env_local',
+    'cat .env_prod',
+    'cat .env1',
+    'cat .env_1',
+    'cat .envrc_x',
   ])('refuses the env file in %s', (command) => {
     expect(bash(clean, command).status).toBe(2);
   });

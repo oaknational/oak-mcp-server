@@ -165,7 +165,7 @@ const isEnvPath = (path) => {
   const name = path.split('/').pop() ?? '';
   return name.startsWith('.env') && !ENV_TEMPLATE.test(name);
 };
-const ENV_FILE_NAME = /^\.env(?:rc)?(?!\w)/;
+const ENV_FILE_NAME = /^\.env(?:rc)?(?![a-z])/i;
 const namesEnvFile = (word) => isEnvPath(word) && ENV_FILE_NAME.test(word.split('/').pop() ?? '');
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
