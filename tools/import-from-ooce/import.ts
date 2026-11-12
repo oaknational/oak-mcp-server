@@ -7,14 +7,12 @@ import {
   ftruncateSync,
   lstatSync,
   mkdirSync,
-  mkdtempSync,
   openSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { parseAllDocuments } from 'yaml';
@@ -1006,34 +1004,6 @@ export function countFromVitestRun(directory: string, run: VitestRun): TestCount
   return { tests: number('numTotalTests'), skipped: number('numPendingTests') };
 }
 
-function vitestCount(directory: string, { exclude, include }: CountFilter): TestCount {
-  const out = mkdtempSync(join(tmpdir(), 'import-counts-'));
-  const outputFile = join(out, 'report.json');
-  try {
-    const result = spawnSync(
-      'pnpm',
-      [
-        'exec',
-        'vitest',
-        'run',
-        '--reporter=json',
-        '--passWithNoTests',
-        `--outputFile=${outputFile}`,
-        ...exclude.map((path) => `--exclude=${path}`),
-        ...include,
-      ],
-      { cwd: directory, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-    );
-    return countFromVitestRun(directory, {
-      status: result.status,
-      output: `${result.stdout}${result.stderr}`,
-      report: existsSync(outputFile) ? readFileSync(outputFile, 'utf8') : undefined,
-    });
-  } finally {
-    rmSync(out, { recursive: true, force: true });
-  }
-}
-
 function readSupplied(root: string, manifest: Manifest): SuppliedContents {
   const paths = manifest.packages.flatMap((spec) => spec.supplied.map((file) => file.from));
   return new Map(
@@ -1138,47 +1108,9 @@ export function checkCounts(root: string, countTests: CountTests): string[] {
   return ok ? lines : fail(lines.join('\n'));
 }
 
-function flag(args: string[], name: string): string | undefined {
-  const at = args.indexOf(name);
-  if (at === -1) {
-    return undefined;
-  }
-  const value = args[at + 1];
-  return value === undefined || value.startsWith('--') ? fail(`${name} needs a value`) : value;
-}
-
-function main(): void {
-  const args = process.argv.slice(2);
-  const root = process.cwd();
-  if (args.includes('--check-counts')) {
-    process.stdout.write(`${checkCounts(root, vitestCount).join('\n')}\n`);
-    return;
-  }
-  const ooceRoot = flag(args, '--ooce') ?? process.env['OOCE_CHECKOUT'];
-  if (ooceRoot === undefined) {
-    fail('usage: import --sha <sha> --ooce <path to an OOCE checkout at that SHA>');
-  }
-  const pin = pinnedSha(readFileSync(join(root, PROVENANCE_PATH), 'utf8'));
-  const sha = resolveSha(flag(args, '--sha'), pin);
-  const report = runImport({
-    root,
-    ooceRoot,
-    source: openOoce(ooceRoot, sha),
-    countTests: vitestCount,
-  });
-  const changed = report.written.length + report.removed.length;
-  process.stdout.write(
-    changed === 0
-      ? 'no changes\n'
-      : `wrote ${String(report.written.length)} files, removed ${String(report.removed.length)}\n`,
-  );
-}
-
 if (import.meta.main) {
-  try {
-    main();
-  } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    process.exit(1);
-  }
+  process.stderr.write(
+    'The import from OOCE is finished (MCP-875). PROVENANCE.md and imported.json record what it moved. Later changes are made in this repository, so this tool no longer runs.\n',
+  );
+  process.exit(1);
 }

@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
@@ -733,5 +733,32 @@ describe('OOCE test counts', () => {
   it('shows the vitest output when no report was written', () => {
     const run = { status: 1, output: 'Command "vitest" not found', report: undefined };
     expect(() => countFromVitestRun('pkg', run)).toThrow(/wrote no report[\s\S]*not found/);
+  });
+});
+
+describe('frozen entry point', () => {
+  const entry = join(import.meta.dirname, 'import.ts');
+
+  function snapshot(): Record<string, string> {
+    return Object.fromEntries(
+      walk(root).map((file) => [relative(root, file), readFileSync(file, 'utf8')]),
+    );
+  }
+
+  it.each([
+    ['an import', ['--sha', SHA, '--ooce', 'ooce']],
+    ['a count check', ['--check-counts']],
+    ['no arguments', []],
+  ])('refuses %s, names MCP-875 and leaves the tree alone', (_what, args) => {
+    write('tools/import-from-ooce/manifest.json', JSON.stringify(manifestJson));
+    write('packages/alpha/src/written-here.ts', 'export const local = 1;\n');
+    write('apps/server/src/cron/route.ts', 'export const route = 1;\n');
+    const before = snapshot();
+    const result = spawnSync('node', [entry, ...args], { cwd: root, encoding: 'utf8' });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/MCP-875/);
+    expect(result.stderr).toMatch(/import from OOCE is finished/);
+    expect(result.stderr).toMatch(/made in this repository/);
+    expect(snapshot()).toEqual(before);
   });
 });
