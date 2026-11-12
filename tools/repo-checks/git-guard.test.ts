@@ -449,6 +449,38 @@ describe('git-guard review fixes', () => {
     expect(bash(clean, command).status).toBe(0);
   });
 
+  it.each([
+    'cat .env',
+    'cat<.env',
+    'cat 0<.env.local',
+    'echo "$(<.env.local)"',
+    'source .env.local',
+    'cat .env.production',
+    'cat apps/server/.env',
+    'cat .envrc',
+    'cat .env-prod',
+    'cat .env_local',
+    'cat .env_prod',
+    'cat .env1',
+    'cat .env_1',
+    'cat .envrc_x',
+  ])('refuses the env file in %s', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    'gh api repos/o/r/deployments --jq \'.environment + " " + .sha\'',
+    "jq '.environment' deploy.json",
+    'jq .envelope mail.json',
+    'jq .environment_url deploy.json',
+    "jq '.github.event.deployment.environment' event.json",
+    'cat .env.example',
+    'cat .env.sample',
+    'cat .env.template',
+  ])('allows %s, which names no env file', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
   it('counts untracked files when status.showUntrackedFiles is no', () => {
     const repo = makeRepo();
     try {
