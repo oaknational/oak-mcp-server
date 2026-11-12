@@ -1,6 +1,6 @@
 # MCP architecture decision records from OOCE
 
-These 26 records come from the Oak open curriculum ecosystem (OOCE) repository at `d5846cf6f37270c73291640a526124429369ee97`. They are the OOCE decisions still in force for this server. Each file keeps its OOCE number and carries its OOCE path in a header. This repository numbers its own decisions separately, in [the ADR index](../README.md).
+These 27 records come from the Oak open curriculum ecosystem (OOCE) repository at `d5846cf6f37270c73291640a526124429369ee97`. They are the OOCE decisions still in force for this server. Each file keeps its OOCE number and carries its OOCE path in a header. This repository numbers its own decisions separately, in [the ADR index](../README.md).
 
 ## Index
 
@@ -29,4 +29,5 @@ These 26 records come from the Oak open curriculum ecosystem (OOCE) repository a
 - [ADR 196. Graph Substrate Migration: One Replacement Unit per Tool](196-graph-substrate-migration-one-unit-per-tool.md)
 - [ADR 217. Server-Rendered HTML in the MCP App](217-server-rendered-html-in-the-mcp-app.md) (superseded by ADR 0003)
 - [ADR 218. PostHog MCP Analytics Identity, Session, and Privacy Boundary](218-posthog-mcp-analytics-identity-session-and-privacy.md)
+- [ADR 219. Rate Limiting Is an Edge Concern](219-rate-limiting-is-an-edge-concern.md)
 - [ADR 229. The MCP app stays a legacy-era `2025-11-25` server until the SDK v2 package family is adopted](229-mcp-protocol-revision-legacy-era-until-sdk-v2.md)

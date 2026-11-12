@@ -18,7 +18,7 @@ const headerPattern = /^> OOCE path: `([^`]+\.md)`\n> OOCE SHA: `([0-9a-f]{40})`
 
 describe('archival docs', () => {
   it('finds the copied docs', () => {
-    expect(archival.length).toBe(26 + 5);
+    expect(archival.length).toBe(27 + 5);
   });
 
   it.each(archival)('%s carries its OOCE path and SHA in a header', (path) => {
@@ -39,7 +39,7 @@ describe('archival docs', () => {
   it('lists every copied ADR once in the index', () => {
     const index = readFileSync(join(root, indexPath), 'utf8');
     const adrs = archival.filter((p) => p.startsWith('docs/adr/mcp/'));
-    expect(adrs).toHaveLength(26);
+    expect(adrs).toHaveLength(27);
     for (const path of adrs) {
       const name = path.split('/').pop() ?? '';
       expect(index.split(`](${name})`).length - 1, name).toBe(1);
