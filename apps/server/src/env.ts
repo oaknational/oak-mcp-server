@@ -66,6 +66,10 @@ const BaseEnvSchema = OakApiKeyEnvSchema.extend(ElasticsearchEnvSchema.shape)
      * the edge (ADR-219).
      */
     TEST_ERROR_SECRET: z.string().min(16).optional(),
+    /** Bearer secret Vercel Cron sends to `/api/cron/refresh-graph`. */
+    CRON_SECRET: z.string().min(16).optional(),
+    GRAPH_CORPUS_LOCAL_PATH: z.string().min(1).optional(),
+    BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
     /**
      * The address this server is served at, when that differs from the
      * hostname reaching it.

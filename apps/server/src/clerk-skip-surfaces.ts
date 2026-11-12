@@ -22,6 +22,7 @@ import { MCP_RESOURCE_PATH } from './served-origin.js';
 import { HEALTH_PATHS } from './app/health-paths.js';
 import { OPENAI_APPS_CHALLENGE_PATH } from './openai-domain-verification.js';
 import { ROBOTS_TXT_PATH } from './robots-txt.js';
+import { REFRESH_GRAPH_PATH } from './cron/refresh-graph.js';
 import {
   OAK_ASSETS_PUBLIC_DIRNAME,
   OAK_DS_PUBLIC_DIRNAME,
@@ -42,6 +43,9 @@ import {
  * root path was exempted from in the first place. Composing from the constant means a
  * change to the served health layout moves the skip with it instead of leaving
  * a stale literal behind.
+ *
+ * The graph refresh cron route authenticates itself with the `CRON_SECRET`
+ * bearer, so Clerk has nothing to add there.
  */
 export const CLERK_SKIP_PATHS: ReadonlySet<string> = new Set([
   '/.well-known/oauth-protected-resource',
@@ -51,6 +55,7 @@ export const CLERK_SKIP_PATHS: ReadonlySet<string> = new Set([
   OPENAI_APPS_CHALLENGE_PATH,
   ROBOTS_TXT_PATH,
   ...HEALTH_PATHS,
+  REFRESH_GRAPH_PATH,
   '/oauth/authorize',
   '/oauth/token',
   '/oauth/register',

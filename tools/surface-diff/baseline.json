@@ -1,0 +1,1704 @@
+{
+  "source": "oak-open-curriculum-ecosystem at d5846cf6f37270c73291640a526124429369ee97, stub tools, auth disabled",
+  "surface": {
+    "server": {
+      "capabilities": { "resources": { "listChanged": true }, "tools": { "listChanged": true } },
+      "instructions": "Oak Curriculum MCP Server - AI Agent Guidance\n\nFor optimal results, call these agent support tools at conversation start:\n\n0. get-curriculum-model - Complete curriculum orientation: domain model, tool guidance, key stages, subjects, entity hierarchy, ID formats, tool categories, workflows, tips\n\nThese tools are read-only and idempotent. They complement each other:\n\n- get-curriculum-model: understand the Oak curriculum domain model and how to use available tools — call this ONCE at conversation start. See also: search for finding content, fetch for retrieving details, browse-curriculum for browsing\n\nCall these tools first to reduce errors when using search, fetch, and browsing tools.\n\nOak's curriculum is fully sequenced: curriculum-ordered thread progressions, misconception and keyword graphs, and each unit's stated prior knowledge are served by the anchored tools (get-thread-progressions, get-misconception-graph, get-keyword-graph, get-prior-knowledge-graph), so lesson and curriculum plans can build on what a class has already covered.\n\nFor questions that are not about curriculum content — about the mechanisms by which the content is delivered, about this MCP app or its associated services, or about the repository itself — use the oak-under-the-hood tool to orient yourself to the Oak Open Curriculum Ecosystem.\n\nFor whole-catalogue bulk export, which this server does not offer, use the Oak Open API: https://open-api.thenational.academy/.well-known/api-catalog. Oak's index for agents is https://www.thenational.academy/llms.txt.\n\nOak brand and content provenance: Oak National Academy owns the Oak brand and brand elements. When you reuse Oak's curriculum content, attribute it (\"Contains public sector information licensed under the Open Government Licence v3.0.\"). When you create content derived from Oak's resources, we request that it adheres to the same high design standards as Oak — but it must not use the Oak branding, and it must never present itself as Oak-created or Oak-endorsed.",
+      "serverInfo": {
+        "description": "Search, explore, download and use Oak's free, fully sequenced and resourced curriculum resources, for KS1 to KS4.",
+        "icons": [
+          {
+            "mimeType": "image/svg+xml",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiA0MiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjQyIj48cGF0aCBmaWxsPSIjMjg3YzM0IiBkPSJNMTYuOTgzIDcuMTk4Yy44Ni4xNSAxLjYwMi4yNDMgMi4zMjguNDFhMTQuNjAzIDE0LjYwMyAwIDAgMSA4LjA5IDQuOTYyIDE0Ljk2NCAxNC45NjQgMCAwIDEgMy41MTMgOC41MzVjLjA1LjU4LjA4MiAxLjE2LjA5MiAxLjc0LjAxMi42MjctLjA4Ni43MzgtLjY3Ni44MjUtMi4yMTMuMzItNC40NjguMTQtNi42MDQtLjUyMmExNC43NzggMTQuNzc4IDAgMCAxLTMuODcxLTEuODM4IDEzLjQxIDEzLjQxIDAgMCAxLTMuNzQtMy44MDMgMTMuMjQyIDEzLjI0MiAwIDAgMS0yLjA3LTUuNDg0Yy0uMTA3LS43MTEtLjEyNC0xLjQzNC0uMTkxLTIuMjM0YTEyLjg0IDEyLjg0IDAgMCAwLTYuNDQ0IDMuMDY1Yy0yLjY1IDIuMzE5LTQuMTkyIDUuMjY2LTQuNzQ4IDguODA4LjUzNi4xMDggMS4wMjkuMjI0IDEuNTMyLjMwMy40NDcuMDcuNzEuMjQ0LjcyNC43Ni4wNDYgMS42NTguMzQ1IDMuMy44ODcgNC44NjVhMzEuNjcxIDMxLjY3MSAwIDAgMCAxLjk4MyA0LjQxOCAxNi4wNDQgMTYuMDQ0IDAgMCAwIDQuNjA4IDUuMzgzIDE3LjU1MyAxNy41NTMgMCAwIDAgMy4yMTQgMS44NjFjLjM4My4xNyAxLjAxNS0uMTA0IDEuNDgzLS4zMDFhMTMuNjEgMTMuNjEgMCAwIDAgNS41OTUtNC4yM2MuODM1LTEuMDc2IDEuNDk3LTIuMzA3IDIuMTItMy41MjkuNzU1LTEuNDgyIDEuMDYzLTMuMTE1IDEuMjU4LTQuNzYxLjAzOS0uMzIzLjE1LS40NTQuNDgxLS40MjMuMzk2LjA0Ljc5NC4wNSAxLjE5MS4wMzUuNDc0LS4wMjYuNjc1LjIyMi42MTMuNjM3LS4xOTEgMS4zMTQtLjMwNiAyLjY2LS42NyAzLjkyN2ExNi44OTUgMTYuODk1IDAgMCAxLTQuMzQ0IDcuMjY4IDE1LjM2NCAxNS4zNjQgMCAwIDEtNi42IDQuMDAyYy0uNTA0LjE1LS45MjYtLjAyNy0xLjM3Mi0uMTc2LTIuNzgtLjkyNC01LjA2Ni0yLjYtNi45OTUtNC43NzNhMjguNzUgMjguNzUgMCAwIDEtMi41MS0zLjI3IDIwLjAyIDIwLjAyIDAgMCAxLTIuMTU4LTQuNDM1IDE4LjU2MyAxOC41NjMgMCAwIDEtMS4wNzQtNS4wMS40OS40OSAwIDAgMC0uMzAzLS4zMjVjLS41OTItLjE5My0xLjE5Ny0uMzI3LTEuNzk1LS40OTNhLjYxNS42MTUgMCAwIDEtLjUxNi0uNDg0LjYyOC42MjggMCAwIDEtLjAwMy0uMjVjLjE1NC0yLjU2Ljg4OS01LjA1IDIuMTQ3LTcuMjc4YTE2LjI1IDE2LjI1IDAgMCAxIDQuMTc0LTQuODQgMTUuNjgzIDE1LjY4MyAwIDAgMSA2LjMyLTIuOTY5IDEuMTkgMS4xOSAwIDAgMSAuMzI2LS4wNzFjMS4xMTcuMTAyIDEuNDA0LS42MyAxLjY4Mi0xLjUzYTExLjk5OCAxMS45OTggMCAwIDEgMy42ODMtNS41OGMuNS0uNDM2LjU2NC0uNDM2IDEuMDEgMCAuMjYuMjYuNTExLjUzLjc1NS44MDQuMzYxLjQxLjM2MS41OTQtLjA0OC45NjctLjk0Ny44OTUtMS43MyAxLjk1LTIuMzE2IDMuMTE5LS4yODYuNjI0LS41NCAxLjI2NC0uNzYgMS45MTVabTExLjU1NCAxNC4yNjhjLS4wMzItLjE3My0uMDY1LS4zMS0uMDg0LS40NWExMy41NSAxMy41NSAwIDAgMC0yLjAxLTUuNDY1IDEyLjg5MiAxMi44OTIgMCAwIDAtNS4wMTItNC42MkExMi4zMzcgMTIuMzM3IDAgMCAwIDE3IDkuNjcxYy0uMjcyLS4wMy0uNDIuMDQ2LS40MTQuMzYuMDU2IDIuNDI3LjcwMSA0LjY3NCAyLjEyIDYuNjRhMTEuNjYzIDExLjY2MyAwIDAgMCA1LjI2OCA0LjA4MmMxLjQ2NS41OCAyLjk3OC43NTQgNC41NjQuNzEzWiIvPjwvc3ZnPg==",
+            "theme": "light"
+          },
+          {
+            "mimeType": "image/svg+xml",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiA0MiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjQyIj48cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMTYuOTgzIDcuMTk4Yy44Ni4xNSAxLjYwMi4yNDMgMi4zMjguNDFhMTQuNjAzIDE0LjYwMyAwIDAgMSA4LjA5IDQuOTYyIDE0Ljk2NCAxNC45NjQgMCAwIDEgMy41MTMgOC41MzVjLjA1LjU4LjA4MiAxLjE2LjA5MiAxLjc0LjAxMi42MjctLjA4Ni43MzgtLjY3Ni44MjUtMi4yMTMuMzItNC40NjguMTQtNi42MDQtLjUyMmExNC43NzggMTQuNzc4IDAgMCAxLTMuODcxLTEuODM4IDEzLjQxIDEzLjQxIDAgMCAxLTMuNzQtMy44MDMgMTMuMjQyIDEzLjI0MiAwIDAgMS0yLjA3LTUuNDg0Yy0uMTA3LS43MTEtLjEyNC0xLjQzNC0uMTkxLTIuMjM0YTEyLjg0IDEyLjg0IDAgMCAwLTYuNDQ0IDMuMDY1Yy0yLjY1IDIuMzE5LTQuMTkyIDUuMjY2LTQuNzQ4IDguODA4LjUzNi4xMDggMS4wMjkuMjI0IDEuNTMyLjMwMy40NDcuMDcuNzEuMjQ0LjcyNC43Ni4wNDYgMS42NTguMzQ1IDMuMy44ODcgNC44NjVhMzEuNjcxIDMxLjY3MSAwIDAgMCAxLjk4MyA0LjQxOCAxNi4wNDQgMTYuMDQ0IDAgMCAwIDQuNjA4IDUuMzgzIDE3LjU1MyAxNy41NTMgMCAwIDAgMy4yMTQgMS44NjFjLjM4My4xNyAxLjAxNS0uMTA0IDEuNDgzLS4zMDFhMTMuNjEgMTMuNjEgMCAwIDAgNS41OTUtNC4yM2MuODM1LTEuMDc2IDEuNDk3LTIuMzA3IDIuMTItMy41MjkuNzU1LTEuNDgyIDEuMDYzLTMuMTE1IDEuMjU4LTQuNzYxLjAzOS0uMzIzLjE1LS40NTQuNDgxLS40MjMuMzk2LjA0Ljc5NC4wNSAxLjE5MS4wMzUuNDc0LS4wMjYuNjc1LjIyMi42MTMuNjM3LS4xOTEgMS4zMTQtLjMwNiAyLjY2LS42NyAzLjkyN2ExNi44OTUgMTYuODk1IDAgMCAxLTQuMzQ0IDcuMjY4IDE1LjM2NCAxNS4zNjQgMCAwIDEtNi42IDQuMDAyYy0uNTA0LjE1LS45MjYtLjAyNy0xLjM3Mi0uMTc2LTIuNzgtLjkyNC01LjA2Ni0yLjYtNi45OTUtNC43NzNhMjguNzUgMjguNzUgMCAwIDEtMi41MS0zLjI3IDIwLjAyIDIwLjAyIDAgMCAxLTIuMTU4LTQuNDM1IDE4LjU2MyAxOC41NjMgMCAwIDEtMS4wNzQtNS4wMS40OS40OSAwIDAgMC0uMzAzLS4zMjVjLS41OTItLjE5My0xLjE5Ny0uMzI3LTEuNzk1LS40OTNhLjYxNS42MTUgMCAwIDEtLjUxNi0uNDg0LjYyOC42MjggMCAwIDEtLjAwMy0uMjVjLjE1NC0yLjU2Ljg4OS01LjA1IDIuMTQ3LTcuMjc4YTE2LjI1IDE2LjI1IDAgMCAxIDQuMTc0LTQuODQgMTUuNjgzIDE1LjY4MyAwIDAgMSA2LjMyLTIuOTY5IDEuMTkgMS4xOSAwIDAgMSAuMzI2LS4wNzFjMS4xMTcuMTAyIDEuNDA0LS42MyAxLjY4Mi0xLjUzYTExLjk5OCAxMS45OTggMCAwIDEgMy42ODMtNS41OGMuNS0uNDM2LjU2NC0uNDM2IDEuMDEgMCAuMjYuMjYuNTExLjUzLjc1NS44MDQuMzYxLjQxLjM2MS41OTQtLjA0OC45NjctLjk0Ny44OTUtMS43MyAxLjk1LTIuMzE2IDMuMTE5LS4yODYuNjI0LS41NCAxLjI2NC0uNzYgMS45MTVabTExLjU1NCAxNC4yNjhjLS4wMzItLjE3My0uMDY1LS4zMS0uMDg0LS40NWExMy41NSAxMy41NSAwIDAgMC0yLjAxLTUuNDY1IDEyLjg5MiAxMi44OTIgMCAwIDAtNS4wMTItNC42MkExMi4zMzcgMTIuMzM3IDAgMCAwIDE3IDkuNjcxYy0uMjcyLS4wMy0uNDIuMDQ2LS40MTQuMzYuMDU2IDIuNDI3LjcwMSA0LjY3NCAyLjEyIDYuNjRhMTEuNjYzIDExLjY2MyAwIDAgMCA1LjI2OCA0LjA4MmMxLjQ2NS41OCAyLjk3OC43NTQgNC41NjQuNzEzWiIvPjwvc3ZnPg==",
+            "theme": "dark"
+          }
+        ],
+        "name": "oak-curriculum-http",
+        "title": "Oak National Academy",
+        "websiteUrl": "https://www.thenational.academy"
+      }
+    },
+    "tools": {
+      "browse-curriculum": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Browse Curriculum"
+        },
+        "description": "Browse what's available in Oak's curriculum without searching.\n\nReturns structured facet data showing subjects, key stages, sequences (programmes),\nunits, and lesson counts. Useful for orientation and discovery.\n\nUse this when:\n- The teacher wants to see what's available (\"What subjects do you have?\")\n- The teacher wants to browse a subject (\"Show me the maths curriculum\")\n- The teacher wants to see what's at a key stage (\"What's in KS2?\")\n- You need to understand curriculum structure before searching\n\nDo NOT use for:\n- Searching for specific content (use 'search' with a query)\n- Getting full lesson details (use 'fetch')\n- Understanding the domain model (use 'get-curriculum-model')\n\nNATURAL LANGUAGE MAPPING EXAMPLES:\n- \"What subjects are available?\" → no arguments (returns all facets)\n- \"Show me KS2 science\" → { subject: 'science', keyStage: 'ks2' }\n- \"What's in the maths curriculum?\" → { subject: 'maths' }\n- \"What subjects are at Key Stage 3?\" → { keyStage: 'ks3' }\n\nNOTE: This tool can return a large payload at broad scope and may exceed a host's per-result token limit. Pass `subject` and/or `keyStage` to narrow; an unfiltered call returns the whole curriculum.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Filter by key stage to see what subjects and content are available",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks2", "ks3"],
+              "type": "string"
+            },
+            "subject": {
+              "description": "Filter by subject slug to see what units and lessons are available",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["maths", "science", "english"],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "browse-curriculum",
+        "title": "Browse Curriculum"
+      },
+      "download-asset": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Download Asset"
+        },
+        "description": "Generate a short-lived, secure download link for a lesson asset.\n\nReturns a clickable URL valid for 5 minutes that downloads the asset\ndirectly in the user's browser — no authentication needed on their side.\n\nUse this when:\n- The user wants to download a slide deck, worksheet, quiz, or video\n- You have the lesson slug and asset type from a previous get-lessons-assets call\n\nDo NOT use for:\n- Browsing available assets (use 'get-lessons-assets')\n- Getting lesson content or metadata (use 'fetch')",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "lesson": {
+              "description": "Lesson slug (e.g. \"add-fractions-with-the-same-denominator\")",
+              "examples": ["add-fractions-with-the-same-denominator"],
+              "type": "string"
+            },
+            "type": {
+              "description": "Asset type to download",
+              "enum": [
+                "slideDeck",
+                "exitQuiz",
+                "exitQuizAnswers",
+                "starterQuiz",
+                "starterQuizAnswers",
+                "supplementaryResource",
+                "video",
+                "worksheet",
+                "worksheetAnswers"
+              ],
+              "examples": ["slideDeck", "worksheet", "video"],
+              "type": "string"
+            }
+          },
+          "required": ["lesson", "type"],
+          "type": "object"
+        },
+        "name": "download-asset",
+        "title": "Download Asset"
+      },
+      "explore-topic": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Explore Topic"
+        },
+        "description": "Explore a topic across the entire Oak curriculum in one call.\n\nSearches lessons, units, AND learning threads in parallel for a topic,\nreturning a unified topic map showing what's available across all scopes.\nReturns a small set from each scope (top 5) for a quick overview.\n\nUse this when:\n- The teacher says \"What does Oak have about volcanos?\"\n- The teacher says \"I want to teach about electricity\"\n- You need to discover what content exists before drilling down\n- The teacher's intent doesn't clearly map to one scope\n- The teacher mentions a subject and you need cross-scope results (pass the subject parameter explicitly)\n\nDo NOT use for:\n- Precise search in a single scope (use 'search' with a specific scope)\n- Browsing without a topic (use 'browse-curriculum')\n- Fetching known content by ID (use 'fetch')\n- Understanding the curriculum structure (use 'get-curriculum-model')\n\nNATURAL LANGUAGE MAPPING EXAMPLES:\n- \"What does Oak have about volcanos?\" → { query: 'volcanos' }\n- \"Explore fractions across the curriculum\" → { query: 'fractions', subject: 'maths' }\n- \"Explore maths topics\" → { query: 'topics', subject: 'maths' }\n- \"I want to teach about electricity in KS3\" → { query: 'electricity', keyStage: 'ks3' }\n- \"What can you tell me about the Romans?\" → { query: 'the Romans' }\n\nNEXT STEPS AFTER EXPLORE:\n- Use search(scope: 'lessons') for more lesson results\n- Use search(scope: 'threads') for progression details\n- Use fetch(lesson:slug) for full lesson content\n- Use get-thread-progressions for ordered unit sequences",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Optional key stage filter applied to all scopes",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks2", "ks3"],
+              "type": "string"
+            },
+            "query": {
+              "description": "The topic to explore. Use descriptive terms like \"photosynthesis\", \"the Romans\", \"fractions\".",
+              "examples": ["volcanos", "fractions", "electricity", "the Romans"],
+              "type": "string"
+            },
+            "subject": {
+              "description": "Optional subject filter applied to all scopes",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["maths", "science", "history"],
+              "type": "string"
+            }
+          },
+          "required": ["query"],
+          "type": "object"
+        },
+        "name": "explore-topic",
+        "title": "Explore Topic"
+      },
+      "fetch": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Fetch Curriculum Resource"
+        },
+        "description": "Fetch curriculum resource by canonical identifier.\n\nUse this when you need to:\n- Get lesson details (learning objectives, keywords, misconceptions)\n- Get unit information (lessons list, subject context)\n- Get subject or sequence overview\n- Retrieve thread progression data\n\nDo NOT use for:\n- Finding content when you don't have the ID (use 'search')\n- Understanding ID formats (use 'get-curriculum-model')\n\nUse format \"type:slug\" (e.g., \"lesson:add-fractions-with-the-same-denominator\", \"unit:comparing-fractions\").",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "id": {
+              "description": "Canonical identifier in format \"type:slug\" (e.g., \"lesson:add-fractions-with-the-same-denominator\", \"unit:comparing-fractions\", \"subject:maths\", \"sequence:maths-primary\", \"thread:number-multiplication-and-division\")",
+              "examples": [
+                "lesson:add-fractions-with-the-same-denominator",
+                "unit:comparing-fractions",
+                "subject:maths",
+                "sequence:maths-primary",
+                "thread:number-multiplication-and-division"
+              ],
+              "type": "string"
+            }
+          },
+          "required": ["id"],
+          "type": "object"
+        },
+        "name": "fetch",
+        "title": "Fetch Curriculum Resource"
+      },
+      "get-curriculum-model": {
+        "_meta": {
+          "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }],
+          "ui": {
+            "resourceUri": "ui://widget/oak-curriculum-app-v1.html",
+            "visibility": ["model", "app"]
+          },
+          "ui/resourceUri": "ui://widget/oak-curriculum-app-v1.html"
+        },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak Curriculum Overview"
+        },
+        "description": "Returns a complete orientation to Oak National Academy's curriculum: domain model (key stages, subjects, entity hierarchy, property graph) AND tool usage guidance (categories, workflows, tips).\n\nUse this when you need to understand:\n- The Oak curriculum structure (key stages, subjects, units, lessons, threads)\n- Which tools are available and how to use them\n- Common workflows for finding and using curriculum content\n- How to interpret ID formats for the 'fetch' tool\n\nDo NOT use for:\n- Fetching actual curriculum content (use 'search' or 'fetch')\n- Looking up specific lessons, units, or resources",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get-curriculum-model",
+        "title": "Oak Curriculum Overview"
+      },
+      "get-key-stages": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Key Stages"
+        },
+        "description": "All key stages\n\nUse when you need the master list of key stages. Returns every key stage with its title and slug. Not for: key stages restricted to a subject (GET /subjects/{subject}/key-stages).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get-key-stages",
+        "title": "Get Key Stages"
+      },
+      "get-key-stages-subject-assets": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Key Stages Subject Assets"
+        },
+        "description": "Downloadable assets by key stage and subject\n\nUse when you want every downloadable asset for a key stage + subject, without programme structure or unit sequence order, optionally scoped to a unit or asset type. Returns assets grouped by lesson, each with signed download URLs, asset type, lesson title and slug, and attribution. Pass unit to restrict to one unit and type to restrict to one asset type (one of: slideDeck, starterQuiz, starterQuizAnswers, exitQuiz, exitQuizAnswers, worksheet, worksheetAnswers, supplementaryResource, video). Lesson content is under OGL v3.0; assets are either Oak-owned or third-party under an OGL-compatible licence. Attribution required — see https://open-api.thenational.academy/docs/about-oaks-api/terms. Not for: assets across a sequence (GET /sequences/{sequence}/assets); assets in one programme (GET /programmes/{programme}/assets); a single lesson's downloads (GET /lessons/{lesson}/assets); streaming one file (GET /lessons/{lesson}/assets/{type}).\n\nNOTE: The asset `url` fields returned by this tool are authenticated API endpoints and cannot be used as direct browser download links. To generate a clickable download link for the user, call the `download-asset` tool with the lesson slug and asset type. If `download-asset` is not available (e.g. stdio transport), direct users to the lesson page on the Oak website — use the lesson's `oakUrl` (e.g. `https://www.thenational.academy/teachers/lessons/{lessonSlug}`).\n\nNOTE: This tool can return a large payload at broad scope and may exceed a host's per-result token limit. Narrow with `unit` and/or `type` (asset type), or use `get-lessons-assets` for one lesson.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Key stage slug to filter by, e.g. 'ks2' - note that casing is important here, and should be lowercase",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks1"],
+              "type": "string"
+            },
+            "subject": {
+              "description": "Subject slug to search by, e.g. 'science' - note that casing is important here (always lowercase)",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["english"],
+              "type": "string"
+            },
+            "type": {
+              "description": "Use this type and the lesson slug in conjunction to get a signed download URL to the asset type from the /api/lessons/{slug}/assets/{type} endpoint",
+              "enum": [
+                "slideDeck",
+                "exitQuiz",
+                "exitQuizAnswers",
+                "starterQuiz",
+                "starterQuizAnswers",
+                "supplementaryResource",
+                "video",
+                "worksheet",
+                "worksheetAnswers"
+              ],
+              "examples": ["slideDeck"],
+              "type": "string"
+            },
+            "unit": {
+              "description": "Optional unit slug to additionally filter by",
+              "examples": ["word-class"],
+              "type": "string"
+            }
+          },
+          "required": ["keyStage", "subject"],
+          "type": "object"
+        },
+        "name": "get-key-stages-subject-assets",
+        "title": "Get Key Stages Subject Assets"
+      },
+      "get-key-stages-subject-lessons": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Key Stages Subject Lessons"
+        },
+        "description": "List lessons in a key stage and subject\n\nUse when you want every published lesson in a key stage + subject, grouped by unit, without programme structure or unit sequence order. Returns an array of units, each with slug, title, and the lessons inside. Pass unit to restrict to one. Supports offset/limit pagination; Link: rel=\"next\" header signals more pages. Not for: finding a lesson from a search term (GET /search/lessons); a single lesson's metadata (GET /lessons/{lesson}/summary); all units across a sequence (GET /sequences/{sequence}/units); units in one programme (GET /programmes/{programme}/units). Example: keyStage=ks3, subject=maths, unit=perimeter-and-area.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Key stage slug to filter by, e.g. 'ks2' - note that casing is important here, and should be lowercase",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks1"],
+              "type": "string"
+            },
+            "limit": {
+              "description": "Limit the number of lessons returned per unit. Units with zero lessons after limiting are omitted.",
+              "examples": [10],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "Offset applied to lessons within each unit (not to the unit list).",
+              "examples": [11],
+              "type": "number"
+            },
+            "subject": {
+              "description": "Subject slug to filter by, e.g. 'english' - note that casing is important here, and should be lowercase",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["english"],
+              "type": "string"
+            },
+            "unit": {
+              "description": "Optional unit slug to additionally filter by",
+              "examples": ["word-class"],
+              "type": "string"
+            }
+          },
+          "required": ["keyStage", "subject"],
+          "type": "object"
+        },
+        "name": "get-key-stages-subject-lessons",
+        "title": "Get Key Stages Subject Lessons"
+      },
+      "get-key-stages-subject-questions": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Key Stages Subject Questions"
+        },
+        "description": "Quiz questions by key stage and subject\n\nUse when you want every quiz question for a key stage + subject, without programme structure or unit sequence order. Returns lessons each with starter and exit quiz questions and answers. Supports offset/limit pagination; Link: rel=\"next\" header signals more pages. Not for: a single lesson's quiz (GET /lessons/{lesson}/quiz); questions across a sequence (GET /sequences/{sequence}/questions); questions in one programme (GET /programmes/{programme}/questions).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "filter": {
+              "description": "Optional filter for question results. Use `images` to return only questions with a question image or image answer.",
+              "enum": ["images"],
+              "type": "string"
+            },
+            "keyStage": {
+              "description": "Key stage slug to filter by, e.g. 'ks2' - note that casing is important here, and should be lowercase",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks1"],
+              "type": "string"
+            },
+            "limit": {
+              "description": "Limit the number of lessons, e.g. return a maximum of 300 lessons",
+              "examples": [10],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "If limiting results returned, this allows you to return the next set of results, starting at the given offset point",
+              "examples": [11],
+              "type": "number"
+            },
+            "subject": {
+              "description": "Subject slug to search by, e.g. 'science' - note that casing is important here",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["art"],
+              "type": "string"
+            }
+          },
+          "required": ["keyStage", "subject"],
+          "type": "object"
+        },
+        "name": "get-key-stages-subject-questions",
+        "title": "Get Key Stages Subject Questions"
+      },
+      "get-key-stages-subject-units": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Key Stages Subject Units"
+        },
+        "description": "Units in a key stage and subject\n\nUse when you want a flat list of every unit with published lessons in a key stage + subject, without programme structure or unit sequence order. Returns units grouped by year slug; units without published lessons are omitted. Pass examBoard to restrict KS4 to one board (one of: aqa, edexcel (Edexcel A), eduqas, ocr, wjec, edexcelb (Edexcel B)); otherwise each unit lists the boards it appears in. Not for: all units across a sequence (GET /sequences/{sequence}/units); units in one programme (GET /programmes/{programme}/units); a single unit (GET /units/{unit}/summary); lessons rather than units (GET /key-stages/{keyStage}/subject/{subject}/lessons); units in a thread (GET /threads/{threadSlug}/units).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "examBoard": {
+              "description": "Optional exam board slug to filter units by, e.g. 'aqa'. Only meaningful at KS4 where subjects are broken down by exam board.",
+              "enum": ["aqa", "edexcel", "eduqas", "ocr", "wjec", "edexcelb"],
+              "type": "string"
+            },
+            "keyStage": {
+              "description": "Key stage slug to filter by, e.g. 'ks2'",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks1"],
+              "type": "string"
+            },
+            "subject": {
+              "description": "Subject slug to search by, e.g. 'science' - note that casing is important here (always lowercase)",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["art"],
+              "type": "string"
+            }
+          },
+          "required": ["keyStage", "subject"],
+          "type": "object"
+        },
+        "name": "get-key-stages-subject-units",
+        "title": "Get Key Stages Subject Units"
+      },
+      "get-keyword-graph": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak Curriculum Keyword Graph"
+        },
+        "description": "Returns the key vocabulary for one teaching context: a bounded, frequency-ranked page of curriculum keywords, each decorated with its in-scope placing lessons.\n\nEvery call is anchored by subject + keyStage (both required — corpus keys, e.g. \"maths\" + \"ks2\"), narrowable by unitSlugs and/or lessonSlugs. Ranking is by in-scope placement count (how many anchor-matching lessons place the keyword), descending — vocabulary frequent elsewhere in the curriculum never outranks locally relevant vocabulary. Results are bounded top-N (default 25, max 100) with honest totals (totalMatchingKeywords, hasMore); each entry carries the keyword node (term, description, global frequency = unique placing lessons corpus-wide, coarse firstYear at key-stage granularity: ks1→1, ks2→3, ks3→7, ks4→10) plus up to 10 in-scope placing lessons (hasMoreLessons marks the cut) — richness arrives by edge traversal on the curriculum graph, never a flat dump.\n\nData is a point-in-time snapshot of the published curriculum (bulk export), not the live API; coverage can lag live content, materially at KS4 while subjects restructure.\n\nWhen to prefer which keywords tool: get-keywords returns the LIVE keyword set for a key stage + subject — fresh, authoritative at KS4, alphabetical, unranked, and paginated (its description carries the paging guidance; the complete set takes limit: 300 plus offset walking). This tool returns a bounded frequency-ranked subset with lesson connections — token-economical, best for \"the most relevant vocabulary for this teaching context\" and for navigating from keywords into lessons, units, and the wider curriculum graph.\n\nSlugs are corpus keys — resolve them first with search, fetch, or browse-curriculum. Unknown unitSlugs/lessonSlugs are reported in the result's unknown-anchor fields, not errored; an unknown subject or keyStage returns a well-formed empty result.\n\nUse this to answer questions like:\n- \"What vocabulary should I emphasise teaching maths at KS2?\" (subject + keyStage)\n- \"Which keywords matter most in this unit?\" (narrow with unitSlugs)\n- \"What terms does this lesson rely on?\" (narrow with lessonSlugs)\n\nComplements get-keywords (live set, paginated), get-misconception-graph, get-prior-knowledge-graph, and get-thread-progressions on the same curriculum graph.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Anchor key-stage slug (corpus key), e.g. \"ks2\". Required, with subject.",
+              "examples": ["ks2"],
+              "minLength": 1,
+              "type": "string"
+            },
+            "lessonSlugs": {
+              "description": "Optional narrowing: lesson slugs (corpus keys) within the anchor. Unknown slugs are reported in unknownLessonAnchors, not errored.",
+              "items": { "minLength": 1, "type": "string" },
+              "type": "array"
+            },
+            "limit": {
+              "description": "Optional top-N bound for the ranked keyword page: integer in [1, 100], default 25.",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "subject": {
+              "description": "Anchor subject slug (corpus key), e.g. \"maths\". Required, with keyStage.",
+              "examples": ["maths"],
+              "minLength": 1,
+              "type": "string"
+            },
+            "unitSlugs": {
+              "description": "Optional narrowing: unit slugs (corpus keys) within the anchor. Unknown slugs are reported in unknownUnitAnchors, not errored.",
+              "items": { "minLength": 1, "type": "string" },
+              "type": "array"
+            }
+          },
+          "required": ["subject", "keyStage"],
+          "type": "object"
+        },
+        "name": "get-keyword-graph",
+        "title": "Oak Curriculum Keyword Graph"
+      },
+      "get-keywords": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Keywords"
+        },
+        "description": "Keywords by subject and key stage\n\nUse when you want the vocabulary for a key stage, subject, unit, lesson, or phase — e.g. to build a glossary or attach definitions to content. Returns keywords with definition, the subject + key stage they appear in, and the lessons that use them, sorted alphabetically. All filters are optional, but pass at least one of keyStage, subject, unit, lesson, or phase. Request rules: - At least one of subject, keyStage, phase, unit or lesson must be provided - note that they are all the slug form of the values (e.g. \"ks2\" for key stage 2, \"science\" for the science subject, and \"forces-and-magnets\" for the forces and magnets unit), and that casing is important (always lowercase).\n\nWHEN TO PREFER WHICH KEYWORDS TOOL: this tool returns the LIVE keyword set for a key stage + subject — fresh and authoritative (including KS4 during curriculum restructures), alphabetical, unranked, and large at subject scope. For a bounded frequency-ranked subset with lesson connections (token economy + relationship navigation over the curriculum graph), prefer get-keyword-graph, which serves a point-in-time curriculum snapshot.\n\nNOTE: This tool is paginated — the server returns at most 20 keywords unless you pass `limit` (max 300). The result's `pagination` field reports `hasMore` and, when more pages exist, the `nextOffset`/`nextLimit` to pass; follow it until `hasMore` is false. Do not infer completeness by counting items against your limit.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Key stage slug to filter by, e.g. 'ks2'",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks1"],
+              "type": "string"
+            },
+            "lesson": {
+              "description": "Lesson slug to search by, e.g. 'animating-text' - note that casing is important here (always lowercase)",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Limit the number of keywords, e.g. return a maximum of 300 keywords",
+              "examples": [20],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "If limiting results returned, this allows you to return the next set of results, starting at the given offset point",
+              "examples": [0],
+              "type": "number"
+            },
+            "phase": {
+              "description": "Phase to filter by, e.g. 'primary' or 'secondary'. Cannot be combined with keyStage.",
+              "enum": ["primary", "secondary"],
+              "type": "string"
+            },
+            "subject": {
+              "description": "Subject slug to search by, e.g. 'science' - note that casing is important here (always lowercase)",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["english"],
+              "type": "string"
+            },
+            "unit": {
+              "description": "Unit slug to search by, e.g. 'forces-and-magnets' - note that casing is important here (always lowercase)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get-keywords",
+        "title": "Get Keywords"
+      },
+      "get-lessons-assets": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Lessons Assets"
+        },
+        "description": "Downloadable assets for a lesson\n\nUse when you have a lesson slug and need the list of what's downloadable. Returns every available asset type with a signed download URL per asset and attribution. The 9 type values are: slideDeck, starterQuiz, starterQuizAnswers, exitQuiz, exitQuizAnswers, worksheet, worksheetAnswers, supplementaryResource, video. Pass type to return only one. Lesson content is under OGL v3.0; assets are either Oak-owned or third-party under an OGL-compatible licence. Attribution required — see https://open-api.thenational.academy/docs/about-oaks-api/terms. Not for: streaming the file itself (GET /lessons/{lesson}/assets/{type}); bulk asset retrieval across a key stage + subject (GET /key-stages/{keyStage}/subject/{subject}/assets), a sequence (GET /sequences/{sequence}/assets), or one programme (GET /programmes/{programme}/assets); lesson metadata (GET /lessons/{lesson}/summary).\n\nNOTE: The asset `url` fields returned by this tool are authenticated API endpoints and cannot be used as direct browser download links. To generate a clickable download link for the user, call the `download-asset` tool with the lesson slug and asset type. If `download-asset` is not available (e.g. stdio transport), direct users to the lesson page on the Oak website — use the lesson's `oakUrl` (e.g. `https://www.thenational.academy/teachers/lessons/{lessonSlug}`).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "lesson": {
+              "description": "The lesson slug identifier",
+              "examples": ["creating-a-new-word"],
+              "type": "string"
+            },
+            "type": {
+              "description": "Optional asset type specifier\n\nAvailable values: slideDeck, exitQuiz, exitQuizAnswers, starterQuiz, starterQuizAnswers, supplementaryResource, video, worksheet, worksheetAnswers",
+              "enum": [
+                "slideDeck",
+                "exitQuiz",
+                "exitQuizAnswers",
+                "starterQuiz",
+                "starterQuizAnswers",
+                "supplementaryResource",
+                "video",
+                "worksheet",
+                "worksheetAnswers"
+              ],
+              "examples": ["slideDeck"],
+              "type": "string"
+            }
+          },
+          "required": ["lesson"],
+          "type": "object"
+        },
+        "name": "get-lessons-assets",
+        "title": "Get Lessons Assets"
+      },
+      "get-lessons-quiz": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Lessons Quiz"
+        },
+        "description": "Quiz questions for a lesson\n\nUse when you have a lesson slug and need its starter and exit quiz questions with correct answers marked. Returns two arrays, starterQuiz and exitQuiz; each question includes the prompt, the answers (with correct ones flagged), and which answers are distractors. Not for: quiz questions across a sequence (GET /sequences/{sequence}/questions); quiz questions in one programme (GET /programmes/{programme}/questions); across a key stage + subject (GET /key-stages/{keyStage}/subject/{subject}/questions); lesson metadata or assets (GET /lessons/{lesson}/summary or GET /lessons/{lesson}/assets).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "filter": {
+              "description": "Optional filter for question results. Use `images` to return only questions with a question image or image answer.",
+              "enum": ["images"],
+              "type": "string"
+            },
+            "lesson": {
+              "description": "The lesson slug identifier",
+              "examples": ["imagining-you-are-the-characters-the-three-billy-goats-gruff"],
+              "type": "string"
+            }
+          },
+          "required": ["lesson"],
+          "type": "object"
+        },
+        "name": "get-lessons-quiz",
+        "title": "Get Lessons Quiz"
+      },
+      "get-lessons-summary": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Lessons Summary"
+        },
+        "description": "Lesson summary by slug\n\nUse when you have a lesson slug and need its full metadata: title, key stage, subject, unit, keywords, key learning points, misconceptions, pupil lesson outcome, teacher tips, content guidance, supervision level, and downloadsAvailable. Returns the lesson summary record. Not for: finding a lesson from a search term (GET /search/lessons); searching what's said in lesson videos (GET /search/transcripts); listing every lesson in a unit or subject (GET /key-stages/{keyStage}/subject/{subject}/lessons); the transcript or assets (GET /lessons/{lesson}/transcript or GET /lessons/{lesson}/assets). Example slug: imagining-you-are-the-characters-the-three-billy-goats-gruff.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "lesson": {
+              "description": "The slug of the lesson",
+              "examples": ["using-vector-tools-to-draw-and-modify-shapes"],
+              "type": "string"
+            }
+          },
+          "required": ["lesson"],
+          "type": "object"
+        },
+        "name": "get-lessons-summary",
+        "title": "Get Lessons Summary"
+      },
+      "get-lessons-transcript": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Lessons Transcript"
+        },
+        "description": "Lesson video transcript\n\nUse when you have a lesson slug and need the video transcript — for accessibility, captioning, or text analysis. Returns the transcript as an array of sentences plus a raw WebVTT captions file (vtt) suitable for a <track> element. Not for: searching across transcripts (GET /search/transcripts); the video file itself (GET /lessons/{lesson}/assets/{type} with type=video); lesson metadata (GET /lessons/{lesson}/summary).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "lesson": {
+              "description": "The slug of the lesson",
+              "examples": ["checking-understanding-of-basic-transformations"],
+              "type": "string"
+            }
+          },
+          "required": ["lesson"],
+          "type": "object"
+        },
+        "name": "get-lessons-transcript",
+        "title": "Get Lessons Transcript"
+      },
+      "get-misconception-graph": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak Curriculum Misconception Subgraph"
+        },
+        "description": "Returns the misconceptions (with teacher responses) addressed by the anchor you name.\n\nMisconceptions are extracted per lesson from the Oak curriculum and reached through the thread → unit → lesson → misconception chain. Every call is anchored — exactly ONE of:\n- lessonSlugs: the leaf anchor; each lesson carries at most two misconceptions.\n- unitSlugs: the core anchor; each unit returns every placed lesson with its misconceptions, in Oak's authored teaching order (typical bodies 2–11 KB per unit).\n- threadSlug (+ optional unitOffset/unitLimit): a unit-granular window over one thread in Oak's curriculum order (years ascending within a subject, with units Oak places at no single year following the year-placed ones, then within a year the authored unit order — a unit node merges every board and tier and each unit takes its earliest recorded position where they disagree, so at KS4 the within-year order is a bias towards earliest placement, not any one board's order), default 10 units per page (maximum 25), with totalUnits and hasMore reported so partial coverage is always visible. unitOffset/unitLimit are valid ONLY with threadSlug — combining them with lessonSlugs or unitSlugs is rejected.\n\nOrdering is a deterministic projection of Oak's authored order, not a single global sequence. A thread's units are grouped by subject, each subject's run in curriculum order (years ascending — units Oak places at no single year, the PE swimming units, follow the year-placed ones — then within a year the authored unit order — where a unit's board and tier variants disagree each unit takes its earliest recorded position, so at KS4 the within-year order is a bias towards earliest placement and not any one board's order), and the runs are concatenated — Oak records no order ACROSS subjects, so the join between runs carries no pedagogical claim. A unit's lessons follow the authored lesson order of the programmes that place them; where variants disagree the earliest recorded position is used with a slug tie-break, and a lesson no variant orders follows the ordered ones. What this rules out is the alphabet: the order is never the id-sorted one it used to be.\n\nSlugs are corpus keys — resolve them first with search, fetch, or browse-curriculum. Unknown slugs are reported in the result's unknownAnchors, not errored.\n\nCoverage honesty: some units belong to no thread (unit entries carry threadSlugs membership; an empty list marks a thread-unreachable unit), so thread-anchored results are thread-scoped and never subject-complete.\n\nUse this to answer questions like:\n- \"What misconceptions should I anticipate in this lesson?\" (anchor: that lesson's slug)\n- \"Which misconceptions does this unit address across its lessons?\"\n- \"How do misconceptions develop along this curriculum thread?\" (windowed)\n\nComplements get-prior-knowledge-graph (prerequisite gaps) with per-lesson misconception detail.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "lessonSlugs": {
+              "description": "Lesson anchor: lesson slugs (corpus keys). Each lesson carries at most two misconceptions. Exactly one anchor mode per call.",
+              "examples": [["add-fractions-with-the-same-denominator"]],
+              "items": { "minLength": 1, "type": "string" },
+              "type": "array"
+            },
+            "threadSlug": {
+              "description": "Thread anchor: one thread slug (corpus key). Returns a unit-granular window over the thread in Oak’s curriculum order, with honest coverage (totalUnits, hasMore). Exactly one anchor mode per call.",
+              "examples": ["number-fractions"],
+              "minLength": 1,
+              "type": "string"
+            },
+            "unitLimit": {
+              "description": "Thread anchor only: units per window. Default 10, maximum 25.",
+              "maximum": 25,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "unitOffset": {
+              "description": "Thread anchor only: index of the first unit in the window. Default 0.",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "unitSlugs": {
+              "description": "Unit anchor: unit slugs (corpus keys). Returns each unit with every placed lesson and its misconceptions, in Oak’s authored teaching order. Exactly one anchor mode per call.",
+              "examples": [["comparing-fractions"]],
+              "items": { "minLength": 1, "type": "string" },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get-misconception-graph",
+        "title": "Oak Curriculum Misconception Subgraph"
+      },
+      "get-prior-knowledge-graph": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak Curriculum Prior Knowledge"
+        },
+        "description": "Returns the stated prior knowledge for the anchor units you name.\n\n\"Prior knowledge of unit X\" means what Oak records on the unit itself: the flat list of prior-knowledge statements — free-text propositions about what pupils are assumed to know or have experienced before the unit. Statements name knowledge, not the units that teach it; judging whether earlier units satisfy them is the caller's reasoning.\n\nThe query is anchored, never whole-corpus:\n- unitSlugs: the anchor units. Slugs are corpus keys — resolve them first with search, fetch, or browse-curriculum. Unknown slugs are reported in the result's unknownAnchors, not errored.\n\nThe result reports units — each with unitSlug, unitTitle, subject, keyStage, year (absent for the few units Oak records without one), priorKnowledge statements, and threadSlugs — plus resolvedAnchors and unknownAnchors.\n\nCoverage: some units record no prior-knowledge statements, so an empty priorKnowledge array means Oak states none for that unit — not that the unit is missing from the corpus. Likewise, some units belong to no thread, so an empty threadSlugs array means the unit has no get-thread-progressions context to follow.\n\nUse this to answer questions like:\n- \"What should students know before this unit?\" (anchor: that unit's slug)\n- \"Which prerequisite gaps could explain difficulty with this lesson's unit?\"\n- \"What earlier units does this scheme of work build on?\" (anchor the plan's units, then check the statements against earlier units' content)\n\nComplements get-thread-progressions: use each returned unit's threadSlugs (where non-empty) there to see how the concept builds across years.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "unitSlugs": {
+              "description": "Anchor unit slugs (corpus keys, e.g. from search/fetch results). The result is each anchor unit's stated prior knowledge. Unknown slugs are reported back in unknownAnchors, not errored.",
+              "examples": [["comparing-fractions"]],
+              "items": { "minLength": 1, "type": "string" },
+              "type": "array"
+            }
+          },
+          "required": ["unitSlugs"],
+          "type": "object"
+        },
+        "name": "get-prior-knowledge-graph",
+        "title": "Oak Curriculum Prior Knowledge"
+      },
+      "get-programmes": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Programmes"
+        },
+        "description": "Get a programme by slug\n\nUse when you need to get the metadata of one programme. Get programme slugs from GET /subjects/{subject}/programmes. Returns the programme's year group, slug (e.g. y7, y10-biology-foundation), and applicable programme factors (exam board, tier, child subject). Not for: the units, questions, or assets of one programme (GET /programmes/{programme}/units, GET /programmes/{programme}/questions, or GET /programmes/{programme}/assets); the sequence-level summary (GET /sequences/{sequence}); all programmes for a subject (GET /subjects/{subject}/programmes).\n\nNOTE: Programme slugs are the full form — `<subject>-<phase>-year-<year>` plus any KS4 factor — e.g. `english-secondary-year-7` or `english-secondary-year-10-edexcel`, not the short `y7` shorthand used above. Pass the exact slug string this response returns to `get-programmes` and its sub-endpoints.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "programme": {
+              "description": "The programme slug identifier",
+              "examples": ["english-secondary-year-10-edexcel"],
+              "type": "string"
+            }
+          },
+          "required": ["programme"],
+          "type": "object"
+        },
+        "name": "get-programmes",
+        "title": "Get Programmes"
+      },
+      "get-programmes-assets": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Programmes Assets"
+        },
+        "description": "Downloadable assets in a programme\n\nUse when you need every downloadable asset for a single programme (year group) within a subject. Returns assets grouped by lesson with signed download URLs, asset type, lesson title and slug, and attribution. Supports offset/limit pagination; Link: rel=\"next\" header signals more pages. Optionally narrow by asset type (one of: slideDeck, starterQuiz, starterQuizAnswers, exitQuiz, exitQuizAnswers, worksheet, worksheetAnswers, supplementaryResource, video). Lesson content is under OGL v3.0; assets are either Oak-owned or third-party under an OGL-compatible licence. Attribution required — see https://open-api.thenational.academy/docs/about-oaks-api/terms. Not for: assets across a whole sequence (GET /sequences/{sequence}/assets); assets for a key stage + subject without programme structure (GET /key-stages/{keyStage}/subject/{subject}/assets); a single lesson's downloads (GET /lessons/{lesson}/assets); streaming one file (GET /lessons/{lesson}/assets/{type}).\n\nNOTE: The asset `url` fields returned by this tool are authenticated API endpoints and cannot be used as direct browser download links. To generate a clickable download link for the user, call the `download-asset` tool with the lesson slug and asset type. If `download-asset` is not available (e.g. stdio transport), direct users to the lesson page on the Oak website — use the lesson's `oakUrl` (e.g. `https://www.thenational.academy/teachers/lessons/{lessonSlug}`).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "limit": {
+              "description": "Limit the number of lessons, e.g. return a maximum of 300 lessons",
+              "examples": [20],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "If limiting results returned, this allows you to return the next set of results, starting at the given offset point",
+              "examples": [0],
+              "type": "number"
+            },
+            "programme": {
+              "description": "The programme slug identifier",
+              "examples": ["computing-secondary-year-7"],
+              "type": "string"
+            },
+            "type": {
+              "description": "Use this type and the lesson slug in conjunction to get a signed download URL to the asset type from the /api/lessons/{slug}/assets/{type} endpoint",
+              "enum": [
+                "slideDeck",
+                "exitQuiz",
+                "exitQuizAnswers",
+                "starterQuiz",
+                "starterQuizAnswers",
+                "supplementaryResource",
+                "video",
+                "worksheet",
+                "worksheetAnswers"
+              ],
+              "examples": ["slideDeck"],
+              "type": "string"
+            }
+          },
+          "required": ["programme"],
+          "type": "object"
+        },
+        "name": "get-programmes-assets",
+        "title": "Get Programmes Assets"
+      },
+      "get-programmes-questions": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Programmes Questions"
+        },
+        "description": "Quiz questions in a programme\n\nUse when you want every quiz question in a single programme (year group) within a subject. Get programme slugs from GET /subjects/{subject}/programmes. Returns questions grouped by lesson with starter and exit quiz questions and answers. Supports offset/limit pagination; Link: rel=\"next\" header signals more pages. Not for: questions in a single lesson (GET /lessons/{lesson}/quiz); questions across a whole sequence (GET /sequences/{sequence}/questions); questions for a key stage + subject without programme structure (GET /key-stages/{keyStage}/subject/{subject}/questions).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "filter": {
+              "description": "Optional filter for question results. Use `images` to return only questions with a question image or image answer.",
+              "enum": ["images"],
+              "type": "string"
+            },
+            "limit": {
+              "description": "Limit the number of lessons, e.g. return a maximum of 300 lessons",
+              "examples": [20],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "If limiting results returned, this allows you to return the next set of results, starting at the given offset point",
+              "examples": [0],
+              "type": "number"
+            },
+            "programme": {
+              "description": "The programme slug identifier",
+              "examples": ["computing-secondary-year-7"],
+              "type": "string"
+            }
+          },
+          "required": ["programme"],
+          "type": "object"
+        },
+        "name": "get-programmes-questions",
+        "title": "Get Programmes Questions"
+      },
+      "get-programmes-units": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Programmes Units"
+        },
+        "description": "Units in a programme\n\nUse when you need the unit sequence for one programme — units as an ordered arrangement designed to build knowledge progressively. Get programme slugs from GET /subjects/{subject}/programmes. Returns units in unit sequence order with title, slug, and any associated factors. Not for: every unit across the whole sequence (GET /sequences/{sequence}/units); a flat list of units for a key stage + subject without programme structure (GET /key-stages/{keyStage}/subject/{subject}/units); a single unit (GET /units/{unit}/summary); units in a thread (GET /threads/{threadSlug}/units).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "programme": {
+              "description": "The programme slug identifier",
+              "examples": ["english-secondary-year-10-edexcel"],
+              "type": "string"
+            }
+          },
+          "required": ["programme"],
+          "type": "object"
+        },
+        "name": "get-programmes-units",
+        "title": "Get Programmes Units"
+      },
+      "get-rate-limit": {
+        "_meta": { "securitySchemes": [{ "type": "noauth" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Rate Limit"
+        },
+        "description": "Current rate-limit status\n\nUse when you need rate-limit status as a JSON body — e.g. for a quota indicator. Returns limit, remaining, and reset. The same data sits on the 'X-RateLimit-*' headers of every response, so this tool is rarely needed directly. Does not count against your quota.\n\nNOTE: A response of limit=0, remaining=0, reset=0 indicates an unlimited API key with no rate cap.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get-rate-limit",
+        "title": "Get Rate Limit"
+      },
+      "get-sequences": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Sequences"
+        },
+        "description": "Sequencing information for a given sequence slug\n\nUse when you have a sequence slug and need the sequence-level summary. A sequence is a subject's curriculum across a phase (e.g. maths-primary, science-secondary-aqa); it spans one or more National Curriculum schemes and contains one programme per year group. Get sequence slugs from GET /subjects or GET /subjects/{subject} (the sequenceSlugs field). Returns slug, phase, key stages, years, and any KS4 programme factors (exam board, tier, child subject, pathway) needed to interpret the programmes within it. Not for: the programmes within this sequence (GET /subjects/{subject}/programmes); the unit sequence for one programme (GET /programmes/{programme}/units); all units across the sequence (GET /sequences/{sequence}/units); subject-level catalogue data (GET /subjects or GET /subjects/{subject}). Example: sequence=maths-primary or science-secondary-aqa.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "sequence": {
+              "description": "The sequence slug identifier",
+              "examples": ["english-secondary-aqa"],
+              "type": "string"
+            }
+          },
+          "required": ["sequence"],
+          "type": "object"
+        },
+        "name": "get-sequences",
+        "title": "Get Sequences"
+      },
+      "get-sequences-assets": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Sequences Assets"
+        },
+        "description": "Downloadable assets in a sequence\n\nUse when you need every downloadable asset across a whole sequence — all programmes combined. Returns assets grouped by lesson in unit sequence order, with signed download URLs, asset type, lesson title and slug, and attribution. Pass year as an optional filter. Narrow further with type (one of: slideDeck, starterQuiz, starterQuizAnswers, exitQuiz, exitQuizAnswers, worksheet, worksheetAnswers, supplementaryResource, video). Lesson content is under OGL v3.0; assets are either Oak-owned or third-party under an OGL-compatible licence. Attribution required — see https://open-api.thenational.academy/docs/about-oaks-api/terms. Not for: assets in a single programme (GET /programmes/{programme}/assets); a single lesson's downloads (GET /lessons/{lesson}/assets); streaming one file (GET /lessons/{lesson}/assets/{type}); assets for a key stage + subject without programme structure (GET /key-stages/{keyStage}/subject/{subject}/assets).\n\nNOTE: The asset `url` fields returned by this tool are authenticated API endpoints and cannot be used as direct browser download links. To generate a clickable download link for the user, call the `download-asset` tool with the lesson slug and asset type. If `download-asset` is not available (e.g. stdio transport), direct users to the lesson page on the Oak website — use the lesson's `oakUrl` (e.g. `https://www.thenational.academy/teachers/lessons/{lessonSlug}`).\n\nNOTE: This tool can return a large payload at broad scope and may exceed a host's per-result token limit. Narrow with `year` and/or `type` (asset type), or use `get-lessons-assets` for one lesson.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "sequence": {
+              "description": "The sequence slug identifier, including the key stage 4 option where relevant.",
+              "examples": ["maths-primary"],
+              "type": "string"
+            },
+            "type": {
+              "description": "Optional asset type specifier\n\nAvailable values: slideDeck, exitQuiz, exitQuizAnswers, starterQuiz, starterQuizAnswers, supplementaryResource, video, worksheet, worksheetAnswers",
+              "enum": [
+                "slideDeck",
+                "exitQuiz",
+                "exitQuizAnswers",
+                "starterQuiz",
+                "starterQuizAnswers",
+                "supplementaryResource",
+                "video",
+                "worksheet",
+                "worksheetAnswers"
+              ],
+              "examples": ["slideDeck"],
+              "type": "string"
+            },
+            "year": {
+              "description": "The year group to filter by. For the physical-education-primary sequence, a value of all-years can also be used.",
+              "enum": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "all-years"],
+              "type": "string"
+            }
+          },
+          "required": ["sequence"],
+          "type": "object"
+        },
+        "name": "get-sequences-assets",
+        "title": "Get Sequences Assets"
+      },
+      "get-sequences-questions": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Sequences Questions"
+        },
+        "description": "Quiz questions across a sequence\n\nUse when you want every quiz question across a whole sequence — all programmes combined. Returns questions grouped by lesson in unit sequence order. Pass year as an optional filter to return only that year's questions. Supports offset and limit; Link: rel=\"next\" header signals more pages. Not for: questions in a single programme (GET /programmes/{programme}/questions); a single lesson's quiz (GET /lessons/{lesson}/quiz); questions for a key stage + subject without programme structure (GET /key-stages/{keyStage}/subject/{subject}/questions).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "filter": {
+              "description": "Optional filter for question results. Use `images` to return only questions with a question image or image answer.",
+              "enum": ["images"],
+              "type": "string"
+            },
+            "limit": {
+              "description": "Limit the number of lessons, e.g. return a maximum of 300 lessons",
+              "examples": [100],
+              "maximum": 300,
+              "type": "number"
+            },
+            "offset": {
+              "description": "If limiting results returned, this allows you to return the next set of results, starting at the given offset point",
+              "examples": [101],
+              "type": "number"
+            },
+            "sequence": {
+              "description": "The sequence slug identifier, including the key stage 4 option where relevant.",
+              "examples": ["maths-secondary"],
+              "type": "string"
+            },
+            "year": {
+              "description": "The year group to filter by. For the physical-education-primary sequence, a value of all-years can also be used.",
+              "enum": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "all-years"],
+              "type": "string"
+            }
+          },
+          "required": ["sequence"],
+          "type": "object"
+        },
+        "name": "get-sequences-questions",
+        "title": "Get Sequences Questions"
+      },
+      "get-sequences-units": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Sequences Units"
+        },
+        "description": "Units in a curriculum sequence\n\nUse when you want every unit across a whole sequence — all programmes combined, in unit sequence order. Returns units grouped by programme (year group) in unit sequence order. If the sequence slug includes an exam board (e.g. science-secondary-aqa), units are scoped to that exam board. Secondary sequences also expose tiers, pathways, and exam subjects where applicable. Pass year as an optional filter to return only that year's units (across all KS4 factor combinations). Not for: units in a single programme (GET /programmes/{programme}/units); a flat list of units for a key stage + subject without programme structure or unit sequence order (GET /key-stages/{keyStage}/subject/{subject}/units); the programmes within this sequence (GET /subjects/{subject}/programmes); a single unit (GET /units/{unit}/summary); units in a thread (GET /threads/{threadSlug}/units). Example: sequence=science-secondary-aqa or maths-primary.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "sequence": {
+              "description": "The sequence slug identifier, including the key stage 4 option where relevant.",
+              "examples": ["english-primary"],
+              "type": "string"
+            },
+            "year": {
+              "description": "The year group to filter by. For the physical-education-primary sequence, a value of all-years can also be used.",
+              "enum": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "all-years"],
+              "type": "string"
+            }
+          },
+          "required": ["sequence"],
+          "type": "object"
+        },
+        "name": "get-sequences-units",
+        "title": "Get Sequences Units"
+      },
+      "get-subject-detail": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Subject Detail"
+        },
+        "description": "Single subject with sequences, key stages, and years\n\nUse when you have a subject slug. Returns subjectTitle, subjectSlug, sequenceSlugs, keyStages, and years. sequenceSlugs lists the sequences available for this subject; each sequence contains one programme per year group — call GET /subjects/{subject}/programmes to enumerate them. Not for: every subject in one call (GET /subjects); the key stages or year groups for a subject (GET /subjects/{subject}/key-stages or GET /subjects/{subject}/years); subject-scoped lessons or units (GET /key-stages/{keyStage}/subject/{subject}/lessons or GET /key-stages/{keyStage}/subject/{subject}/units); the detail of one sequence (GET /sequences/{sequence}). Example: subject=maths.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "subject": {
+              "description": "The slug identifier for the subject",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["art"],
+              "type": "string"
+            }
+          },
+          "required": ["subject"],
+          "type": "object"
+        },
+        "name": "get-subject-detail",
+        "title": "Get Subject Detail"
+      },
+      "get-subjects": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Subjects"
+        },
+        "description": "All subjects\n\nUse when you need every subject in one call — the entry point for a subject picker or for crawling the whole curriculum. Returns subjects alphabetically, each with subjectTitle, subjectSlug, sequenceSlugs, keyStages, and years. sequenceSlugs lists the sequences available for that subject; each sequence contains one programme per year group — call GET /subjects/{subject}/programmes to enumerate them. Not for: a single subject (GET /subjects/{subject}); the key stages or year groups for a subject (GET /subjects/{subject}/key-stages or GET /subjects/{subject}/years); lessons or units inside a subject (GET /key-stages/{keyStage}/subject/{subject}/lessons or GET /key-stages/{keyStage}/subject/{subject}/units); the detail of one sequence (GET /sequences/{sequence}).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get-subjects",
+        "title": "Get Subjects"
+      },
+      "get-subjects-key-stages": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Subjects Key Stages"
+        },
+        "description": "Key stages for a subject\n\nUse when you only need the key stages where this subject is available. Returns key-stage titles and slugs. Not for: every key stage (GET /key-stages); the subject record (GET /subjects/{subject}). Example: 'subject=history'.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "subject": {
+              "description": "The subject slug identifier",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["art"],
+              "type": "string"
+            }
+          },
+          "required": ["subject"],
+          "type": "object"
+        },
+        "name": "get-subjects-key-stages",
+        "title": "Get Subjects Key Stages"
+      },
+      "get-subjects-programmes": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Subjects Programmes"
+        },
+        "description": "Get all programmes for a subject slug\n\nUse when you need to discover the programmes within a subject — to get a programme's slug for use with GET /programmes/{programme} or its sub-endpoints. Returns programmes grouped by key stage, each with year group, slug (e.g. y7, y10-biology-foundation), and applicable programme factors (exam board, tier, child subject). Not for: the metadata of one programme (GET /programmes/{programme}); the units, questions, or assets of one programme (GET /programmes/{programme}/units, GET /programmes/{programme}/questions, or GET /programmes/{programme}/assets); the sequence-level summary (GET /sequences/{sequence}).\n\nNOTE: Programme slugs are the full form — `<subject>-<phase>-year-<year>` plus any KS4 factor — e.g. `english-secondary-year-7` or `english-secondary-year-10-edexcel`, not the short `y7` shorthand used above. Pass the exact slug string this response returns to `get-programmes` and its sub-endpoints.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "subject": {
+              "description": "The subject slug identifier",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["english"],
+              "type": "string"
+            }
+          },
+          "required": ["subject"],
+          "type": "object"
+        },
+        "name": "get-subjects-programmes",
+        "title": "Get Subjects Programmes"
+      },
+      "get-subjects-years": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Subjects Years"
+        },
+        "description": "Year groups for a subject\n\nUse when you only need the year groups where this subject is available. Returns an array of year numbers, derived from the subject's key stages. Not for: the subject record (GET /subjects/{subject}); key stages rather than year groups (GET /subjects/{subject}/key-stages). Example: 'subject=english'.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "subject": {
+              "description": "Subject slug to filter by",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["cooking-nutrition"],
+              "type": "string"
+            }
+          },
+          "required": ["subject"],
+          "type": "object"
+        },
+        "name": "get-subjects-years",
+        "title": "Get Subjects Years"
+      },
+      "get-thread-progressions": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak Curriculum Thread Progressions"
+        },
+        "description": "Returns how an Oak curriculum thread progresses across year groups, for the anchor you name.\n\nThreads connect units into conceptual progressions across years (160 threads across 17 subjects). A thread is a tag on units; the order is the curriculum's. Every call is anchored — exactly ONE of:\n- threadSlug: the detail anchor; returns that ONE thread's full unit progression as one run per subject the thread spans — never the whole thread estate.\n- subject + keyStage (both together): the discovery anchor; returns bounded thread descriptors (slug, title, year span, unit count, subjects — no sequences) so you can pick a threadSlug to anchor next.\n\nOrdering semantics: each run is Oak's curriculum order for that subject — years ascending (earliest → latest), and within a year the authored unit order of the subject's sequence; \"All years\" units follow the year-placed ones. A thread spanning subjects (the modern-language grammar and skill threads run through French, German and Spanish) returns parallel per-subject runs; Oak authors no order across subjects, so runs are never interleaved. At key stage 4 a unit merges its exam-board and tier variants into one node, so a KS4 run is a BIAS, not a guarantee: where boards order their units differently, the earliest authored position wins, and sibling variants of one topic can sit side by side. Read same-year order at KS4 as Oak's typical order, not any one board's.\n\nSlugs are corpus keys — resolve them first with search (scope \"threads\"), fetch, or browse-curriculum. An unknown threadSlug is reported in the result's unknownAnchors, not errored; an unmatched subject+keyStage returns a well-formed empty result.\n\nUse this to answer questions like:\n- \"What's the learning path for fractions?\" (discover with subject+keyStage, then anchor the thread)\n- \"How does this thread build from early years to GCSE?\" (threadSlug)\n- \"Which threads cover algebra at KS3?\" (subject + keyStage)\n\nComplements get-prior-knowledge-graph (each unit's stated prior knowledge) and get-misconception-graph (per-lesson misconceptions along a thread).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "keyStage": {
+              "description": "Discovery anchor (with subject): a key-stage slug, e.g. \"ks2\". Returns bounded thread descriptors without sequences.",
+              "examples": ["ks2"],
+              "minLength": 1,
+              "type": "string"
+            },
+            "subject": {
+              "description": "Discovery anchor (with keyStage): a subject slug, e.g. \"maths\". Returns bounded thread descriptors without sequences. Exactly one anchor mode per call.",
+              "examples": ["maths"],
+              "minLength": 1,
+              "type": "string"
+            },
+            "threadSlug": {
+              "description": "Detail anchor: one thread slug (corpus key). Returns that thread’s full unit progression, one curriculum-ordered run per subject. Exactly one anchor mode per call.",
+              "examples": ["number-fractions"],
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get-thread-progressions",
+        "title": "Oak Curriculum Thread Progressions"
+      },
+      "get-threads": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Threads"
+        },
+        "description": "All threads\n\nUse when you want the catalogue of every thread. A thread is an attribute on a unit that groups units across the curriculum to build a common body of knowledge — making vertical connections across year groups. Returns all threads with published units, sorted alphabetically — each with title, slug, and unitCount. Not for: the units inside a thread (GET /threads/{threadSlug}/units).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get-threads",
+        "title": "Get Threads"
+      },
+      "get-threads-units": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Threads Units"
+        },
+        "description": "Units in a thread\n\nUse when you want every unit in a thread. A thread is an attribute on a unit that groups units across the curriculum to build a common body of knowledge — for example, number and place value or scientific method. Units in a thread span multiple programmes and key stages; thread order is independent of unit sequence order within any individual programme. Returns units in thread order with unitTitle, unitSlug, and unitOrder. Not for: the catalogue of threads (GET /threads); all units across a sequence (GET /sequences/{sequence}/units); units in one programme (GET /programmes/{programme}/units); a single unit (GET /units/{unit}/summary). Example: 'threadSlug=number-and-place-value'.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "thread": {
+              "description": "The thread identifier for a given unit",
+              "examples": ["number-multiplication-and-division"],
+              "type": "string"
+            }
+          },
+          "required": ["thread"],
+          "type": "object"
+        },
+        "name": "get-threads-units",
+        "title": "Get Threads Units"
+      },
+      "get-units-summary": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Get Units Summary"
+        },
+        "description": "Unit summary by slug\n\nUse when you have a unit slug and need the unit summary: title, description, key stage, subject, year, threads, prior-knowledge requirements, national-curriculum statements, and the lessons inside. Unit variant slugs (ending in -1, -2, etc.) resolve to that specific variant. Not for: listing every unit in a key stage + subject (GET /key-stages/{keyStage}/subject/{subject}/units); all units across a sequence (GET /sequences/{sequence}/units); units in one programme (GET /programmes/{programme}/units); units in a thread (GET /threads/{threadSlug}/units); lessons inside the unit (GET /key-stages/{keyStage}/subject/{subject}/lessons with unit={unit}).",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "childSubject": {
+              "description": "Optional science child subject slug to narrow the unit to a specific programme variant. Only available for science units, e.g. 'biology'.",
+              "enum": ["biology", "chemistry", "combined-science", "physics"],
+              "type": "string"
+            },
+            "examBoard": {
+              "description": "Optional exam board slug to narrow the unit to a specific programme variant, e.g. 'aqa'.",
+              "enum": ["aqa", "edexcel", "eduqas", "ocr", "wjec", "edexcelb"],
+              "examples": ["aqa"],
+              "type": "string"
+            },
+            "pathway": {
+              "description": "Optional pathway slug to narrow the unit to a specific programme variant, e.g. 'gcse'.",
+              "enum": ["core", "gcse"],
+              "type": "string"
+            },
+            "tier": {
+              "description": "Optional tier slug to narrow the unit to a specific programme variant, e.g. 'foundation'.",
+              "enum": ["core", "foundation", "higher"],
+              "type": "string"
+            },
+            "unit": {
+              "description": "The unit slug",
+              "examples": ["programming-subroutines"],
+              "type": "string"
+            }
+          },
+          "required": ["unit"],
+          "type": "object"
+        },
+        "name": "get-units-summary",
+        "title": "Get Units Summary"
+      },
+      "oak-under-the-hood": {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Oak: Under the Hood"
+        },
+        "description": "Use when a user asks to understand the Oak project, effort, or ecosystem — this repository, how Oak builds and delivers its curriculum, the project's purpose and machinery, or how to engage or contribute. Not for curriculum content questions (subjects, units, lessons, key stages, sequencing) — those are served by the curriculum tools.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        },
+        "name": "oak-under-the-hood",
+        "title": "Oak: Under the Hood"
+      },
+      "search": {
+        "_meta": { "securitySchemes": [{ "scopes": ["email"], "type": "oauth2" }] },
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true,
+          "title": "Search Curriculum"
+        },
+        "description": "Hybrid lexical and semantic search across lessons, units, threads and sequences, plus lexical typeahead suggestions (scoped)\n\nRequired parameters: `scope` (which index to search) and `query` (your search query). For `threads` scope, `query` may be omitted if `subject` or `keyStage` is provided.\n\nSCOPE SELECTION — choose the right scope for the teacher's intent:\n- \"lessons\": Find specific lessons on a topic. Best for \"find me a lesson about X\".\n- \"units\": Find teaching units (groups of lessons). Best for \"what units cover X?\".\n- \"threads\": Find learning progression strands across year groups. Best for \"how does X build across years?\". If the teacher mentions a subject (for example, \"maths threads\"), pass it in the subject filter parameter rather than relying on the query alone.\n- \"sequences\": Find curriculum programme structures. Best for \"show me the programme for X\". Sequence names are structural (for example, \"maths-secondary\"), so broad subject terms should be passed via subject filters.\n- \"suggest\": Typeahead suggestions as the user types. Best for autocomplete.\n\nUse this when you need to:\n- Find lessons, units, threads, or sequences on a topic\n- Search with specific filters (key stage, subject, year, tier)\n- Get typeahead suggestions for a partial query\n- Discover what content exists for a subject or topic\n\nDo NOT use for:\n- Fetching known content by ID (use 'fetch')\n- Understanding the curriculum structure (use 'get-curriculum-model')\n- Browsing what's available without a search query (use 'browse-curriculum')\n- Exploring a topic across multiple indexes at once (use 'explore-topic')\n\nNATURAL LANGUAGE MAPPING EXAMPLES:\n- \"Find KS3 science lessons about photosynthesis\" → scope: 'lessons', query: 'photosynthesis', subject: 'science', keyStage: 'ks3'\n- \"What units cover fractions in primary maths?\" → scope: 'units', query: 'fractions', subject: 'maths', keyStage: 'ks2'\n- \"What's the learning progression for algebra?\" → scope: 'threads', query: 'algebra', subject: 'maths'\n- \"What maths threads are there?\" → scope: 'threads', subject: 'maths' (no query needed — returns all maths threads sorted by size)\n- \"Show me secondary science programmes\" → scope: 'sequences', query: 'science', keyStage: 'ks3'\n- \"Find lessons on the Romans for Year 3\" → scope: 'lessons', query: 'Romans', year: '3'\n- \"KS4 higher tier maths on trigonometry\" → scope: 'lessons', query: 'trigonometry', keyStage: 'ks4', tier: 'higher'\n\nSCOPE LIMITATIONS:\n- \"suggest\" requires at least one filter: subject or keyStage.\n- \"sequences\" works best with structural names (for example, \"maths-secondary\"), not topic words.\n- \"threads\" can omit query when subject or keyStage is provided, returning all matching threads sorted by unit count.\nCROSS-TOOL WORKFLOWS:\n- For lesson planning: search(scope: 'lessons') → fetch(lesson:slug) for full details\n- For prior knowledge: search(scope: 'threads') → get-prior-knowledge-graph with the found unit slugs for their stated prior knowledge\n- For progressions: search(scope: 'threads') → get-thread-progressions for ordered units\n\nNOTE: This tool can return a large payload at broad scope and may exceed a host's per-result token limit. Broad scopes such as `sequences` are largest; pass `size` to cap results and `from` to page.",
+        "execution": { "taskSupport": "forbidden" },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "properties": {
+            "category": {
+              "description": "Filter by category. Sequences scope only.",
+              "type": "string"
+            },
+            "examBoard": {
+              "description": "Filter to lessons offered by this exam board. Exam board is a programme-factor on the lesson's units; matching a lesson means at least one of its unit entries is tagged with this exam board. Lessons scope only.",
+              "examples": ["aqa", "edexcel", "ocr"],
+              "type": "string"
+            },
+            "from": {
+              "description": "Offset for pagination (default 0)",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "highlight": {
+              "description": "Include highlighted text snippets in results. Lessons and units scopes.",
+              "type": "boolean"
+            },
+            "keyStage": {
+              "description": "Filter by key stage (ks1, ks2, ks3, ks4)",
+              "enum": ["ks1", "ks2", "ks3", "ks4"],
+              "examples": ["ks2", "ks3"],
+              "type": "string"
+            },
+            "limit": {
+              "description": "Maximum number of suggestions. Suggest scope only.",
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "minLessons": {
+              "description": "Minimum number of lessons a unit must contain. Units scope only.",
+              "maximum": 9007199254740991,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "phaseSlug": {
+              "description": "Filter by phase slug. Sequences scope only.",
+              "examples": ["primary", "secondary"],
+              "type": "string"
+            },
+            "query": {
+              "description": "Search query. Required for all scopes except threads — for threads scope, omit query and provide subject or keyStage to browse all threads matching the filter.",
+              "examples": [
+                "photosynthesis",
+                "adding fractions",
+                "the Romans",
+                "electricity and circuits"
+              ],
+              "type": "string"
+            },
+            "scope": {
+              "description": "Which index to search. \"lessons\" for specific lessons, \"units\" for topic groups, \"threads\" for cross-year progressions, \"sequences\" for programme structures, \"suggest\" for typeahead.",
+              "enum": ["lessons", "units", "threads", "sequences", "suggest"],
+              "examples": ["lessons", "units", "threads"],
+              "type": "string"
+            },
+            "size": {
+              "description": "Maximum number of results to return (1-100, default 25)",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "subject": {
+              "description": "Filter by subject slug (e.g. \"maths\", \"science\", \"english\")",
+              "enum": [
+                "art",
+                "citizenship",
+                "computing",
+                "cooking-nutrition",
+                "design-technology",
+                "english",
+                "french",
+                "geography",
+                "german",
+                "history",
+                "maths",
+                "music",
+                "physical-education",
+                "religious-education",
+                "rshe-pshe",
+                "science",
+                "spanish"
+              ],
+              "examples": ["maths", "science", "english"],
+              "type": "string"
+            },
+            "threadSlug": {
+              "description": "Filter by curriculum thread slug. Lessons scope only.",
+              "type": "string"
+            },
+            "tier": {
+              "description": "Filter to lessons available in this KS4 tier (foundation/higher). Tier is a programme-factor on the lesson's units; matching a lesson means at least one of its unit entries has this tier. Lessons scope only, KS4.",
+              "examples": ["foundation", "higher"],
+              "type": "string"
+            },
+            "unitSlug": {
+              "description": "Filter lessons whose `units[]` contains an entry with this unit slug. A lesson can belong to multiple units across programme variants, so this filter matches a lesson if any of its unit entries has the supplied slug. Lessons scope only.",
+              "examples": [
+                "comparing-fractions",
+                "the-romans-what-impact-did-the-romans-have-on-britain"
+              ],
+              "type": "string"
+            },
+            "year": {
+              "anyOf": [{ "type": "string" }, { "maximum": 11, "minimum": 1, "type": "integer" }],
+              "description": "Filter by year group number. Lessons scope only.",
+              "examples": ["3", "7", 10]
+            }
+          },
+          "required": ["scope"],
+          "type": "object"
+        },
+        "name": "search",
+        "title": "Search Curriculum"
+      }
+    },
+    "resources": {
+      "curriculum://model": {
+        "_meta": {
+          "attribution": {
+            "attributionNote": "Contains Oak National Academy open curriculum data licensed under the Open Government Licence v3.0.",
+            "licence": "Open Government Licence v3.0",
+            "licenceUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+            "source": "Oak Open Curriculum API",
+            "sourceUrl": "https://open-api.thenational.academy/"
+          }
+        },
+        "annotations": { "audience": ["assistant"], "priority": 1 },
+        "description": "Combined curriculum orientation: domain model (key stages, subjects, entity hierarchy, property graph) and tool usage guidance (categories, workflows, tips).",
+        "mimeType": "application/json",
+        "name": "curriculum-model",
+        "title": "Oak Curriculum Model",
+        "uri": "curriculum://model"
+      },
+      "docs://oak/getting-started.md": {
+        "annotations": { "audience": ["user", "assistant"], "priority": 0.8 },
+        "description": "Introduction to the Oak Curriculum MCP server, authentication, and first steps.",
+        "mimeType": "text/markdown",
+        "name": "getting-started",
+        "title": "Getting Started with Oak Curriculum",
+        "uri": "docs://oak/getting-started.md"
+      },
+      "docs://oak/guidance/explore-curriculum.md": {
+        "annotations": { "audience": ["assistant"], "priority": 0.4 },
+        "description": "Workflow guidance for the assistant: explore what Oak has on a topic across lessons, units, and threads in parallel, then drill into the most relevant results.",
+        "mimeType": "text/markdown",
+        "name": "guidance-explore-curriculum",
+        "title": "Agent guidance: explore the curriculum",
+        "uri": "docs://oak/guidance/explore-curriculum.md"
+      },
+      "docs://oak/guidance/find-lessons.md": {
+        "annotations": { "audience": ["assistant"], "priority": 0.4 },
+        "description": "Workflow guidance for the assistant: find curriculum lessons on a topic the teacher names, across all subjects and key stages, and surface the most relevant with summaries.",
+        "mimeType": "text/markdown",
+        "name": "guidance-find-lessons",
+        "title": "Agent guidance: find lessons",
+        "uri": "docs://oak/guidance/find-lessons.md"
+      },
+      "docs://oak/guidance/learning-progression.md": {
+        "annotations": { "audience": ["assistant"], "priority": 0.4 },
+        "description": "Workflow guidance for the assistant: understand how a concept builds across year groups by walking progression threads and checking each unit's stated prior knowledge.",
+        "mimeType": "text/markdown",
+        "name": "guidance-learning-progression",
+        "title": "Agent guidance: learning progression",
+        "uri": "docs://oak/guidance/learning-progression.md"
+      },
+      "ui://widget/oak-curriculum-app-v1.html": {
+        "_meta": {
+          "ui": {
+            "csp": {
+              "resourceDomains": ["https://fonts.googleapis.com", "https://fonts.gstatic.com"]
+            },
+            "prefersBorder": false
+          }
+        },
+        "description": "Interactive Oak curriculum MCP App for search and curriculum exploration.",
+        "mimeType": "text/html;profile=mcp-app",
+        "name": "Oak Curriculum App",
+        "uri": "ui://widget/oak-curriculum-app-v1.html"
+      }
+    },
+    "resourceTemplates": {},
+    "prompts": {}
+  }
+}

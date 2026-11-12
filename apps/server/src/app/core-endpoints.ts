@@ -29,6 +29,12 @@ import type { HttpObservability } from '../observability/http-observability.js';
 import type { McpServerFactory } from '../mcp-request-context.js';
 import { OAK_SERVER_BRANDING } from '../server-branding.js';
 import { addHealthEndpoints } from './health-endpoints.js';
+import {
+  createGraphHealthReader,
+  createGraphSnapshotStoreFromEnv,
+  type GraphHealth,
+} from './graph-health.js';
+import { registerRefreshGraphRoute, type GraphRefresher } from '../cron/refresh-graph.js';
 
 /**
  * Narrow options for {@link initializeCoreEndpoints}. Contains only the
@@ -67,6 +73,35 @@ interface CoreEndpointOptions {
    * consumer.
    */
   readonly productAnalyticsSink?: ProductAnalyticsSink;
+  readonly readGraphHealth?: () => Promise<GraphHealth>;
+  readonly graphRefresher?: GraphRefresher;
+}
+
+function mountGraphAndHealthRoutes(app: Express, options: CoreEndpointOptions, log: Logger): void {
+  const { env } = options.runtimeConfig;
+  const { observability } = options;
+  const store = createGraphSnapshotStoreFromEnv(env);
+  const readGraphHealth =
+    options.readGraphHealth ??
+    createGraphHealthReader({
+      readLatest: () => store.readLatest(),
+      onBecameStale: (health) => {
+        observability.captureHandledError(new Error('graph snapshot is stale'), {
+          boundary: 'healthz_graph',
+          generatedAt: health.generatedAt ?? 'none',
+        });
+      },
+    });
+  addHealthEndpoints(app, log, readGraphHealth);
+  if (env.CRON_SECRET) {
+    registerRefreshGraphRoute({
+      app,
+      secret: env.CRON_SECRET,
+      refresher: options.graphRefresher,
+      observability,
+      log,
+    });
+  }
 }
 
 /**
@@ -144,7 +179,7 @@ export function initializeCoreEndpoints(
     return { server, transport, connectTransport };
   };
 
-  addHealthEndpoints(app, log);
+  mountGraphAndHealthRoutes(app, options, log);
 
   return { mcpFactory };
 }
