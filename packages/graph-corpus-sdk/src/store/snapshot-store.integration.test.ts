@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { isOk, unwrap } from '@oaknational/result';
 import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   GRAPH_CORPUS_SCHEMA_VERSION,
@@ -144,7 +144,34 @@ describe.each(stores)('graph corpus snapshot store over the %s store', (_name, m
   });
 });
 
+describe('readLatest', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('rejects when the object store read never settles', async () => {
+    vi.useFakeTimers();
+    const hung: ObjectStore = {
+      get: () => new Promise<never>(() => undefined),
+      put: () => Promise.resolve(),
+      list: () => Promise.resolve([]),
+      delete: () => Promise.resolve(),
+    };
+    const store = createGraphCorpusSnapshotStore(hung, { readTimeoutMs: 50 });
+
+    const read = expect(store.readLatest()).rejects.toThrow('timed out after 50 ms');
+    await vi.advanceTimersByTimeAsync(50);
+
+    await read;
+  });
+});
+
 describe('parseGraphCorpusSnapshot', () => {
+  it('keeps the source digest a snapshot records', () => {
+    const text = JSON.stringify({ ...snapshotAt(day(1)), sourceDigest: 'sha256:abc' });
+    expect(unwrap(parseGraphCorpusSnapshot(text)).sourceDigest).toBe('sha256:abc');
+  });
+
   it.each([
     ['not JSON', '{', 'not JSON'],
     [

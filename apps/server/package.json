@@ -48,6 +48,7 @@
     "@oaknational/observability": "workspace:*",
     "@oaknational/posthog-node": "workspace:*",
     "@oaknational/result": "workspace:*",
+    "@oaknational/sdk-codegen": "workspace:*",
     "@oaknational/sentry-node": "workspace:*",
     "@opentelemetry/api": "1.9.1",
     "@sentry/node": "10.70.0",
@@ -61,7 +62,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@oaknational/sdk-codegen": "workspace:*",
     "@oaknational/widget-tokens": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@sentry/esbuild-plugin": "^5.4.0",

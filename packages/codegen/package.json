@@ -46,6 +46,10 @@
       "types": "./dist/graph-corpus.d.ts",
       "default": "./dist/graph-corpus.js"
     },
+    "./graph-refresh": {
+      "types": "./dist/graph-refresh.d.ts",
+      "default": "./dist/graph-refresh.js"
+    },
     "./widget-constants": {
       "types": "./dist/widget-constants.d.ts",
       "default": "./dist/widget-constants.js"
@@ -79,6 +83,7 @@
     "@oaknational/openapi-zod-client-adapter": "workspace:*",
     "@oaknational/result": "workspace:*",
     "@zod/core": "0.11.6",
+    "fflate": "0.8.3",
     "openapi-fetch": "0.17.0",
     "openapi-typescript": "7.13.0",
     "openapi3-ts": "4.6.1",
@@ -87,7 +92,6 @@
   "devDependencies": {
     "@oaknational/env": "workspace:*",
     "@types/node": "^24.13.3",
-    "fflate": "^0.8.3",
     "tsup": "^8.5.1",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",

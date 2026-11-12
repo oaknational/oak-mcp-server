@@ -22,6 +22,15 @@ export {
   type GraphCorpusSnapshotStore,
   type WrittenSnapshot,
 } from './snapshot-store.js';
+export {
+  DEFAULT_MIN_RETENTION_RATIO,
+  refreshGraphCorpus,
+  type RefreshGuard,
+  type RefreshOutcome,
+  type RefreshRefusal,
+  type RefreshedSnapshot,
+  type SkippedRefresh,
+} from './refresh.js';
 
 /** Real `@vercel/blob` Blob store, authenticated by `token` or the SDK's own `BLOB_READ_WRITE_TOKEN` lookup. */
 export function createVercelBlobObjectStore(token?: string): ObjectStore {

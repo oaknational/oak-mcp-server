@@ -7,13 +7,10 @@ import {
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
   createVercelBlobObjectStore,
-} from '../../../graph-corpus-sdk/src/store/index.js';
-import {
-  parseRetentionRatio,
   refreshGraphCorpus,
-  resolveBulkFiles,
-  resolveGraphRefreshEnv,
-} from './graph-refresh.js';
+} from '../../../graph-corpus-sdk/src/store/index.js';
+import { resolveBulkFiles } from '../../src/graph-refresh.js';
+import { parseRetentionRatio, resolveGraphRefreshEnv } from './graph-refresh.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 
@@ -58,6 +55,12 @@ if (!isOk(result)) {
 }
 
 const summary = result.value;
+if (summary.status === 'skipped') {
+  process.stdout.write(
+    `graph:refresh skipped: the stored snapshot was built from the same data (${summary.sourceDigest})\n`,
+  );
+  process.exit(0);
+}
 const where = values.store === 'local' ? `${localRoot}/` : 'blob:';
 process.stdout.write(
   [

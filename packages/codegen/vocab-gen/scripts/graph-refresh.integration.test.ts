@@ -10,16 +10,17 @@ import {
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
   parseGraphCorpusSnapshot,
+  refreshGraphCorpus,
   type GraphCorpusSnapshotStore,
 } from '../../../graph-corpus-sdk/src/store/index.js';
 import { createLessonInput, createUnitInput } from '../../src/bulk/test-fixtures.js';
 import {
-  parseRetentionRatio,
-  refreshGraphCorpus,
+  digestBulkFiles,
   resolveBulkFiles,
-  resolveGraphRefreshEnv,
+  type BulkFiles,
   type RefreshGuard,
-} from './graph-refresh.js';
+} from '../../src/graph-refresh.js';
+import { parseRetentionRatio, resolveGraphRefreshEnv } from './graph-refresh.js';
 
 const DOWNLOADED_AT = '2026-09-03T11:18:46.637Z';
 
@@ -94,8 +95,7 @@ describe('refreshGraphCorpus', () => {
     const store = await localStore();
     const result = await refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile() }));
 
-    expect(result.ok).toBe(true);
-    const summary = result.ok ? result.value : undefined;
+    const summary = result.ok && result.value.status === 'refreshed' ? result.value : undefined;
     expect(summary).toMatchObject({ downloadedAt: DOWNLOADED_AT, latestKey: LATEST_KEY });
     expect(summary?.nodes).toBeGreaterThan(0);
     expect(summary?.edges).toBeGreaterThan(0);
@@ -213,6 +213,46 @@ describe('refreshGraphCorpus', () => {
     expect(await store.readLatest()).toBe(before);
   });
 
+  it('skips a source whose data files are unchanged, however late it was fetched', async () => {
+    const store = await localStore();
+    await refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile() }));
+    const before = await store.readLatest();
+
+    const result = await refreshFromDir(
+      store,
+      await bulkDir({ 'maths-primary.json': bulkFile() }, '2026-10-01T00:00:00.000Z'),
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { status: 'skipped' } });
+    expect(await store.readLatest()).toBe(before);
+  });
+
+  it('refreshes when the data files change, even if the fetch is stamped earlier', async () => {
+    const store = await localStore();
+    await refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile(2) }));
+
+    const result = await refreshFromDir(
+      store,
+      await bulkDir({ 'maths-primary.json': bulkFile(3) }, '2026-01-01T00:00:00.000Z'),
+    );
+
+    expect(result).toMatchObject({ ok: true, value: { status: 'refreshed' } });
+  });
+
+  it('refreshes over a stored snapshot that records no source digest', async () => {
+    const objects = createLocalFileObjectStore(await tempDir());
+    const store = createGraphCorpusSnapshotStore(objects);
+    const dir = await bulkDir({ 'maths-primary.json': bulkFile() });
+    await refreshFromDir(store, dir);
+    const older = JSON.parse((await objects.get(LATEST_KEY)) ?? '') as Record<string, unknown>;
+    delete older['sourceDigest'];
+    await objects.put(LATEST_KEY, JSON.stringify(older));
+
+    const result = await refreshFromDir(store, dir);
+
+    expect(result).toMatchObject({ ok: true, value: { status: 'refreshed' } });
+  });
+
   it('writes over a stored snapshot it cannot read, as school-picker-service does', async () => {
     const objects = createLocalFileObjectStore(await tempDir());
     await objects.put(LATEST_KEY, 'not json');
@@ -227,6 +267,42 @@ describe('refreshGraphCorpus', () => {
     });
     expect(result.ok).toBe(true);
     expect(lines.join('\n')).toContain('treating it as absent');
+  });
+});
+
+describe('digestBulkFiles', () => {
+  const unwrapBulk = async (bulk: ReturnType<typeof resolveBulkFiles>): Promise<BulkFiles> => {
+    const result = await bulk;
+    if (!result.ok) {
+      throw new Error(result.error.message);
+    }
+    return result.value;
+  };
+
+  it('gives a ZIP and a directory holding the same data files one digest', async () => {
+    const files = { 'maths-primary.json': bulkFile(), 'schema.json': '{}' };
+    const zip = zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, strToU8(v)])));
+    const fromZip = await unwrapBulk(
+      resolveBulkFiles({ apiKey: 'test-key', fetchImpl: () => Promise.resolve(new Response(zip)) }),
+    );
+    const fromDir = await unwrapBulk(resolveBulkFiles({ bulkDir: await bulkDir(files) }));
+
+    expect(await digestBulkFiles(fromZip)).toBe(await digestBulkFiles(fromDir));
+  });
+
+  it('ignores the manifest and schema files', async () => {
+    const data = { 'maths-primary.json': bulkFile() };
+    const plain = await unwrapBulk(resolveBulkFiles({ bulkDir: await bulkDir(data) }));
+    const withSchema = await unwrapBulk(
+      resolveBulkFiles({
+        bulkDir: await bulkDir(
+          { ...data, 'schema.json': '{"changed":true}' },
+          '2026-12-01T00:00:00.000Z',
+        ),
+      }),
+    );
+
+    expect(await digestBulkFiles(withSchema)).toBe(await digestBulkFiles(plain));
   });
 });
 

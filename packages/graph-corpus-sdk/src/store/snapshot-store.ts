@@ -15,6 +15,8 @@ export interface GraphCorpusSnapshot {
   readonly downloadedAt: string;
   /** When `vocab-gen` built the corpus. */
   readonly generatedAt: string;
+  /** Digest of the bulk data files the corpus was built from. Absent on older snapshots. */
+  readonly sourceDigest?: string;
   readonly corpus: GraphCorpus;
 }
 
@@ -52,7 +54,7 @@ export function parseGraphCorpusSnapshot(text: string): Result<GraphCorpusSnapsh
   if (!isRecord(value)) {
     return err('snapshot is not an object');
   }
-  const { schemaVersion, downloadedAt, generatedAt, corpus } = value;
+  const { schemaVersion, downloadedAt, generatedAt, sourceDigest, corpus } = value;
   if (schemaVersion !== GRAPH_CORPUS_SCHEMA_VERSION) {
     return err(
       `snapshot schemaVersion ${String(schemaVersion)} does not match ${String(GRAPH_CORPUS_SCHEMA_VERSION)}`,
@@ -64,7 +66,13 @@ export function parseGraphCorpusSnapshot(text: string): Result<GraphCorpusSnapsh
   if (!isCorpusShaped(corpus)) {
     return err('snapshot corpus is missing nodes, edges or stats');
   }
-  return ok({ schemaVersion, downloadedAt, generatedAt, corpus });
+  return ok({
+    schemaVersion,
+    downloadedAt,
+    generatedAt,
+    ...(typeof sourceDigest === 'string' ? { sourceDigest } : {}),
+    corpus,
+  });
 }
 
 export interface WrittenSnapshot {
@@ -73,8 +81,26 @@ export interface WrittenSnapshot {
   readonly prunedKeys: readonly string[];
 }
 
+/** How long `readLatest` waits for the object store before it rejects. */
+const DEFAULT_READ_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`graph corpus read timed out after ${String(ms)} ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 export interface GraphCorpusSnapshotStore {
-  /** The raw `latest.json` text, or `null` when nothing is stored. */
+  /**
+   * The raw `latest.json` text, or `null` when nothing is stored. Rejects when
+   * the object store has not answered within the read timeout.
+   */
   readLatest(): Promise<string | null>;
   /**
    * Writes the dated copy, then `latest.json`, then deletes all but the
@@ -83,9 +109,13 @@ export interface GraphCorpusSnapshotStore {
   write(snapshot: GraphCorpusSnapshot): Promise<WrittenSnapshot>;
 }
 
-export function createGraphCorpusSnapshotStore(objects: ObjectStore): GraphCorpusSnapshotStore {
+export function createGraphCorpusSnapshotStore(
+  objects: ObjectStore,
+  options: { readonly readTimeoutMs?: number } = {},
+): GraphCorpusSnapshotStore {
+  const readTimeoutMs = options.readTimeoutMs ?? DEFAULT_READ_TIMEOUT_MS;
   return {
-    readLatest: () => objects.get(LATEST_KEY),
+    readLatest: () => withTimeout(objects.get(LATEST_KEY), readTimeoutMs),
     async write(snapshot) {
       const body = JSON.stringify(snapshot);
       const dated = datedKey(snapshot.downloadedAt);
