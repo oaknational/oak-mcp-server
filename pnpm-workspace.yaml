@@ -22,6 +22,10 @@ overrides:
   # @mcpjam/sdk 2.4.0 (dev only, conformance runner) pins @modelcontextprotocol/client
   # 2.0.0, open to GHSA-6qxp-vccf-f47h (fixed in 2.2.0).
   '@mcpjam/sdk>@modelcontextprotocol/client': 2.4.0
+  # @posthog/mcp (runtime, via posthog-node) and @mcpjam/cli (dev) resolve the
+  # @modelcontextprotocol/server peer to 2.0.0, open to GHSA-46jr-4wx8-v453,
+  # GHSA-jm63-cq47-j5jp and GHSA-f897-62hf-6gxq (all fixed by 2.3.0).
+  '@modelcontextprotocol/server': 2.4.0
 
 allowBuilds:
   '@sentry/cli': false
