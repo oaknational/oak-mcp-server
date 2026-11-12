@@ -116,6 +116,7 @@ describe('parsePreviewUrl', () => {
     'https://evil.example/?x=.vercel.thenational.academy',
     'https://oak.vercel.thenational.academy:8443',
     'https://oak.vercel.thenational.academy/path',
+    'https://.vercel.thenational.academy',
     '--upload-pack=x',
     '',
   ])('refuses %j', (raw) => {

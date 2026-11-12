@@ -54,7 +54,8 @@ export function parsePreviewUrl(raw: string): URL {
     url.pathname === '/' &&
     url.search === '' &&
     url.hash === '';
-  if (!bare || !url.hostname.endsWith(PREVIEW_HOST_SUFFIX)) {
+  const subdomain = url.hostname.slice(0, -PREVIEW_HOST_SUFFIX.length);
+  if (!bare || !url.hostname.endsWith(PREVIEW_HOST_SUFFIX) || subdomain === '') {
     throw new Error(`the deployment URL is not a bare https://*${PREVIEW_HOST_SUFFIX} origin`);
   }
   return url;

@@ -4,7 +4,7 @@ on:
   deployment_status:
 
 concurrency:
-  group: preview-probe-${{ github.event.deployment.sha }}
+  group: preview-probe-${{ github.event.deployment.sha }}-${{ github.event.deployment.environment }}-${{ github.event.deployment_status.id }}
   cancel-in-progress: false
 
 permissions: {}

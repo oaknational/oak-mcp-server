@@ -13,6 +13,7 @@ const workflow = parse(
   readFileSync(join(import.meta.dirname, '../../.github/workflows/preview-probe.yml'), 'utf8'),
 ) as {
   on: Record<string, unknown>;
+  concurrency: { group: string; 'cancel-in-progress': boolean };
   jobs: Record<string, { name?: string; if?: string; permissions?: unknown; steps?: Step[] }>;
 };
 const job = workflow.jobs['preview-probe'];
@@ -42,6 +43,12 @@ describe('preview-probe workflow', () => {
     expect(probeStep?.env?.['PREVIEW_URL']).toBe(
       '${{ github.event.deployment_status.environment_url }}',
     );
+  });
+
+  it('gives each deployment status its own concurrency group, so a docs or failed status cannot cancel a queued server run', () => {
+    expect(workflow.concurrency.group).toContain('${{ github.event.deployment.environment }}');
+    expect(workflow.concurrency.group).toContain('${{ github.event.deployment_status.id }}');
+    expect(workflow.concurrency['cancel-in-progress']).toBe(false);
   });
 
   it('cannot write statuses, checks or code', () => {
