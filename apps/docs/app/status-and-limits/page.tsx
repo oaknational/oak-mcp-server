@@ -25,7 +25,7 @@ export default function StatusAndLimitsPage() {
       <Section id="address" title="A stable address">
         <P>
           The server URL, <Code>{MCP_URL}</Code>, stays the same. This documentation sits at the
-          root of the same host, and the server keeps these paths:
+          root of the same host. The server keeps its own paths, including:
         </P>
         <Bullets>
           <li>
@@ -35,13 +35,21 @@ export default function StatusAndLimitsPage() {
             <Code>/oauth/</Code> paths
           </li>
           <li>
-            <Code>/.well-known/oauth-protected-resource</Code>, its <Code>/mcp</Code> form, and{' '}
-            <Code>/.well-known/oauth-authorization-server</Code>
+            <Code>/.well-known/oauth-protected-resource</Code>, its <Code>/mcp</Code> form,{' '}
+            <Code>/.well-known/oauth-authorization-server</Code> and{' '}
+            <Code>/.well-known/openid-configuration</Code>
           </li>
           <li>
             <Code>/healthz</Code>
           </li>
+          <li>
+            <Code>/assets/download/</Code> links from the Download Asset tool
+          </li>
+          <li>
+            <Code>/robots.txt</Code> and <Code>/api/cron/refresh-graph</Code>
+          </li>
         </Bullets>
+        <P>This list isn&apos;t complete. Don&apos;t rely on any other path staying free.</P>
       </Section>
       <Section id="limits" title="Limits">
         <Bullets>
@@ -50,8 +58,9 @@ export default function StatusAndLimitsPage() {
             fixed numbers. If you send too many requests, slow down and try again.
           </li>
           <li>
-            The <Link href="/tools/#tool-get-rate-limit">Get Rate Limit</Link> tool reports the
-            current rate-limit status.
+            The <Link href="/tools/#tool-get-rate-limit">Get Rate Limit</Link> tool is separate. It
+            reports the quota on the Oak Curriculum API key the server uses: the limit, how much is
+            left, and when it resets. It says nothing about the edge rate limit.
           </li>
           <li>
             Download links from the <Link href="/tools/#tool-download-asset">Download Asset</Link>{' '}

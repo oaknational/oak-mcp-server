@@ -74,7 +74,11 @@ const TABS: readonly ClientTab[] = [
             Check the authentication settings Claude found and select <strong>Continue</strong>.
           </li>
           <li>
-            Under <strong>Authentication</strong>, choose <strong>Sign in now</strong>, then select{' '}
+            Under <strong>Authentication</strong>, choose <strong>Sign in now</strong>.
+          </li>
+          <li>
+            Under <strong>OAuth client</strong>, choose <strong>Register automatically</strong>,
+            because Oak&apos;s sign-in server supports automatic registration. Then select{' '}
             <strong>Add</strong>.
           </li>
           <SignIn client="Claude" />

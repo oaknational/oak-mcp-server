@@ -17,6 +17,7 @@ export CLERK_SECRET_KEY=your_clerk_secret_key`;
 const RUN_COMMANDS = `git clone ${REPO_URL}.git
 cd oak-mcp-server
 pnpm install --frozen-lockfile
+pnpm build
 pnpm --filter @oaknational/mcp-server dev`;
 
 export default function SelfHostingPage() {
@@ -48,7 +49,7 @@ export default function SelfHostingPage() {
             <CodeBlock code={ENV_EXAMPLE} label="Environment variables" />
           </li>
           <li>
-            Clone the repository, install, and start the server.
+            Clone the repository, install, build the workspace, and start the server.
             <CodeBlock code={RUN_COMMANDS} label="Commands to run the server" />
           </li>
           <li>

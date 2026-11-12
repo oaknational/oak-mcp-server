@@ -22,9 +22,9 @@ export default function AuthenticationPage() {
         <P>The server follows the MCP authorisation spec, which is built on OAuth 2.1.</P>
         <Steps>
           <li>
-            Your client sends a request to <Code>{MCP_URL}</Code> with no token. The server answers{' '}
-            <Code>401</Code>, and its <Code>WWW-Authenticate</Code> header points to the
-            server&apos;s protected resource metadata.
+            Your client sends an MCP request, a <Code>POST</Code> to <Code>{MCP_URL}</Code>, with no
+            token. The server answers <Code>401</Code>, and its <Code>WWW-Authenticate</Code> header
+            points to the server&apos;s protected resource metadata.
           </li>
           <li>The metadata names Oak&apos;s authorisation server.</li>
           <li>
@@ -41,7 +41,13 @@ export default function AuthenticationPage() {
       <Section id="what-needs-sign-in" title="What needs sign-in">
         <Bullets>
           <li>
-            Every request to <Code>/mcp</Code> needs a token.
+            Every MCP request, a <Code>POST</Code> to <Code>/mcp</Code>, needs a token. The one
+            exception is <Code>resources/read</Code> for the server&apos;s public documentation and
+            guidance resources, which works without one.
+          </li>
+          <li>
+            A <Code>GET</Code> to <Code>/mcp</Code> needs no token. The server doesn&apos;t offer a
+            standalone event stream, so it answers <Code>405</Code>.
           </li>
           <li>
             The health check at <Code>/mcp/healthz</Code> and the OAuth metadata under{' '}
