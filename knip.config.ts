@@ -14,7 +14,13 @@ const config: KnipConfig = {
     'packages/openapi-zod-client-adapter': { project: ['src/**/*.ts'] },
     'packages/graph-core': { project: ['src/**/*.ts'] },
     'packages/graph-corpus-sdk': {
-      entry: ['src/index.ts', 'src/eef-strands/index.ts', 'src/curriculum/index.ts'],
+      entry: [
+        'src/index.ts',
+        'src/eef-strands/index.ts',
+        'src/curriculum/index.ts',
+        'src/load.ts',
+        'src/store/index.ts',
+      ],
       project: ['src/**/*.ts'],
     },
     'packages/curriculum-sdk': {

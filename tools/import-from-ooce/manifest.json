@@ -400,6 +400,18 @@
         {
           "from": "tools/import-from-ooce/supplied/codegen-drift.test-source.ts",
           "to": "tests/drift.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-graph-refresh.ts",
+          "to": "vocab-gen/scripts/graph-refresh.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-graph-refresh.integration.test-source.ts",
+          "to": "vocab-gen/scripts/graph-refresh.integration.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/codegen-run-graph-refresh.ts",
+          "to": "vocab-gen/scripts/run-graph-refresh.ts"
         }
       ],
       "removeDependencies": ["@oaknational/type-helpers"],
@@ -462,7 +474,13 @@
           "path": "code-generation/typegen/search/generate-search-response-docs.ts",
           "reason": "The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE."
         }
-      ]
+      ],
+      "addDependencies": {
+        "devDependencies": {
+          "@oaknational/env": "workspace:*",
+          "fflate": "^0.8.3"
+        }
+      }
     },
     {
       "name": "graph-corpus-sdk",
@@ -470,6 +488,61 @@
       "sources": [
         {
           "from": "packages/sdks/graph-corpus-sdk"
+        }
+      ],
+      "supplied": [
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-load.ts",
+          "to": "src/load.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-load.integration.test-source.ts",
+          "to": "src/load.integration.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-object-store.ts",
+          "to": "src/store/object-store.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-snapshot-store.ts",
+          "to": "src/store/snapshot-store.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-snapshot-store.integration.test-source.ts",
+          "to": "src/store/snapshot-store.integration.test.ts"
+        },
+        {
+          "from": "tools/import-from-ooce/supplied/graph-corpus-store-index.ts",
+          "to": "src/store/index.ts"
+        }
+      ],
+      "exports": {
+        "./load": {
+          "types": "./dist/load.d.ts",
+          "default": "./dist/load.js"
+        },
+        "./store": {
+          "types": "./dist/store/index.d.ts",
+          "default": "./dist/store/index.js"
+        }
+      },
+      "addDependencies": {
+        "dependencies": {
+          "@vercel/blob": "^2.8.2"
+        }
+      },
+      "edits": [
+        {
+          "path": "tsup.config.ts",
+          "find": "    'src/curriculum/**/*.ts',\n",
+          "replace": "    'src/curriculum/**/*.ts',\n    'src/store/**/*.ts',\n",
+          "reason": "The supplied snapshot store under src/store is built into dist for the ./store export."
+        },
+        {
+          "path": "README.md",
+          "find": "- `@oaknational/graph-corpus-sdk/eef-strands` — the EEF strands corpus\n  foundation.\n",
+          "replace": "- `@oaknational/graph-corpus-sdk/eef-strands` — the EEF strands corpus\n  foundation.\n- `@oaknational/graph-corpus-sdk/store` — the graph corpus snapshot store,\n  over a local directory or Vercel Blob.\n- `@oaknational/graph-corpus-sdk/load` — the lazy, TTL-cached corpus loader,\n  which returns a typed error when the corpus cannot load.\n\n## Refreshing the corpus\n\n`pnpm graph:refresh` builds the corpus from the Oak bulk download and writes\n`graph-corpus/v<schemaVersion>/latest.json` plus a dated copy, keeping the\nnewest eight. It refuses to write, and prints the guard's name, when\n`OAK_API_KEY` is missing, the download fails, a bulk file does not parse, the\ncorpus is empty, or the node or edge count falls below\n`GRAPH_MIN_RETENTION_RATIO` (default 0.5) of the stored corpus.\n\n```bash\npnpm graph:refresh --store local                   # fetch with OAK_API_KEY\npnpm graph:refresh --store local --bulk-dir <dir>  # build from a downloaded bulk directory\npnpm graph:refresh --store blob                    # write to Vercel Blob\n```\n\n| Variable                    | Purpose                                                                                                                                                  |\n| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `GRAPH_CORPUS_LOCAL_PATH`   | Local store root, for the refresh and the loader. Defaults to `.cache/graph-corpus` for the refresh. When set, the loader reads from it instead of Blob. |\n| `BLOB_READ_WRITE_TOKEN`     | Vercel Blob token for `--store blob` and the loader.                                                                                                     |\n| `OAK_BULK_URL`              | Overrides the bulk endpoint.                                                                                                                             |\n| `GRAPH_MIN_RETENTION_RATIO` | Retention guard ratio, from 0 to 1.                                                                                                                      |\n",
+          "reason": "Documents the supplied ./store and ./load exports and pnpm graph:refresh."
         }
       ]
     },

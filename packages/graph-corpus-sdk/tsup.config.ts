@@ -14,6 +14,7 @@ export default createSdkConfig(
     'src/*.ts',
     'src/eef-strands/**/*.ts',
     'src/curriculum/**/*.ts',
+    'src/store/**/*.ts',
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
   ],

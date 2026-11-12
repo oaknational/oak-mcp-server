@@ -53,6 +53,32 @@ only.
   `@oaknational/result`) types.
 - `@oaknational/graph-corpus-sdk/eef-strands` — the EEF strands corpus
   foundation.
+- `@oaknational/graph-corpus-sdk/store` — the graph corpus snapshot store,
+  over a local directory or Vercel Blob.
+- `@oaknational/graph-corpus-sdk/load` — the lazy, TTL-cached corpus loader,
+  which returns a typed error when the corpus cannot load.
+
+## Refreshing the corpus
+
+`pnpm graph:refresh` builds the corpus from the Oak bulk download and writes
+`graph-corpus/v<schemaVersion>/latest.json` plus a dated copy, keeping the
+newest eight. It refuses to write, and prints the guard's name, when
+`OAK_API_KEY` is missing, the download fails, a bulk file does not parse, the
+corpus is empty, or the node or edge count falls below
+`GRAPH_MIN_RETENTION_RATIO` (default 0.5) of the stored corpus.
+
+```bash
+pnpm graph:refresh --store local                   # fetch with OAK_API_KEY
+pnpm graph:refresh --store local --bulk-dir <dir>  # build from a downloaded bulk directory
+pnpm graph:refresh --store blob                    # write to Vercel Blob
+```
+
+| Variable                    | Purpose                                                                                                                                                  |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GRAPH_CORPUS_LOCAL_PATH`   | Local store root, for the refresh and the loader. Defaults to `.cache/graph-corpus` for the refresh. When set, the loader reads from it instead of Blob. |
+| `BLOB_READ_WRITE_TOKEN`     | Vercel Blob token for `--store blob` and the loader.                                                                                                     |
+| `OAK_BULK_URL`              | Overrides the bulk endpoint.                                                                                                                             |
+| `GRAPH_MIN_RETENTION_RATIO` | Retention guard ratio, from 0 to 1.                                                                                                                      |
 
 ## Scripts
 

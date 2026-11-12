@@ -115,7 +115,7 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-index-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-modules.unit.test.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
 - Kept OOCE's relative paths in `code-generation/typegen/search/generate-search-response-docs.ts`. The ../../../../docs/ paths are output paths into the package's own generated docs folder, not links into OOCE.
-- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`.
+- Supplied from this repository: `prettier.config.mjs`, `src/types/helpers/type-safe.ts`, `tests/drift.test.ts`, `vocab-gen/scripts/graph-refresh.integration.test.ts`, `vocab-gen/scripts/graph-refresh.ts`, `vocab-gen/scripts/run-graph-refresh.ts`.
 - Dropped `packages/sdks/oak-sdk-codegen/e2e-tests/scripts/codegen-core.e2e.test.ts`. Its config is dropped. The codegen e2e lane is deferred to MCP-861.
 - Dropped `packages/sdks/oak-sdk-codegen/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 - Dropped `packages/sdks/oak-sdk-codegen/vitest.e2e.config.ts`. It extends the e2e preset in OOCE's workspace-config, which this repository does not carry. The codegen e2e lane is deferred to MCP-861.
@@ -125,6 +125,9 @@ The tool owns each package directory named in `tools/import-from-ooce/manifest.j
 - Source: `packages/sdks/graph-corpus-sdk` at `d5846cf6f37270c73291640a526124429369ee97`.
 - Copied unchanged: 34 files.
 - Modified by the tool: `package.json`, `README.md`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`.
+- Modified `README.md`. Documents the supplied ./store and ./load exports and pnpm graph:refresh.
+- Modified `tsup.config.ts`. The supplied snapshot store under src/store is built into dist for the ./store export.
+- Supplied from this repository: `src/load.integration.test.ts`, `src/load.ts`, `src/store/index.ts`, `src/store/object-store.ts`, `src/store/snapshot-store.integration.test.ts`, `src/store/snapshot-store.ts`.
 - Dropped `packages/sdks/graph-corpus-sdk/eslint.config.ts`. The root eslint.config.ts lints packages/**.
 
 ### `packages/curriculum-sdk`
