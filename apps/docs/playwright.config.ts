@@ -12,7 +12,7 @@ export default defineConfig({
     browserName: 'chromium',
   },
   webServer: {
-    command: 'pnpm run build:server-deps && pnpm run build && pnpm run preview',
+    command: 'pnpm run build && pnpm run preview',
     url: `http://localhost:${String(PORT)}/`,
     env: { PORT: String(PORT) },
     reuseExistingServer: false,

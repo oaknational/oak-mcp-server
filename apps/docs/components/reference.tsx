@@ -134,6 +134,7 @@ interface Contents {
 }
 
 function OnThisPage({ items }: { readonly items: readonly Contents[] }) {
+  if (items.length === 0) return null;
   return (
     <nav aria-labelledby="on-this-page">
       <OakFlex $flexDirection="column" $gap="spacing-8">
@@ -171,8 +172,8 @@ export function ToolsReference({ tools }: { readonly tools: readonly ToolEntry[]
     <OakFlex $flexDirection="column" $gap="spacing-32">
       <PageIntro title="Tools">
         <OakP $font="body-1">
-          The server offers {tools.length} tools. This page is generated from the server&apos;s own
-          tool list each time the docs are built.
+          The server offers {tools.length} tools. This page is built from the server&apos;s
+          published surface snapshot.
         </OakP>
       </PageIntro>
       <OnThisPage
@@ -261,8 +262,10 @@ export function ResourcesReference({
     <OakFlex $flexDirection="column" $gap="spacing-32">
       <PageIntro title="Resources">
         <OakP $font="body-1">
-          The server offers {all.length} resources. This page is generated from the server&apos;s
-          own resource list each time the docs are built.
+          {all.length === 0
+            ? 'The server offers no resources.'
+            : `The server offers ${String(all.length)} resources.`}{' '}
+          This page is built from the server&apos;s published surface snapshot.
         </OakP>
       </PageIntro>
       <OnThisPage
@@ -286,8 +289,7 @@ export function PromptsReference({ prompts }: { readonly prompts: readonly Promp
           {prompts.length === 0
             ? 'The server offers no prompts. Its workflow guidance is served as resources instead.'
             : `The server offers ${String(prompts.length)} prompts.`}{' '}
-          This page is generated from the server&apos;s own prompt list each time the docs are
-          built.
+          This page is built from the server&apos;s published surface snapshot.
         </OakP>
       </PageIntro>
       {prompts.map((prompt) => {
