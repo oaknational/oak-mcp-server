@@ -14,6 +14,7 @@ const NON_RELEASING = new Set(['chore', 'docs', 'ci', 'test']);
 const RELEASING = new Set(['feat', 'fix']);
 const BREAKING_SECTION = /^##\s+Breaking change\s*$/im;
 const BASELINE = 'tools/surface-diff/baseline.json';
+const SERVED_SURFACE = 'apps/server/served-surface.json';
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)__tests__\//;
 
 export function isRuntimeFile(path: string): boolean {
@@ -21,7 +22,8 @@ export function isRuntimeFile(path: string): boolean {
     /^(?:apps|packages)\//.test(path) &&
     !TEST_FILE.test(path) &&
     !path.endsWith('.md') &&
-    !path.endsWith('/package.json')
+    !path.endsWith('/package.json') &&
+    path !== SERVED_SURFACE
   );
 }
 

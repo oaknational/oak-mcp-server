@@ -44,6 +44,13 @@ describe('version-rules', () => {
     expect(verdict('update stuff', runtime)).toEqual([]);
   });
 
+  it('does not count the generated served surface as runtime code', () => {
+    expect(verdict('MCP-1: chore: x', ['apps/server/served-surface.json'])).toEqual([]);
+    expect(isRuntimeFile('apps/server/served-surface.json')).toBe(false);
+    expect(isRuntimeFile('apps/server/vercel.json')).toBe(true);
+    expect(verdict('MCP-1: chore: x', ['apps/server/vercel.json'])).not.toEqual([]);
+  });
+
   it('does not count tests, markdown or manifests as runtime code', () => {
     expect(isRuntimeFile('packages/a/src/a.test.ts')).toBe(false);
     expect(isRuntimeFile('apps/server/README.md')).toBe(false);
