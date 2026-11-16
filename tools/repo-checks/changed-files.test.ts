@@ -145,6 +145,21 @@ describe('version-check on the committed served surface', () => {
     expect(versionCheck(base, 'MCP-1: feat(tools): drop').output).toContain('## Breaking change');
   });
 
+  it('passes a dependency bump that changes the served tools under fix', () => {
+    git('checkout', '-q', '-b', 'dependency-bump', base);
+    put('package.json', '{"dependencies":{"fixture-sdk":"2.0.0"}}');
+    put('pnpm-lock.yaml', 'fixture-sdk: 2.0.0\n');
+    editTools(SERVED, (tools) => {
+      const [first = ''] = Object.keys(tools);
+      tools[first] = { ...tools[first], description: 'Described by the new SDK.' };
+    });
+    commit('bump the SDK');
+    const fix = versionCheck(base, 'MCP-1: fix(deps): bump the SDK');
+    expect(fix.output).toContain('version-check: ok');
+    expect(fix.status).toBe(0);
+    expect(versionCheck(base, 'MCP-1: chore(deps): bump the SDK').status).toBe(1);
+  });
+
   it('passes a re-snapshot of the OOCE baseline alone under chore', () => {
     git('checkout', '-q', '-b', 'resnapshot', base);
     editTools(BASELINE, dropFirstTool);

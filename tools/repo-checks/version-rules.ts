@@ -109,12 +109,12 @@ export function checkVersion(input: {
       `The type '${type}' does not release, but the diff changes runtime code (${runtime.slice(0, 3).join(', ')}). Use feat or fix.`,
     );
   }
-  if (RELEASING.has(type) && runtime.length === 0) {
+  const { toolsChanged, breaking } = classifySurfaceChange(surface);
+  if (RELEASING.has(type) && runtime.length === 0 && !toolsChanged) {
     errors.push(
-      `The type '${type}' releases, but the diff changes no runtime code under apps/ or packages/. Use chore, docs, ci or test.`,
+      `The type '${type}' releases, but the diff changes no runtime code under apps/ or packages/ and no served tool in ${SERVED_SURFACE}. Use chore, docs, ci or test.`,
     );
   }
-  const { toolsChanged, breaking } = classifySurfaceChange(surface);
   if (toolsChanged && !RELEASING.has(type)) {
     errors.push(
       `The diff changes the served tools in ${SERVED_SURFACE}, so the type '${type}' must release. Use feat or fix.`,
