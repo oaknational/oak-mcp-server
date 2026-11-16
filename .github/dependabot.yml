@@ -13,6 +13,8 @@ updates:
         patterns: ['*']
   - package-ecosystem: npm
     directory: /
+    # Each major bump is its own PR, so allow more than the default 5.
+    open-pull-requests-limit: 10
     schedule:
       interval: weekly
     cooldown:
@@ -20,8 +22,11 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
     groups:
+      # Majors stay out of the group, so each one arrives as its own PR and
+      # one breaking bump cannot block or hide the rest.
       npm:
         patterns: ['*']
+        update-types: [minor, patch]
     ignore:
       # typescript-eslint 8.72.1 supports TypeScript below 6.1 only. Lift when a
       # typescript-eslint release supports the newer range.
