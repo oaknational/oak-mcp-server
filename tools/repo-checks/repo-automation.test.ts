@@ -57,6 +57,7 @@ describe('CODEOWNERS and Dependabot', () => {
     };
     const npm = config.updates.find((u) => u['package-ecosystem'] === 'npm');
     expect(npm?.ignore?.map((i) => i['dependency-name']).sort()).toEqual([
+      '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
       'typescript',
@@ -236,6 +237,7 @@ describe('lockfile-rebuild', () => {
     );
     expect(errors).toEqual([]);
     expect(holds.map((h) => h.name).sort()).toEqual([
+      '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
       'typescript',
