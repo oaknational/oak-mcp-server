@@ -12,12 +12,14 @@ interface Pin {
 interface Review {
   sources: string[];
   shas: string[];
+  labels: Set<string>;
 }
 
 type Root = ReturnType<typeof fromMarkdown>;
 type Block = Root['children'][number];
 
 const SKILL_HEADING_DEPTH = 3;
+const REQUIRED_LABELS = ['Runs', 'Verdict'];
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
 function parsePins(lockText: string): Pin[] {
@@ -65,6 +67,21 @@ function listedSource(block: Block): string | undefined {
     : undefined;
 }
 
+function filledLabel(block: Block): string | undefined {
+  if (block.type !== 'paragraph') {
+    return undefined;
+  }
+  const [first, ...rest] = block.children;
+  if (first?.type !== 'text') {
+    return undefined;
+  }
+  const label = REQUIRED_LABELS.find((name) => first.value.startsWith(`${name}:`));
+  if (label === undefined) {
+    return undefined;
+  }
+  return first.value.slice(label.length + 1).trim() !== '' || rest.length > 0 ? label : undefined;
+}
+
 function reviewSections(reviewText: string): Map<string, Review[]> {
   const sections = new Map<string, Review[]>();
   let current: Review | undefined;
@@ -73,7 +90,7 @@ function reviewSections(reviewText: string): Map<string, Review[]> {
       const name = block.depth === SKILL_HEADING_DEPTH ? headingName(block) : undefined;
       current = undefined;
       if (name !== undefined) {
-        current = { sources: [], shas: [] };
+        current = { sources: [], shas: [], labels: new Set() };
         sections.set(name, [...(sections.get(name) ?? []), current]);
       }
       continue;
@@ -88,6 +105,10 @@ function reviewSections(reviewText: string): Map<string, Review[]> {
       }
       const sha = listedSha(line);
       const source = listedSource(line);
+      const label = filledLabel(line);
+      if (label !== undefined) {
+        current.labels.add(label);
+      }
       if (sha !== undefined) {
         current.shas.push(sha);
       }
@@ -128,12 +149,15 @@ export function checkSkillsReview(lockText: string, reviewText: string): string[
       ];
     }
     const expected = [source, skillPath].join('\n');
-    if (review.sources.includes(expected)) {
-      return [];
+    if (!review.sources.includes(expected)) {
+      return [
+        `${name}: the review at ${ref} must carry '- Source: \`${source}\`, path \`${skillPath}\`' to match the pin.`,
+      ];
     }
-    return [
-      `${name}: the review at ${ref} must carry '- Source: \`${source}\`, path \`${skillPath}\`' to match the pin.`,
-    ];
+    return REQUIRED_LABELS.filter((label) => !review.labels.has(label)).map(
+      (label) =>
+        `${name}: the review at ${ref} has no '- ${label}:' line with text. State what the skill runs and the verdict, not only the source and SHA.`,
+    );
   });
 }
 
