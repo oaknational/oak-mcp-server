@@ -86,7 +86,7 @@
     "fflate": "0.8.3",
     "openapi-fetch": "0.17.0",
     "openapi-typescript": "7.13.0",
-    "openapi3-ts": "4.6.1",
+    "openapi3-ts": "4.6.2",
     "zod": "4.6.7"
   },
   "devDependencies": {
