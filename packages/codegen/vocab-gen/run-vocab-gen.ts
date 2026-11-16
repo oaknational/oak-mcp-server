@@ -47,11 +47,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /**
  * Default bulk download data path relative to repo root.
  *
- * Points to the CLI's bulk downloads directory, which is the canonical
- * location for Oak bulk download data in this repository. The vocab-gen
- * pipeline must process ALL sequence files present in this directory.
+ * The vocab-gen pipeline must process ALL sequence files present in this
+ * directory.
  */
-const DEFAULT_BULK_DATA_PATH = 'apps/oak-search-cli/bulk-downloads';
+const DEFAULT_BULK_DATA_PATH = '.cache/bulk-downloads';
 
 /**
  * Default output path relative to SDK root.
@@ -60,15 +59,13 @@ const DEFAULT_OUTPUT_PATH = 'src/generated/vocab';
 
 /**
  * Resolves path relative to repo root.
- * vocab-gen is at packages/sdks/oak-sdk-codegen/vocab-gen/
  */
 function fromRepoRoot(relativePath: string): string {
-  return join(__dirname, '..', '..', '..', '..', relativePath);
+  return join(__dirname, '..', '..', '..', relativePath);
 }
 
 /**
- * Resolves path relative to SDK root.
- * vocab-gen is at packages/sdks/oak-sdk-codegen/vocab-gen/
+ * Resolves path relative to the codegen package root.
  */
 function fromSdkRoot(relativePath: string): string {
   return join(__dirname, '..', relativePath);
