@@ -4,11 +4,7 @@ import type { Logger } from '@oaknational/logger';
 import { HEALTH_PATHS } from './health-paths.js';
 import type { GraphHealth } from './graph-health.js';
 
-const HEALTH_FIELDS = {
-  status: 'ok',
-  mode: 'streamable-http',
-  auth: 'required-for-post',
-} as const;
+type HealthAuthMode = 'required-for-post' | 'disabled';
 
 /**
  * A cached health response is the one failure mode that makes a liveness probe
@@ -49,6 +45,7 @@ export function addHealthEndpoints(
   app: Express,
   log: Logger,
   readGraphHealth: () => Promise<GraphHealth>,
+  auth: HealthAuthMode,
 ): void {
   app.head([...HEALTH_PATHS], (req, res) => {
     log.debug('healthz.head', { path: req.path, method: req.method });
@@ -64,6 +61,6 @@ export function addHealthEndpoints(
     res
       .type('application/json')
       .set('Cache-Control', HEALTH_CACHE_CONTROL)
-      .send(JSON.stringify({ ...HEALTH_FIELDS, graph }));
+      .send(JSON.stringify({ status: 'ok', mode: 'streamable-http', auth, graph }));
   });
 }
