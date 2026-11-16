@@ -1,16 +1,12 @@
 /**
  * Subpath barrel: `@oaknational/sdk-codegen/vocab-data`
  *
- * Runtime graph data produced by the vocab-gen pipeline. These are
- * large static structures (~688K lines total) excluded from the lint
- * TypeScript program to prevent ESLint OOM.
+ * Mined synonym data produced by the vocab-gen pipeline, excluded from
+ * the lint TypeScript program to prevent ESLint OOM on large generated
+ * structures.
  *
  * For types and the hand-authored concept graph, use
  * `@oaknational/sdk-codegen/vocab` instead.
  */
 
-export {
-  vocabularyGraph,
-  ncCoverageGraph,
-  minedDefinitionSynonyms,
-} from './generated/vocab/index.js';
+export { minedDefinitionSynonyms } from './generated/vocab/index.js';
