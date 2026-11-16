@@ -179,7 +179,7 @@ runtime ingredients with different entry commands:
 
 1. `pnpm dev` executes `tsx operations/development/http-dev.ts dev`
 2. `pnpm start` executes `bash scripts/start-server.sh`, which runs
-   `node --import @sentry/node/preload dist/index.js`
+   `node --import @sentry/node/import dist/index.js`
 3. the dev orchestrator first runs the workspace widget build command, then
    starts the matching widget watch command, then boots the source HTTP server
    via the workspace-local `tsx` binary

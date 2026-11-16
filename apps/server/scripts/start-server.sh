@@ -6,7 +6,7 @@
 #
 # WHY THIS SCRIPT EXISTS
 # ----------------------
-# The Sentry SDK requires the `--import @sentry/node/preload` Node.js CLI
+# The Sentry SDK requires the `--import @sentry/node/import` Node.js CLI
 # flag to enable auto-instrumentation of ESM modules. This flag registers
 # `import-in-the-middle` loader hooks BEFORE any application modules are
 # imported, which allows Sentry to transparently instrument:
@@ -42,4 +42,4 @@
 
 set -euo pipefail
 
-exec node --import @sentry/node/preload dist/index.js "$@"
+exec node --import @sentry/node/import dist/index.js "$@"
