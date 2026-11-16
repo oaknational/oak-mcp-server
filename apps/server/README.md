@@ -80,7 +80,7 @@ always allowed. Set it only to name an _extra_ host.
 2. Run dev server:
 
 ```bash
-pnpm -C apps/oak-curriculum-mcp-streamable-http dev
+pnpm --filter @oaknational/mcp-server dev
 ```
 
 `pnpm dev`, `pnpm dev:observe`, and `pnpm dev:observe:noauth` now perform the
@@ -118,7 +118,7 @@ imports).
 ### Widget-only iteration (one terminal)
 
 For layout, styling, and token work that does not need MCP host context
-(run from this workspace, or use `pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http dev:widget` from repo root):
+(run from this workspace, or use `pnpm --filter @oaknational/mcp-server dev:widget` from repo root):
 
 ```bash
 pnpm dev:widget
@@ -367,9 +367,8 @@ this workspace.
 
 The server uses **Clerk OAuth** for production authentication. All requests to `/mcp` must include a valid Bearer token in the `Authorization` header.
 
-> **Current status**: Authentication is provided by a Clerk test
-> instance. Only internal Oak team members are supported as users
-> at this time. External access is not available.
+> **Current status**: Anyone can sign in. When a client prompts you, it opens
+> Oak's sign-in page in your browser, where you sign in or create an account.
 
 ### OAuth Flow
 
@@ -484,31 +483,31 @@ suite that ran on port 3333 covered the landing page and went with it on
 
 ```bash
 # Widget visual/structural tests (both themes)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:ui
 
 # Widget WCAG 2.2 AA accessibility tests (both themes, axe-core)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 ```
 
 ### Running All Tests
 
 ```bash
 # Unit and integration tests (Vitest)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test
+pnpm --filter @oaknational/mcp-server test
 
 # Widget unit tests (Vitest, React Testing Library)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget
+pnpm --filter @oaknational/mcp-server test:widget
 
 # E2E tests (Vitest, requires built artefacts)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:e2e
+pnpm --filter @oaknational/mcp-server test:e2e
 
 # Widget browser tests (Playwright)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 
 # Widget Playwright tests (separate from server tests)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 ```
 
 ## Detailed Documentation
