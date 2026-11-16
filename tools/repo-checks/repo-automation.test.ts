@@ -59,6 +59,7 @@ describe('CODEOWNERS and Dependabot', () => {
     expect(npm?.ignore?.map((i) => i['dependency-name']).sort()).toEqual([
       '@types/node',
       'markdownlint-cli2',
+      'posthog-node',
       'typescript',
     ]);
     expect(npm?.ignore?.find((i) => i['dependency-name'] === 'typescript')?.versions).toEqual([
@@ -238,6 +239,7 @@ describe('lockfile-rebuild', () => {
     expect(holds.map((h) => h.name).sort()).toEqual([
       '@types/node',
       'markdownlint-cli2',
+      'posthog-node',
       'typescript',
     ]);
   });

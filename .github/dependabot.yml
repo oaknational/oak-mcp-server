@@ -38,3 +38,7 @@ updates:
       # markdownlint-cli2 release depends on markdownlint 0.42.1 or later.
       - dependency-name: markdownlint-cli2
         versions: ['0.24.0']
+      # 5.63.2 needs @posthog/core exports (InconclusiveMatchError etc.) that
+      # pnpm-workspace.yaml's overrides pin out at 1.47.0. Lift together.
+      - dependency-name: posthog-node
+        versions: ['>=5.63.2']

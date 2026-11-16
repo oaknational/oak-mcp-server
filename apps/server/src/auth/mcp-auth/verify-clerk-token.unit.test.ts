@@ -181,7 +181,7 @@ describe('verifyClerkToken', () => {
       token: 'valid-oauth-token-xyz',
       scopes: ['mcp:invoke', 'mcp:read'],
       clientId: 'client-123',
-      extra: { userId: 'user-456' },
+      extra: { userId: 'user-456', verifiedBy: 'clerk' },
     });
   });
 
