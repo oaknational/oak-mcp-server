@@ -139,6 +139,9 @@ test.describe('docs shell accessibility', () => {
             if (pageDef.name === 'connect') {
               for (const name of CLIENT_TABS) {
                 await page.getByRole('tab', { name, exact: true }).click();
+                // Each panel has its own code blocks and commands, so reflow and axe both
+                // need to run again after the switch, not just for the default panel.
+                await expectNoHorizontalScroll(page);
                 await expectNoAxeFindings(page);
               }
             } else {
