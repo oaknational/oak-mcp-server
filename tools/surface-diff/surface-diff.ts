@@ -352,6 +352,10 @@ export function judgeDifferences(
   };
 }
 
+export function surfaceMatches(report: SurfaceReport): boolean {
+  return report.unexpected.length === 0 && report.expectedAbsent.length === 0;
+}
+
 const CONTEXT = 40;
 
 function showChange(before: Json | undefined, after: Json | undefined): readonly [string, string] {
@@ -403,7 +407,9 @@ export function formatReport(report: SurfaceReport): string {
     lines.push(`expected difference: ${describeLocation(entry.location)} (${entry.reason})`);
   }
   for (const entry of report.expectedAbsent) {
-    lines.push(`expected difference not present: ${describeLocation(entry.location)}`);
+    lines.push(
+      `expected difference no longer occurs: ${describeLocation(entry.location)}. Remove it from EXPECTED_DIFFERENCES.`,
+    );
   }
   return `${lines.join('\n')}\n`;
 }
@@ -496,7 +502,7 @@ async function main(argv: readonly string[]): Promise<number> {
   const baseline = parseBaseline(readFileSync(BASELINE_PATH, 'utf8'));
   const report = judgeDifferences(diffSurfaces(baseline, current), EXPECTED_DIFFERENCES);
   process.stdout.write(formatReport(report));
-  return report.unexpected.length === 0 ? 0 : 1;
+  return surfaceMatches(report) ? 0 : 1;
 }
 
 if (import.meta.main) {

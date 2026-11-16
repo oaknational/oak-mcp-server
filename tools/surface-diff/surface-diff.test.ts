@@ -11,6 +11,7 @@ import {
   judgeDifferences,
   normaliseSnapshot,
   parseBaseline,
+  surfaceMatches,
   type SurfaceSnapshot,
 } from './surface-diff.ts';
 
@@ -140,6 +141,22 @@ describe('surface diff', () => {
     expect(result.unexpected).toEqual([]);
     expect(formatReport(result)).toContain(
       'expected difference: removed tool "fixture-retired" (retired on purpose)',
+    );
+    expect(surfaceMatches(result)).toBe(true);
+  });
+
+  it('fails when an expected difference no longer occurs', async () => {
+    const surface = await surfaceOf(BASE_TOOLS);
+    const result = report(surface, surface, [
+      {
+        location: { kind: 'removed', collection: 'tools', id: 'fixture-retired' },
+        reason: 'retired on purpose',
+      },
+    ]);
+    expect(result.unexpected).toEqual([]);
+    expect(surfaceMatches(result)).toBe(false);
+    expect(formatReport(result)).toContain(
+      'expected difference no longer occurs: removed tool "fixture-retired". Remove it from EXPECTED_DIFFERENCES.',
     );
   });
 
