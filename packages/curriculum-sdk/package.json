@@ -88,7 +88,7 @@
     }
   },
   "scripts": {
-    "prepublishOnly": "cp ../../../LICENCE ./LICENCE",
+    "prepublishOnly": "cp ../../LICENCE ./LICENCE",
     "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
     "clean": "rm -rf dist .turbo",
     "type-check": "tsc -p tsconfig.lint.json --noEmit",
