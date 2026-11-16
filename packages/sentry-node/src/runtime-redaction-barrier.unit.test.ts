@@ -1,4 +1,5 @@
 import type { Breadcrumb, NodeOptions } from '@sentry/node';
+import { withStaticSpan } from '@sentry/node';
 import { REDACTED_VALUE } from '@oaknational/observability';
 import { describe, expect, it } from 'vitest';
 import { createSentryConfig } from './config.js';
@@ -8,6 +9,7 @@ import {
   redactSentryEvent,
   redactSentryLog,
   redactSentrySpan,
+  redactSentryStaticSpan,
   redactSentryTransaction,
 } from './runtime-redaction.js';
 import type {
@@ -19,6 +21,29 @@ import type {
   SentrySpanPayload,
   SentryTransactionEvent,
 } from './types.js';
+
+type SentryStaticSpanPayload = Parameters<typeof redactSentryStaticSpan>[0];
+
+/**
+ * `NodeOptions['beforeSendSpan']` is statically typed as a
+ * `StreamedSpanJSON`-in/-out callback (what `traceLifecycle: 'stream'`
+ * delivers) because that's the type `Sentry.withStaticSpan()` itself
+ * declares it returns, so it satisfies `NodeOptions` — even though at
+ * runtime, under `traceLifecycle: 'static'`, the SDK only ever calls it with
+ * the static `SpanJSON` shape (`data`/`description`). Calling it directly in
+ * these tests (bypassing the SDK's own dispatcher) needs this cast to test
+ * what it's actually invoked with; the `_static` marker test below is what
+ * proves that assumption holds.
+ */
+function callStaticBeforeSendSpan(
+  beforeSendSpan: NonNullable<NodeOptions['beforeSendSpan']>,
+  span: SentryStaticSpanPayload,
+): SentryStaticSpanPayload {
+  const asStatic = beforeSendSpan as unknown as (
+    input: SentryStaticSpanPayload,
+  ) => SentryStaticSpanPayload;
+  return asStatic(span);
+}
 
 /**
  * ADR-160 conformance test file.
@@ -311,18 +336,16 @@ function buildPiiLog(): SentryLogPayload {
   };
 }
 
-function buildPiiSpan(): SentrySpanPayload {
+function buildPiiSpan(): SentryStaticSpanPayload {
   return {
-    attributes: {
+    data: {
       'http.request.header.authorization': BEARER_TOKEN_VALUE,
       'oak.span.raw_header': OAK_SPAN_BEARER_TOKEN,
       'sentry.op': 'http.client',
     },
-    name: `POST ${OAUTH_CALLBACK_URL}`,
-    is_segment: false,
+    description: `POST ${OAUTH_CALLBACK_URL}`,
     span_id: '0123456789abcdef',
     start_timestamp: 0,
-    end_timestamp: 1,
     status: 'ok',
     trace_id: '0123456789abcdef0123456789abcdef',
   };
@@ -507,24 +530,67 @@ describe('ADR-160 Part 3: redacted-at-destination', () => {
     expect(kept.attributes).toEqual({ apiKey: REDACTED_VALUE });
   });
 
-  it('beforeSendSpan: PII in name and attributes emerges redacted and span is never dropped', () => {
+  it('beforeSendSpan: PII in description and data emerges redacted and span is never dropped', () => {
     const options = buildInitOptions();
     const beforeSendSpan = requireDefined(options.beforeSendSpan, 'Expected beforeSendSpan');
 
-    const result = beforeSendSpan(buildPiiSpan());
+    const result = callStaticBeforeSendSpan(beforeSendSpan, buildPiiSpan());
 
     // Contract: beforeSendSpan has no `| null` in its typed return.
     expect(result).not.toBeNull();
     expect(result).not.toBeUndefined();
-    expect(result.name).not.toContain('supersecret');
+    expect(result.description ?? '').not.toContain('supersecret');
     // Pattern-aware redaction: Bearer-prefixed string values have their token
     // replaced while the `Bearer` scheme is preserved as informational.
-    expect(result.attributes['http.request.header.authorization']).toBe(`Bearer ${REDACTED_VALUE}`);
-    expect(result.attributes['oak.span.raw_header']).toBe(`Bearer ${REDACTED_VALUE}`);
+    expect(result.data['http.request.header.authorization']).toBe(`Bearer ${REDACTED_VALUE}`);
+    expect(result.data['oak.span.raw_header']).toBe(`Bearer ${REDACTED_VALUE}`);
     // Closure proof: the raw token values do not appear anywhere in the span.
     const serialised = JSON.stringify(result);
     expect(serialised).not.toContain('super-secret-abc123');
     expect(serialised).not.toContain('oak-span-secret-zzz');
+  });
+
+  it('beforeSendSpan is wrapped with Sentry.withStaticSpan, so traceLifecycle: "static" actually dispatches it', () => {
+    // @sentry/core's processBeforeSend only applies `beforeSendSpan` to a
+    // transaction's root span and to every entry of `TransactionEvent.spans[]`
+    // when `isStaticBeforeSendSpanCallback(options.beforeSendSpan)` is true —
+    // i.e. only when produced by the publicly exported `Sentry.withStaticSpan()`.
+    // An unwrapped callback type-checks identically but is silently never
+    // invoked in static mode: the exact regression this test pins. There is
+    // no public API to ask "is this static-tagged", so this asserts the
+    // internal `_static` marker `withStaticSpan` documents itself as adding.
+    // If this ever breaks on a dependency bump, treat it as a signal to
+    // re-verify `withStaticSpan` wiring with the sentry-expert agent, not to
+    // delete it.
+    const options = buildInitOptions();
+    const beforeSendSpan = requireDefined(options.beforeSendSpan, 'Expected beforeSendSpan');
+
+    expect(Object.prototype.hasOwnProperty.call(beforeSendSpan, '_static')).toBe(true);
+    expect((beforeSendSpan as { _static?: boolean })._static).toBe(true);
+  });
+
+  it('redactSentrySpan (streamed shape, not currently wired) redacts attributes and name', () => {
+    // Not reachable through createSentryInitOptions today (see runtime-sdk.ts
+    // and runtime-redaction.ts) — this is the implementation to swap back in,
+    // unwrapped, when this adapter migrates to traceLifecycle: 'stream'.
+    // Exercised directly here so it stays covered until that migration lands.
+    const fixture: SentrySpanPayload = {
+      attributes: {
+        'http.request.header.authorization': BEARER_TOKEN_VALUE,
+        'oak.span.raw_header': OAK_SPAN_BEARER_TOKEN,
+      },
+      name: `POST ${OAUTH_CALLBACK_URL}`,
+      is_segment: false,
+      span_id: '0123456789abcdef',
+      start_timestamp: 0,
+      status: 'ok',
+      trace_id: '0123456789abcdef0123456789abcdef',
+    };
+    const result = redactSentrySpan(fixture);
+
+    expect(result.name).not.toContain('supersecret');
+    expect(result.attributes['http.request.header.authorization']).toBe(`Bearer ${REDACTED_VALUE}`);
+    expect(result.attributes['oak.span.raw_header']).toBe(`Bearer ${REDACTED_VALUE}`);
   });
 });
 
@@ -550,7 +616,9 @@ function createSentryHooksWithBypass(excluded: BarrierHookName): SentryRedaction
     beforeBreadcrumb: (breadcrumb) =>
       excluded === 'beforeBreadcrumb' ? breadcrumb : redactSentryBreadcrumb(breadcrumb),
     beforeSendLog: (log) => (excluded === 'beforeSendLog' ? log : redactSentryLog(log)),
-    beforeSendSpan: (span) => (excluded === 'beforeSendSpan' ? span : redactSentrySpan(span)),
+    beforeSendSpan: withStaticSpan((span) =>
+      excluded === 'beforeSendSpan' ? span : redactSentryStaticSpan(span),
+    ),
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
     beforeSendTransaction: (event) =>
       excluded === 'beforeSendTransaction' ? event : redactSentryTransaction(event),
@@ -609,10 +677,10 @@ describe('ADR-160 bypass validation: omitting a redactor leaves PII visible', ()
   it('beforeSendSpan bypass leaks span data secrets', () => {
     const hooks = createSentryHooksWithBypass('beforeSendSpan');
     const beforeSendSpan = requireDefined(hooks.beforeSendSpan, 'Expected bypass beforeSendSpan');
-    const result = beforeSendSpan(buildPiiSpan());
+    const result = callStaticBeforeSendSpan(beforeSendSpan, buildPiiSpan());
 
-    expect(result.attributes['http.request.header.authorization']).toBe(BEARER_TOKEN_VALUE);
-    expect(result.attributes['oak.span.raw_header']).toBe('Bearer oak-span-secret-zzz');
+    expect(result.data['http.request.header.authorization']).toBe(BEARER_TOKEN_VALUE);
+    expect(result.data['oak.span.raw_header']).toBe('Bearer oak-span-secret-zzz');
   });
 
   it('SentryRedactionHooks keys and BARRIER_HOOKS are set-equal (structural closure gate)', () => {

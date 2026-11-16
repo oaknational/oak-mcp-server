@@ -8,6 +8,7 @@ import {
   setContext as sentrySetContext,
   setTag as sentrySetTag,
   setUser as sentrySetUser,
+  withStaticSpan,
   type NodeOptions,
 } from '@sentry/node';
 import type {
@@ -21,7 +22,7 @@ import {
   redactSentryBreadcrumb,
   redactSentryEvent,
   redactSentryLog,
-  redactSentrySpan,
+  redactSentryStaticSpan,
   redactSentryTransaction,
 } from './runtime-redaction.js';
 import { applyFingerprint } from './runtime-fingerprint.js';
@@ -130,9 +131,17 @@ function createSentryHooks(postRedactionHooks?: SentryPostRedactionHooks): Sentr
     beforeSendLog(log) {
       return redactSentryLog(log);
     },
-    beforeSendSpan(span) {
-      return redactSentrySpan(span);
-    },
+    // `traceLifecycle: 'static'` (below) means @sentry/core only ever applies
+    // `beforeSendSpan` — to the transaction's root span AND to every entry of
+    // `TransactionEvent.spans[]` — when the callback is wrapped with
+    // `Sentry.withStaticSpan()`; an unwrapped callback is silently never
+    // invoked in static mode (confirmed against @sentry/core@11.11.0's
+    // client.js: the constructor logs a debug warning, and processBeforeSend
+    // skips span processing entirely). `redactSentryStaticSpan` operates on
+    // the static `SpanJSON` shape (`data`/`description`); see
+    // runtime-redaction.ts for why the unwrapped `redactSentrySpan`
+    // (`StreamedSpanJSON` shape) is kept alongside it.
+    beforeSendSpan: withStaticSpan((span) => redactSentryStaticSpan(span)),
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'` above; migrating to beforeSendSpan/is_segment is a follow-up, not this dependency bump
     beforeSendTransaction(event, hint) {
       const redactedEvent = redactSentryTransaction(event);

@@ -11,6 +11,16 @@ type SentryErrorEvent = Parameters<NonNullable<NodeOptions['beforeSend']>>[0];
 type SentryLogPayload = Parameters<NonNullable<NodeOptions['beforeSendLog']>>[0];
 type SentrySpanPayload = Parameters<NonNullable<NodeOptions['beforeSendSpan']>>[0];
 type SentryTransactionEvent = Parameters<NonNullable<NodeOptions['beforeSendTransaction']>>[0];
+/**
+ * The static `SpanJSON` shape (`data`/`description`) that `@sentry/core`'s
+ * `processBeforeSend` hands to a `beforeSendSpan` callback wrapped with
+ * `Sentry.withStaticSpan()`, for both a transaction's root span and every
+ * entry of `TransactionEvent.spans[]`. Derived structurally from
+ * `SentryTransactionEvent['spans']` rather than imported from `@sentry/core`
+ * directly, since `@sentry/node` doesn't re-export `SpanJSON` by name and
+ * this repo depends only on `@sentry/node`.
+ */
+type SentryStaticSpanPayload = NonNullable<SentryTransactionEvent['spans']>[number];
 
 function redactQueryString(
   queryString: RequestEventData['query_string'] | undefined,
@@ -196,6 +206,46 @@ function redactSpanData(
   return redacted;
 }
 
+function isStaticSpanAttributeStringArray(
+  value: SentryStaticSpanPayload['data'][string],
+): value is (string | null | undefined)[] {
+  return (
+    Array.isArray(value) &&
+    value.every((entry) => entry === null || entry === undefined || typeof entry === 'string')
+  );
+}
+
+function redactStaticSpanAttributeValue(
+  key: string,
+  value: SentryStaticSpanPayload['data'][string],
+): SentryStaticSpanPayload['data'][string] {
+  if (value === undefined || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    return redactText(value, key);
+  }
+
+  if (isStaticSpanAttributeStringArray(value)) {
+    return value.map((entry) => (typeof entry === 'string' ? redactText(entry, key) : entry));
+  }
+
+  return value;
+}
+
+function redactStaticSpanData(
+  data: SentryStaticSpanPayload['data'],
+): SentryStaticSpanPayload['data'] {
+  const redacted: SentryStaticSpanPayload['data'] = {};
+
+  for (const [key, value] of typeSafeEntries(data)) {
+    redacted[key] = redactStaticSpanAttributeValue(key, value);
+  }
+
+  return redacted;
+}
+
 export function redactSentryEvent(event: SentryErrorEvent): SentryErrorEvent {
   return {
     ...event,
@@ -214,11 +264,46 @@ export function redactSentryTransaction(event: SentryTransactionEvent): SentryTr
   };
 }
 
+/**
+ * Redacts a span in the STREAMED `StreamedSpanJSON` shape (`attributes`/`name`)
+ * — what `beforeSendSpan` receives by default under `traceLifecycle: 'stream'`.
+ *
+ * Not currently wired: this adapter stays on `traceLifecycle: 'static'` (see
+ * `runtime-sdk.ts`), under which `beforeSendSpan` only ever receives
+ * `StreamedSpanJSON` for a genuine standalone span (`isStandalone: true`) —
+ * something nothing in this codebase creates today. Kept, and exercised
+ * directly by `runtime-redaction-barrier.unit.test.ts`, as the
+ * implementation to swap back in — unwrapped, replacing
+ * `withStaticSpan(redactSentryStaticSpan)` — when the `traceLifecycle:
+ * 'stream'` migration flagged in `runtime-sdk.ts` lands. Delete
+ * `redactSentryStaticSpan` at that point.
+ */
 export function redactSentrySpan(span: SentrySpanPayload): SentrySpanPayload {
   return {
     ...span,
     attributes: redactSpanData(span.attributes),
     name: redactText(span.name),
+  };
+}
+
+/**
+ * Redacts a span in the STATIC `SpanJSON` shape (`data`/`description`) —
+ * what `@sentry/core` hands to a `beforeSendSpan` callback wrapped with
+ * `Sentry.withStaticSpan()` under `traceLifecycle: 'static'`.
+ *
+ * `processBeforeSend` (`@sentry/core`'s client) applies this callback to
+ * BOTH the transaction's own root span and to every entry of
+ * `TransactionEvent.spans[]` — this is what actually closes the redaction
+ * gap for embedded child spans. An *unwrapped* `beforeSendSpan` is silently
+ * never invoked in static mode for either path (confirmed against
+ * @sentry/core@11.11.0's client.js). See `runtime-sdk.ts` for the
+ * `withStaticSpan` wiring this function is used by.
+ */
+export function redactSentryStaticSpan(span: SentryStaticSpanPayload): SentryStaticSpanPayload {
+  return {
+    ...span,
+    data: redactStaticSpanData(span.data),
+    ...(span.description ? { description: redactText(span.description) } : {}),
   };
 }
 
