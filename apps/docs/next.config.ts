@@ -7,6 +7,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   images: { unoptimized: true },
   compiler: { styledComponents: true },
+  // Oak's components ship without stable styled-components ids. Transpiling them lets the compiler
+  // give each one a fixed id, so server and client classes cannot collide.
+  transpilePackages: ['@oaknational/oak-components'],
 };
 
 export default config;

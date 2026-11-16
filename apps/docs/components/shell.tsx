@@ -9,6 +9,7 @@ import {
   OakSmallSecondaryToggleButton,
   parseColor,
 } from '@oaknational/oak-components';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 
@@ -86,11 +87,24 @@ const NavLink = styled.a`
 
 const NAV_ITEMS = [
   { href: '/', label: 'Home' },
-  { href: '/#quick-start', label: 'Quick start' },
+  { href: '/connect/', label: 'Connect' },
+  { href: '/authentication/', label: 'Authentication' },
+  { href: '/examples/', label: 'Examples' },
   { href: '/tools/', label: 'Tools' },
   { href: '/resources/', label: 'Resources' },
   { href: '/prompts/', label: 'Prompts' },
 ] as const;
+
+const GUIDE_LINKS = [
+  { href: '/data-and-licensing/', label: 'Data and licensing' },
+  { href: '/responsible-use/', label: 'Responsible use' },
+  { href: '/status-and-limits/', label: 'Status and limits' },
+  { href: '/self-hosting/', label: 'Self-hosting' },
+  { href: '/accessibility/', label: 'Accessibility statement' },
+  { href: '/support/', label: 'Support' },
+] as const;
+
+const withSlash = (path: string): string => (path.endsWith('/') ? path : `${path}/`);
 
 const FOOTER_LINKS = [
   { href: 'https://github.com/oaknational/oak-mcp-server', label: 'Source on GitHub' },
@@ -99,6 +113,7 @@ const FOOTER_LINKS = [
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
+  const current = withSlash(usePathname());
   return (
     <ThemeController>
       <GlobalStyle />
@@ -130,7 +145,12 @@ export function Shell({ children }: { children: ReactNode }) {
               <NavList>
                 {NAV_ITEMS.map((item) => (
                   <li key={item.href}>
-                    <NavLink href={item.href}>{item.label}</NavLink>
+                    <NavLink
+                      href={item.href}
+                      aria-current={item.href === current ? 'page' : undefined}
+                    >
+                      {item.label}
+                    </NavLink>
                   </li>
                 ))}
               </NavList>
@@ -151,6 +171,20 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <OakMaxWidth $maxWidth="spacing-960">
           <OakFlex $flexDirection="column" $gap="spacing-16">
+            <OakFlex as="nav" aria-label="Guides">
+              <NavList>
+                {GUIDE_LINKS.map((item) => (
+                  <li key={item.href}>
+                    <OakLink
+                      href={item.href}
+                      aria-current={item.href === current ? 'page' : undefined}
+                    >
+                      {item.label}
+                    </OakLink>
+                  </li>
+                ))}
+              </NavList>
+            </OakFlex>
             <NavList>
               {FOOTER_LINKS.map((item) => (
                 <li key={item.href}>
