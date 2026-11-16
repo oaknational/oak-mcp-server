@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "express",
-  "ignoreCommand": "node runtime-only-scripts/vercel-ignore-production-non-release-build.mjs"
+  "ignoreCommand": "node runtime-only-scripts/vercel-ignore-production-non-release-build.mjs",
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  }
 }
