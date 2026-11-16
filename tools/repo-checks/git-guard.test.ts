@@ -680,3 +680,97 @@ describe('git-guard tripwire forms agents emit', () => {
     expect(bash(dirty, 'git commit -m "-am fix" file.txt').status).toBe(0);
   });
 });
+
+describe('git-guard heredoc bodies', () => {
+  it.each([
+    "cat <<'EOF'\nnever read .env\nEOF",
+    'cat <<EOF\nnever read .env\nEOF',
+    "cat <<EOF\nit's in .env.example\nEOF",
+    'gh pr comment 1 --body "... doesn\'t read .env."',
+  ])('allows %s, which only mentions .env in prose', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it.each([
+    'cat .env',
+    'cat < .env',
+    'cat .env <<EOF\nbody\nEOF',
+    'cat <<EOF\n.env\nEOF\ncat .env',
+  ])('refuses %s, which actually reads the env file', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it('allows an unquoted heredoc whose body would substitute if read as a command', () => {
+    expect(bash(clean, 'cat <<EOF\nnever read .envrc either\nEOF').status).toBe(0);
+  });
+
+  it.each(['cat <<EOF\n$(cat .env)\nEOF', 'cat <<EOF\ntext $(cat .env) more\nEOF'])(
+    'refuses %s, whose unquoted body still substitutes a command',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it("allows a quoted heredoc's body even when it looks like a substitution", () => {
+    expect(bash(clean, "cat <<'EOF'\n$(cat .env)\nEOF").status).toBe(0);
+  });
+
+  it('refuses a command hidden after a comment that only looks like a heredoc opener', () => {
+    expect(bash(clean, ': # <<EOF\ncat .env').status).toBe(2);
+  });
+
+  it('matches a heredoc delimiter built from mixed quoting', () => {
+    expect(bash(clean, 'cat <<E"OF"\nnever read .env\nEOF\ncat .env').status).toBe(2);
+  });
+
+  it('does not read an arithmetic bitwise shift as a heredoc opener', () => {
+    expect(bash(clean, '((n = 1 << 2))\ncat .env').status).toBe(2);
+  });
+
+  it('allows an arithmetic shift on its own', () => {
+    expect(bash(clean, '((n = 1 << 2))').status).toBe(0);
+  });
+
+  it('refuses a backtick substitution inside an unquoted heredoc body', () => {
+    expect(bash(clean, 'cat <<EOF\n`cat .env`\nEOF').status).toBe(2);
+  });
+
+  it('follows a backslash-continued heredoc delimiter onto the next line', () => {
+    expect(bash(clean, 'cat <<\\\nEOF\nnever read .env\nEOF').status).toBe(0);
+  });
+
+  it('still refuses a command after a properly closed, backslash-continued heredoc', () => {
+    expect(bash(clean, 'cat <<\\\nEOF\nbody\nEOF\ncat .env').status).toBe(2);
+  });
+
+  it('refuses a heredoc that never reaches its closing line', () => {
+    expect(bash(clean, 'cat <<EOF\nnever read .env').status).toBe(2);
+  });
+
+  it('refuses a heredoc whose delimiter it cannot parse (ANSI-C quoting), rather than guessing', () => {
+    expect(bash(clean, "cat <<$'EOF'\nbody\nEOF\ncat .env").status).toBe(2);
+  });
+
+  it('still recognizes a heredoc after a word containing an unrelated #', () => {
+    expect(bash(clean, 'md5sum file#1 <<EOF\nnever read .env\nEOF').status).toBe(0);
+  });
+
+  it('allows a closed heredoc wrapped in a command substitution', () => {
+    expect(bash(clean, "BODY=$(cat <<'EOF'\nrelease notes\nEOF\n)").status).toBe(0);
+  });
+
+  it('still refuses a command substitution inside a heredoc wrapped in $(...)', () => {
+    expect(bash(clean, 'BODY=$(cat <<EOF\n$(cat .env)\nEOF\n)').status).toBe(2);
+  });
+
+  it('still refuses an env-file read that follows a heredoc inside $(...)', () => {
+    expect(bash(clean, "BODY=$(cat <<'EOF'\nnotes\nEOF\ncat .env\n)").status).toBe(2);
+  });
+
+  it('does not read an escaped << as a heredoc opener, so a real command after it still refuses', () => {
+    // The first < is backslash-escaped (literal), so bash never opens a
+    // heredoc here at all — `cat .env` on the next line is a real command,
+    // not heredoc body, and must still be refused.
+    expect(bash(clean, 'printf x \\<<EOF\ncat .env\nEOF').status).toBe(2);
+  });
+});

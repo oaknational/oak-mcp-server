@@ -160,6 +160,183 @@ function tokenize(text) {
   return segments;
 }
 
+// A heredoc delimiter word follows ordinary shell quoting: single- and double-quoted
+// pieces may sit next to bare characters and concatenate, e.g. E"OF" names EOF. Quoting
+// (or backslash-escaping) any part of the word also disables expansion in the body.
+function readHeredocDelimiter(text, at) {
+  let index = at;
+  let word = '';
+  let quoted = false;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === "'" || char === '"') {
+      const end = text.indexOf(char, index + 1);
+      if (end === -1) {
+        return null;
+      }
+      word += text.slice(index + 1, end);
+      index = end + 1;
+      quoted = true;
+      continue;
+    }
+    if (char === '\\' && text[index + 1] === '\n') {
+      // A backslash-newline is a line continuation the shell removes, not a quoted
+      // character: the delimiter carries on with the next physical line.
+      index += 2;
+      continue;
+    }
+    if (char === '\\' && index + 1 < text.length) {
+      word += text[index + 1];
+      index += 2;
+      quoted = true;
+      continue;
+    }
+    if (/[\s<>|&;()\n]/.test(char)) {
+      break;
+    }
+    word += char;
+    index += 1;
+  }
+  return word === '' ? null : { word, next: index, quoted };
+}
+
+// Heredoc bodies are prose or data, not command text: drop them before scanning for
+// operands so a line inside one that merely mentions .env is never read as a file read.
+// An unquoted delimiter still lets the shell expand $(...) in the body, so that content
+// is collected separately and checked like any other command substitution.
+function stripHeredocs(text) {
+  let result = '';
+  let quote = '';
+  let inComment = false;
+  let arith = 0;
+  let at = 0;
+  const pending = [];
+  const substitutions = [];
+  while (at < text.length) {
+    const char = text[at];
+    if (char === '\n') {
+      inComment = false;
+      result += char;
+      at += 1;
+      while (pending.length > 0) {
+        const { word, stripTabs, quoted } = pending.shift();
+        let body = '';
+        let terminated = false;
+        for (;;) {
+          const newline = text.indexOf('\n', at);
+          const line = newline === -1 ? text.slice(at) : text.slice(at, newline);
+          const bare = stripTabs ? line.replace(/^\t+/, '') : line;
+          const done = bare === word;
+          at = newline === -1 ? text.length : newline + 1;
+          if (done) {
+            terminated = true;
+          } else {
+            body += `${line}\n`;
+          }
+          if (done || newline === -1) {
+            break;
+          }
+        }
+        if (!terminated) {
+          refuse(
+            `a heredoc opened with <<${stripTabs ? '-' : ''}${word} never reaches a closing ${word} line, so the guard cannot tell what the rest of the command does. Close every heredoc you open.`,
+          );
+        }
+        if (!quoted) {
+          for (const [, inner] of body.matchAll(/\$\(([^()]*)\)/g)) {
+            substitutions.push(inner ?? '');
+          }
+          for (const [, inner] of body.matchAll(/`([^`]*)`/g)) {
+            substitutions.push(inner ?? '');
+          }
+        }
+      }
+      continue;
+    }
+    if (inComment) {
+      result += char;
+      at += 1;
+      continue;
+    }
+    if (quote) {
+      // Inside double quotes, a backslash escapes the very next character (at
+      // minimum " \ $ ` and newline), so `\"` never closes the string early.
+      // Single quotes take no escaping at all, so this only applies to `"`.
+      if (quote === '"' && char === '\\' && at + 1 < text.length) {
+        result += char + text[at + 1];
+        at += 2;
+        continue;
+      }
+      result += char;
+      if (char === quote) {
+        quote = '';
+      }
+      at += 1;
+      continue;
+    }
+    // Outside quotes, a backslash escapes the very next character, so it can
+    // never be misread as a heredoc opener, a quote boundary, or a comment
+    // start — e.g. `\<<EOF` is a literal `<` followed by a lone `<`, not a
+    // heredoc, because the escaped first `<` is never a `<<` operator start.
+    if (char === '\\' && at + 1 < text.length) {
+      result += char + text[at + 1];
+      at += 2;
+      continue;
+    }
+    // A # only opens a comment at the start of a word, not inside one like file#1.
+    if (char === '#' && (at === 0 || /[\s;&|()`<>]/.test(text[at - 1]))) {
+      inComment = true;
+      result += char;
+      at += 1;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      result += char;
+      at += 1;
+      continue;
+    }
+    // ((...)) arithmetic evaluation, including $((...)) arithmetic expansion, also
+    // spells << as a bitwise shift. Track it so that form is never read as a heredoc.
+    if (char === '(' && text[at + 1] === '(') {
+      arith += 1;
+      result += text.slice(at, at + 2);
+      at += 2;
+      continue;
+    }
+    if (char === ')' && text[at + 1] === ')' && arith > 0) {
+      arith -= 1;
+      result += text.slice(at, at + 2);
+      at += 2;
+      continue;
+    }
+    if (arith === 0 && char === '<' && text[at + 1] === '<' && text[at + 2] !== '<') {
+      let scan = at + 2;
+      let stripTabs = false;
+      if (text[scan] === '-') {
+        stripTabs = true;
+        scan += 1;
+      }
+      while (text[scan] === ' ' || text[scan] === '\t') {
+        scan += 1;
+      }
+      const delimiter = readHeredocDelimiter(text, scan);
+      if (delimiter !== null) {
+        // Drop the opener itself rather than keeping it in the output: a command
+        // substitution wrapped around this heredoc is rescanned once stripping is
+        // done, and a leftover "<<DELIM" with its body already gone would misread
+        // as a second, unterminated heredoc there.
+        pending.push({ word: delimiter.word, stripTabs, quoted: delimiter.quoted });
+        at = delimiter.next;
+        continue;
+      }
+    }
+    result += char;
+    at += 1;
+  }
+  return { text: result, substitutions };
+}
+
 const ENV_TEMPLATE = /^\.env\.(?:example|sample|template)$/;
 const isEnvPath = (path) => {
   const name = path.split('/').pop() ?? '';
@@ -654,11 +831,15 @@ function checkCommand(text, callDir, depth = 0) {
   if (depth > 4) {
     return;
   }
+  const { text: cleaned, substitutions } = stripHeredocs(text);
   const dirs = [callDir];
-  for (const [, inner] of text.matchAll(/\$\(([^()]*)\)/g)) {
+  for (const inner of substitutions) {
+    checkCommand(inner, callDir, depth + 1);
+  }
+  for (const [, inner] of cleaned.matchAll(/\$\(([^()]*)\)/g)) {
     checkCommand(inner ?? '', callDir, depth + 1);
   }
-  for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
+  for (const segment of tokenize(cleaned.replace(/\\\r?\n/g, ''))) {
     const words = segment.filter((word, at) => at > 0 || !['builtin', 'command'].includes(word));
     if (words[0] === 'cd' || words[0] === 'pushd') {
       const target = words.slice(1).find((word) => !CD_FLAGS.has(word));
