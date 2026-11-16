@@ -60,7 +60,7 @@ describe('health endpoint inside the routed surface (MCP-580)', () => {
   const HEALTH_BODY = {
     status: 'ok',
     mode: 'streamable-http',
-    auth: 'required-for-post',
+    auth: 'disabled',
     graph: { generatedAt: GRAPH_GENERATED_AT, stale: false },
   };
 
@@ -169,6 +169,7 @@ describe('graph field on /healthz', () => {
         now: () => options.now,
         onBecameStale,
       }),
+      'required-for-post',
     );
     return { app, onBecameStale };
   }
@@ -253,11 +254,25 @@ describe('graph field on /healthz', () => {
           throw new Error('sentry unavailable');
         },
       }),
+      'required-for-post',
     );
 
     const res = await request(app).get('/healthz');
 
     expect(res.status).toBe(200);
     expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
+  });
+});
+
+describe('health endpoint auth field', () => {
+  const readGraphHealth = () => Promise.resolve({ generatedAt: null, stale: true });
+
+  it.each(['required-for-post', 'disabled'] as const)('reports %s as given', async (authMode) => {
+    const app = express();
+    addHealthEndpoints(app, createFakeLogger(), readGraphHealth, authMode);
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.body.auth).toBe(authMode);
   });
 });
