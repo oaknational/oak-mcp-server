@@ -135,13 +135,13 @@ describe('version-rules', () => {
       expect(surfaceVerdict('MCP-1: feat: add tool', after)).toBe('');
     });
 
-    it('skips the surface rules when the base has no baseline', () => {
+    it('passes a baseline-only re-snapshot under chore when the served surface is unchanged', () => {
       expect(
         checkVersion({
-          title: 'MCP-1: chore: x',
+          title: 'MCP-1: chore(surface-diff): re-snapshot the OOCE baseline',
           body: '',
-          changed: docsOnly,
-          surface: { before: undefined, after: base },
+          changed: ['tools/surface-diff/baseline.json'],
+          surface: { before: base, after: base },
         }),
       ).toEqual([]);
     });
