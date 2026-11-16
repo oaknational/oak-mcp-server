@@ -107,6 +107,7 @@ only required when widget sources change outside the dev watcher.
 ```bash
 curl -sS \
   -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
   -X POST http://localhost:3333/mcp \
   -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'
 ```
@@ -114,7 +115,7 @@ curl -sS \
 If you enable auth locally, repeat the same request with a valid Clerk-issued
 Bearer token instead of relying on the disabled-auth path above.
 
-Note: The server automatically adds the required `Accept: application/json, text/event-stream` header if missing, improving UX for simple curl commands and UI integrations.
+The `Accept` header is required. `/mcp` answers 406 unless it lists `text/event-stream`, and a POST must list `application/json` as well.
 
 ## Widget development
 
@@ -395,7 +396,7 @@ The server uses **Clerk OAuth** for production authentication. All requests to `
 
 A local-development valve only:
 
-- Set `DANGEROUSLY_DISABLE_AUTH=true` to bypass authentication on a local run
+- `pnpm --filter @oaknational/mcp-server dev:observe:noauth` bypasses authentication on a local run. It sets `DANGEROUSLY_DISABLE_AUTH=true` itself. The other dev scripts force it to `false`.
 - **Every deployed environment rejects it.** This is enforced, not advised: when
   `VERCEL_ENV` names any deployed environment (including one that does not exist
   yet), `DANGEROUSLY_DISABLE_AUTH=true` fails startup rather than serving
@@ -421,7 +422,7 @@ See `docs/dev-server-management.md` for local development and OAuth server setup
     `dist/index.js`, but that is not the deployed artefact.
   - Verify the host is either Vercel-derived (`VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL` — all allowed automatically) or named in `ALLOWED_HOSTS`.
   - If auth is enabled, verify `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are set and that Clerk metadata discovery succeeds at startup.
-- 401 without `Authorization`: the client must either follow the OAuth discovery flow or send a valid Clerk-issued Bearer token. For local smoke tests, either use a real Clerk token or set `DANGEROUSLY_DISABLE_AUTH=true` and retry without the `Authorization` header.
+- 401 without `Authorization`: the client must either follow the OAuth discovery flow or send a valid Clerk-issued Bearer token. For local smoke tests, either use a real Clerk token or restart with `pnpm --filter @oaknational/mcp-server dev:observe:noauth` and retry without the `Authorization` header.
 - Host blocked: add host to `ALLOWED_HOSTS`
 
 ## Search tools
