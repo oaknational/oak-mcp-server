@@ -11,6 +11,11 @@ minimumReleaseAge: 10080
 # GHSA-mrhx-c7xc-m3w5. Lift it to the patched zod the workspace already uses.
 overrides:
   '@posthog/core': 1.47.0
+  # @posthog/mcp depends on posthog-node itself via a floating `^5.48.1` range,
+  # so pinning only packages/posthog-node/package.json's own edge still lets a
+  # lockfile rebuild resolve @posthog/mcp's edge to the newest 5.x. Force both
+  # edges to the held version (see docs/dependency-holds.md).
+  'posthog-node': 5.48.1
   # openapi-zod-client 1.18.3 pins zod ^3, and every zod 3 release is open to
   # GHSA-mrhx-c7xc-m3w5 (fixed in 4.6.6). Codegen output is unchanged under zod 4.
   'openapi-zod-client>zod': 4.6.7
