@@ -67,6 +67,11 @@ export default function SelfHostingPage() {
           optional ones, such as <Code>LOG_LEVEL</Code> and <Code>SENTRY_MODE</Code>.
         </P>
         <P>
+          Outside Vercel, also set <Code>CANONICAL_HOST</Code> to the hostname your clients use,
+          such as <Code>mcp.example.org</Code>. Without it, the server refuses to describe itself at
+          an unknown host, and clients fail to sign in.
+        </P>
+        <P>
           The README also describes <Code>DANGEROUSLY_DISABLE_AUTH</Code>. It&apos;s a flag for
           local development only. Never set it in a deployment. On a Vercel deployment, the server
           refuses to start with it.

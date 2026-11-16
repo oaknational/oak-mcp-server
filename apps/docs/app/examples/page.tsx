@@ -72,7 +72,7 @@ export default function ExamplesPage() {
         each example are the tools it&apos;s likely to use, so you can see what each one returns.
       </P>
       <P>
-        Start a session by asking your assistant to read the{' '}
+        Start a session by asking your assistant to use the{' '}
         <Link href="/tools/#tool-get-curriculum-model">
           {titleOf(titles, 'get-curriculum-model')}
         </Link>
