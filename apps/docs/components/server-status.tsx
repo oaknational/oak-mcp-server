@@ -10,6 +10,10 @@ type Status = 'checking' | 'up' | 'unknown';
 
 const ROUTED_HEALTH_PATH = '/mcp/healthz';
 
+/** Re-checks while the page stays open, so a later outage replaces the dot and
+ * message rather than leaving a mount-time success displayed as current. */
+const HEALTH_CHECK_INTERVAL_MS = 30_000;
+
 const Dot = styled.span<{ $status: Status }>`
   flex: none;
   width: 16px;
@@ -41,11 +45,16 @@ export function ServerStatus() {
 
   useEffect(() => {
     let live = true;
-    void checkHealth().then((result) => {
-      if (live) setStatus(result);
-    });
+    const runCheck = (): void => {
+      void checkHealth().then((result) => {
+        if (live) setStatus(result);
+      });
+    };
+    runCheck();
+    const intervalId = setInterval(runCheck, HEALTH_CHECK_INTERVAL_MS);
     return () => {
       live = false;
+      clearInterval(intervalId);
     };
   }, []);
 

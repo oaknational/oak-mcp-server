@@ -42,12 +42,15 @@ export default function AuthenticationPage() {
         <Bullets>
           <li>
             Every MCP request, a <Code>POST</Code> to <Code>/mcp</Code>, needs a token. The one
-            exception is <Code>resources/read</Code> for the server&apos;s public documentation and
-            guidance resources, which works without one.
+            exception is <Code>resources/read</Code> for the server&apos;s public documentation,
+            guidance and widget resources, which works without one.
           </li>
           <li>
-            A <Code>GET</Code> to <Code>/mcp</Code> needs no token. The server doesn&apos;t offer a
-            standalone event stream, so it answers <Code>405</Code>.
+            Every request to <Code>/mcp</Code> needs an <Code>Accept</Code> header that includes{' '}
+            <Code>text/event-stream</Code>. Without it, including on a plain browser visit or a
+            default <Code>curl</Code> request, the server answers <Code>406</Code> before checking
+            anything else. A <Code>GET</Code> with that header set needs no token, but the server
+            doesn&apos;t offer a standalone event stream, so it answers <Code>405</Code> instead.
           </li>
           <li>
             The health check at <Code>/mcp/healthz</Code> and the OAuth metadata under{' '}
