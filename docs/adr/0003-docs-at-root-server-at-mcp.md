@@ -1,6 +1,6 @@
 # 0003. Serve docs at the root and the server at /mcp
 
-- **Status:** Accepted (2026-11-09). Replaces the 2026-08-20 ruling that made `mcp.thenational.academy` serve only the MCP server.
+- **Status:** Accepted (2026-11-09). Replaces the 2026-08-20 ruling that made `mcp.thenational.academy` serve only the MCP server. Its path list is completed by [0004](0004-complete-the-list-of-server-owned-paths.md).
 - **Date:** 2026-11-09
 
 ## Context
@@ -19,6 +19,8 @@ Static documentation owns `/` on `mcp.thenational.academy`. The server owns thes
 - `/.well-known/oauth-protected-resource/mcp`
 - `/.well-known/oauth-authorization-server`
 - `/healthz`
+
+This list was incomplete; see [0004](0004-complete-the-list-of-server-owned-paths.md) for the full set.
 
 The server process still renders no HTML. The documentation is built as static files and served by the host's routing, never by the server.
 

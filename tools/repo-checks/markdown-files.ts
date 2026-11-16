@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 import GithubSlugger from 'github-slugger';
@@ -50,19 +50,36 @@ function linkTargets(text: string): string[] {
   return targets;
 }
 
+/** Decodes a link's path component, tolerating one that was never encoded. */
+function decodePathTarget(rawPath: string): string {
+  try {
+    return decodeURIComponent(rawPath);
+  } catch {
+    return rawPath;
+  }
+}
+
 export function brokenLinks(file: string): string[] {
   const broken: string[] = [];
   for (const target of linkTargets(readFileSync(file, 'utf8'))) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
-    const [path = '', fragment] = target.split('#');
+    const [rawPath = '', fragment] = target.split('#');
+    const path = decodePathTarget(rawPath);
     const resolved = path === '' ? file : resolve(dirname(file), path);
-    let destination: string;
+    let stat: ReturnType<typeof statSync>;
     try {
-      destination = readFileSync(resolved, 'utf8');
+      stat = statSync(resolved);
     } catch {
       broken.push(`${relative(root, file)} -> ${target}`);
       continue;
     }
+    // A directory has no markdown content to read a heading from, so a
+    // fragment on a directory link can never resolve.
+    if (stat.isDirectory()) {
+      if (fragment) broken.push(`${relative(root, file)} -> ${target}`);
+      continue;
+    }
+    const destination = readFileSync(resolved, 'utf8');
     if (fragment && resolved.endsWith('.md') && !headingSlugs(destination).has(fragment)) {
       broken.push(`${relative(root, file)} -> ${target}`);
     }
