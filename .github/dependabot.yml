@@ -38,3 +38,12 @@ updates:
       # markdownlint-cli2 release depends on markdownlint 0.42.1 or later.
       - dependency-name: markdownlint-cli2
         versions: ['0.24.0']
+      # 6.1.0 newly pulls in re2js 2.8.6 (GHSA-gg6h-894w-4m9c, high severity). Lift
+      # when a @mcpjam/cli release no longer pulls in a vulnerable re2js.
+      - dependency-name: '@mcpjam/cli'
+        versions: ['>=6.1.0']
+      # 2.0.0+ targets the split v2 SDK (@modelcontextprotocol/core/client/server),
+      # dropping @modelcontextprotocol/sdk as a peer entirely. Lift once the v1->v2
+      # migration (MCP-886) lands.
+      - dependency-name: '@modelcontextprotocol/ext-apps'
+        versions: ['>=2.0.0']
