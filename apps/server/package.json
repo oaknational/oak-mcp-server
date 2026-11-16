@@ -51,7 +51,7 @@
     "@oaknational/sdk-codegen": "workspace:*",
     "@oaknational/sentry-node": "workspace:*",
     "@opentelemetry/api": "1.9.1",
-    "@sentry/node": "10.70.0",
+    "@sentry/node": "11.11.0",
     "@vercel/functions": "3.9.1",
     "cors": "2.8.6",
     "express": "5.2.1",
