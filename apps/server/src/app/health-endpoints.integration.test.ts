@@ -7,6 +7,7 @@ import { getScratchStaticRoot } from '../test-helpers/static-root-fixture.js';
 import { createFakeHttpObservability } from '../test-helpers/observability-fakes.js';
 import { createMockRuntimeConfig } from '../test-helpers/auth-error-test-helpers.js';
 import { createFakeLogger } from '../test-helpers/fakes.js';
+import { TEST_UPSTREAM_METADATA } from '../test-helpers/upstream-metadata-fixture.js';
 import { addHealthEndpoints } from './health-endpoints.js';
 import { GRAPH_STALE_AFTER_MS, createGraphHealthReader } from './graph-health.js';
 
@@ -261,6 +262,27 @@ describe('graph field on /healthz', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
+  });
+});
+
+describe('health endpoint auth field through the app wiring', () => {
+  it('reports required-for-post when the app runs with auth on', async () => {
+    const app = await createApp({
+      staticRoot: await getScratchStaticRoot(),
+      runtimeConfig: createMockRuntimeConfig({
+        dangerouslyDisableAuth: false,
+        env: { ALLOWED_HOSTS: 'localhost,127.0.0.1,::1' },
+      }),
+      observability: createFakeHttpObservability(),
+      getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
+      readGraphHealth: () => Promise.resolve({ generatedAt: GRAPH_GENERATED_AT, stale: false }),
+      upstreamMetadata: TEST_UPSTREAM_METADATA,
+    });
+
+    const res = await request(app).get('/mcp/healthz').set('Accept', '*/*');
+
+    expect(res.status).toBe(200);
+    expect(res.body.auth).toBe('required-for-post');
   });
 });
 
