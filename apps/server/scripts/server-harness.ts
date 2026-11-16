@@ -195,7 +195,10 @@ async function main() {
         transportObserver: analytics.transportObserver,
         productAnalyticsSink: analytics.sink,
         setupSentryErrorHandler:
-          runtimeConfig.env.SENTRY_MODE === 'off' ? undefined : setupExpressErrorHandler,
+          runtimeConfig.env.SENTRY_MODE === 'off'
+            ? undefined
+            : // eslint-disable-next-line @typescript-eslint/no-deprecated -- v11's expressIntegration() auto-captures now; replacing this is a follow-up that needs its own review of error-capture ordering, not this dependency bump
+              setupExpressErrorHandler,
       }),
     bootstrapApp,
     createServer: (app) => http.createServer(app),

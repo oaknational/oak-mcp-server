@@ -27,6 +27,28 @@ import {
 import { applyFingerprint } from './runtime-fingerprint.js';
 
 /**
+ * v11 replaces the boolean `sendDefaultPii` option with a `dataCollection`
+ * object whose unset fields default to collect-everything. This repo's
+ * `SentryLiveConfig.sendDefaultPii` is a `false` literal, enforced at parse
+ * time (`SENTRY_SEND_DEFAULT_PII=true` is a config error) — this constant
+ * reproduces that same deny-everything posture under the new shape rather
+ * than silently inheriting v11's permissive defaults.
+ */
+const DENY_ALL_DATA_COLLECTION: NonNullable<NodeOptions['dataCollection']> = {
+  userInfo: false,
+  cookies: false,
+  httpHeaders: false,
+  httpBodies: [],
+  urlQueryParams: false,
+  graphQL: { document: false, variables: false },
+  genAI: { inputs: false, outputs: false },
+  mcp: { inputs: false, outputs: false },
+  databaseQueryData: false,
+  queues: false,
+  stackFrameVariables: false,
+};
+
+/**
  * Default timeout used by {@link SentryNodeRuntime.flush} and
  * {@link SentryNodeRuntime.close} when the caller does not pass an
  * explicit `timeoutMs`.
@@ -111,6 +133,7 @@ function createSentryHooks(postRedactionHooks?: SentryPostRedactionHooks): Sentr
     beforeSendSpan(span) {
       return redactSentrySpan(span);
     },
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'` above; migrating to beforeSendSpan/is_segment is a follow-up, not this dependency bump
     beforeSendTransaction(event, hint) {
       const redactedEvent = redactSentryTransaction(event);
       return postRedactionHooks?.beforeSendTransaction
@@ -129,9 +152,15 @@ export function createSentryInitOptions(
     environment: config.environment,
     release: config.release,
     tracesSampleRate: config.tracesSampleRate,
-    enableLogs: config.enableLogs,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- the option OOCE ships; moving to dataCollection changes what Sentry records, so it is a follow-up
-    sendDefaultPii: config.sendDefaultPii,
+    // v11 defaults to `traceLifecycle: 'stream'`, under which `beforeSendTransaction`
+    // is never invoked — this would silently drop `redactSentryTransaction` and
+    // apps/server's MCP-route sanitisation (both wired through this hook). Stay on
+    // `'static'` to keep today's behaviour until a dedicated migration moves both
+    // onto `beforeSendSpan`/`is_segment` (follow-up, not this dependency bump).
+    traceLifecycle: 'static',
+    // v11 removed `sendDefaultPii` outright; `config.sendDefaultPii` (always
+    // `false`, enforced at parse time) is now expressed as `dataCollection`.
+    dataCollection: DENY_ALL_DATA_COLLECTION,
     debug: config.debug,
     tracePropagationTargets: [...DEFAULT_TRACE_PROPAGATION_TARGETS],
     // L-IMM Sub-item 2 — allow-list scaffold. Both fields are

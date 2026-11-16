@@ -139,7 +139,10 @@ async function loadConfiguredApp(): Promise<NodeRequestHandler> {
     productAnalyticsSink: analytics.sink,
     getWidgetHtml: () => WIDGET_HTML_CONTENT,
     setupSentryErrorHandler:
-      runtimeConfig.env.SENTRY_MODE === 'sentry' ? setupExpressErrorHandler : undefined,
+      runtimeConfig.env.SENTRY_MODE === 'sentry'
+        ? // eslint-disable-next-line @typescript-eslint/no-deprecated -- v11's expressIntegration() auto-captures now; replacing this is a follow-up that needs its own review of error-capture ordering, not this dependency bump
+          setupExpressErrorHandler
+        : undefined,
   });
 }
 

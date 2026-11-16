@@ -313,16 +313,17 @@ function buildPiiLog(): SentryLogPayload {
 
 function buildPiiSpan(): SentrySpanPayload {
   return {
-    data: {
+    attributes: {
       'http.request.header.authorization': BEARER_TOKEN_VALUE,
       'oak.span.raw_header': OAK_SPAN_BEARER_TOKEN,
+      'sentry.op': 'http.client',
     },
-    description: `POST ${OAUTH_CALLBACK_URL}`,
-    op: 'http.client',
-    origin: 'auto',
+    name: `POST ${OAUTH_CALLBACK_URL}`,
+    is_segment: false,
     span_id: '0123456789abcdef',
     start_timestamp: 0,
-    timestamp: 1,
+    end_timestamp: 1,
+    status: 'ok',
     trace_id: '0123456789abcdef0123456789abcdef',
   };
 }
@@ -379,6 +380,7 @@ describe('ADR-160 Part 2: ordering invariant — post-hooks receive post-redacti
     };
     const options = buildInitOptions(postRedactionHooks);
     const beforeSendTransaction = requireDefined(
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
       options.beforeSendTransaction,
       'Expected beforeSendTransaction',
     );
@@ -459,6 +461,7 @@ describe('ADR-160 Part 3: redacted-at-destination', () => {
   it('beforeSendTransaction: PII across headers, url, and transaction name emerges redacted', async () => {
     const options = buildInitOptions();
     const beforeSendTransaction = requireDefined(
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
       options.beforeSendTransaction,
       'Expected beforeSendTransaction',
     );
@@ -504,7 +507,7 @@ describe('ADR-160 Part 3: redacted-at-destination', () => {
     expect(kept.attributes).toEqual({ apiKey: REDACTED_VALUE });
   });
 
-  it('beforeSendSpan: PII in description and data emerges redacted and span is never dropped', () => {
+  it('beforeSendSpan: PII in name and attributes emerges redacted and span is never dropped', () => {
     const options = buildInitOptions();
     const beforeSendSpan = requireDefined(options.beforeSendSpan, 'Expected beforeSendSpan');
 
@@ -513,11 +516,11 @@ describe('ADR-160 Part 3: redacted-at-destination', () => {
     // Contract: beforeSendSpan has no `| null` in its typed return.
     expect(result).not.toBeNull();
     expect(result).not.toBeUndefined();
-    expect(result.description ?? '').not.toContain('supersecret');
+    expect(result.name).not.toContain('supersecret');
     // Pattern-aware redaction: Bearer-prefixed string values have their token
     // replaced while the `Bearer` scheme is preserved as informational.
-    expect(result.data['http.request.header.authorization']).toBe(`Bearer ${REDACTED_VALUE}`);
-    expect(result.data['oak.span.raw_header']).toBe(`Bearer ${REDACTED_VALUE}`);
+    expect(result.attributes['http.request.header.authorization']).toBe(`Bearer ${REDACTED_VALUE}`);
+    expect(result.attributes['oak.span.raw_header']).toBe(`Bearer ${REDACTED_VALUE}`);
     // Closure proof: the raw token values do not appear anywhere in the span.
     const serialised = JSON.stringify(result);
     expect(serialised).not.toContain('super-secret-abc123');
@@ -548,6 +551,7 @@ function createSentryHooksWithBypass(excluded: BarrierHookName): SentryRedaction
       excluded === 'beforeBreadcrumb' ? breadcrumb : redactSentryBreadcrumb(breadcrumb),
     beforeSendLog: (log) => (excluded === 'beforeSendLog' ? log : redactSentryLog(log)),
     beforeSendSpan: (span) => (excluded === 'beforeSendSpan' ? span : redactSentrySpan(span)),
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
     beforeSendTransaction: (event) =>
       excluded === 'beforeSendTransaction' ? event : redactSentryTransaction(event),
   };
@@ -565,6 +569,7 @@ describe('ADR-160 bypass validation: omitting a redactor leaves PII visible', ()
   it('beforeSendTransaction bypass leaks PII across headers, URL, and transaction name', async () => {
     const hooks = createSentryHooksWithBypass('beforeSendTransaction');
     const beforeSendTransaction = requireDefined(
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
       hooks.beforeSendTransaction,
       'Expected bypass beforeSendTransaction',
     );
@@ -606,8 +611,8 @@ describe('ADR-160 bypass validation: omitting a redactor leaves PII visible', ()
     const beforeSendSpan = requireDefined(hooks.beforeSendSpan, 'Expected bypass beforeSendSpan');
     const result = beforeSendSpan(buildPiiSpan());
 
-    expect(result.data['http.request.header.authorization']).toBe(BEARER_TOKEN_VALUE);
-    expect(result.data['oak.span.raw_header']).toBe('Bearer oak-span-secret-zzz');
+    expect(result.attributes['http.request.header.authorization']).toBe(BEARER_TOKEN_VALUE);
+    expect(result.attributes['oak.span.raw_header']).toBe('Bearer oak-span-secret-zzz');
   });
 
   it('SentryRedactionHooks keys and BARRIER_HOOKS are set-equal (structural closure gate)', () => {

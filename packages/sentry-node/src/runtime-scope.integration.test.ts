@@ -234,7 +234,6 @@ describe('createSentryInitOptions', () => {
         dsn: 'https://key@localhost/123',
         release: 'test-1.0.0',
         tracesSampleRate: 1.0,
-        enableLogs: true,
         debug: false,
         tracePropagationTargets: DEFAULT_TRACE_PROPAGATION_TARGETS,
       }),

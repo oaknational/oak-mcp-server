@@ -157,7 +157,7 @@ function redactContexts(
 }
 
 function isStringSpanArray(
-  value: SentrySpanPayload['data'][string],
+  value: SentrySpanPayload['attributes'][string],
 ): value is (string | null | undefined)[] {
   return (
     Array.isArray(value) &&
@@ -167,8 +167,8 @@ function isStringSpanArray(
 
 function redactSpanAttributeValue(
   key: string,
-  value: SentrySpanPayload['data'][string],
-): SentrySpanPayload['data'][string] {
+  value: SentrySpanPayload['attributes'][string],
+): SentrySpanPayload['attributes'][string] {
   if (value === undefined || typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
@@ -184,10 +184,12 @@ function redactSpanAttributeValue(
   return value;
 }
 
-function redactSpanData(data: SentrySpanPayload['data']): SentrySpanPayload['data'] {
-  const redacted: SentrySpanPayload['data'] = {};
+function redactSpanData(
+  attributes: SentrySpanPayload['attributes'],
+): SentrySpanPayload['attributes'] {
+  const redacted: SentrySpanPayload['attributes'] = {};
 
-  for (const [key, value] of typeSafeEntries(data)) {
+  for (const [key, value] of typeSafeEntries(attributes)) {
     redacted[key] = redactSpanAttributeValue(key, value);
   }
 
@@ -215,8 +217,8 @@ export function redactSentryTransaction(event: SentryTransactionEvent): SentryTr
 export function redactSentrySpan(span: SentrySpanPayload): SentrySpanPayload {
   return {
     ...span,
-    data: redactSpanData(span.data),
-    ...(span.description ? { description: redactText(span.description) } : {}),
+    attributes: redactSpanData(span.attributes),
+    name: redactText(span.name),
   };
 }
 

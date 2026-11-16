@@ -315,6 +315,7 @@ describe('createHttpObservability', () => {
 
     const initOptions = getInitOptions(sdk);
     const beforeSend = initOptions.beforeSend;
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'`; see runtime-sdk.ts
     const beforeSendTransaction = initOptions.beforeSendTransaction;
     const beforeBreadcrumb = initOptions.beforeBreadcrumb;
 
