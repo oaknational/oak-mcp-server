@@ -4,7 +4,7 @@
  * Types and hand-authored domain ontology for vocabulary graphs.
  *
  * Mined synonym DATA is in the separate `@oaknational/sdk-codegen/vocab-data`
- * subpath, excluded from the lint TypeScript program.
+ * subpath.
  *
  * Pipeline APIs (readers, extractors, generators) remain in the
  * `/bulk` subpath.
