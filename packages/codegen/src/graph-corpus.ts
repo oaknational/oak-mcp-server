@@ -16,9 +16,8 @@
  * stable subpath rather than reaching into `generated/`.
  *
  * Re-exports resolve to the graph-corpus generated module directly, not the
- * aggregate `generated/vocab` barrel: importing the aggregate would eagerly
- * load every legacy vocab dataset's `data.json` (misconception, vocabulary,
- * nc-coverage, prior-knowledge, thread-progression) just to reach `graphCorpus`.
+ * aggregate `generated/vocab` barrel: importing the aggregate would also
+ * pull in the mined synonyms module just to reach `graphCorpus`.
  */
 
 export { graphCorpus } from './generated/vocab/graph-corpus/index.js';
