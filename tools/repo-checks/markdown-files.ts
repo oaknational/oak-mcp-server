@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 import GithubSlugger from 'github-slugger';
@@ -66,20 +66,21 @@ export function brokenLinks(file: string): string[] {
     const [rawPath = '', fragment] = target.split('#');
     const path = decodePathTarget(rawPath);
     const resolved = path === '' ? file : resolve(dirname(file), path);
-    let stat: ReturnType<typeof statSync>;
+    let destination: string;
     try {
-      stat = statSync(resolved);
-    } catch {
+      destination = readFileSync(resolved, 'utf8');
+    } catch (error) {
+      // A directory has no markdown content to read a heading from, so a
+      // fragment on a directory link can never resolve. Read the directory
+      // in the same call that detects it, rather than stat-then-read, so a
+      // path that changes between the two can't be read as something else.
+      if ((error as NodeJS.ErrnoException).code === 'EISDIR') {
+        if (fragment) broken.push(`${relative(root, file)} -> ${target}`);
+        continue;
+      }
       broken.push(`${relative(root, file)} -> ${target}`);
       continue;
     }
-    // A directory has no markdown content to read a heading from, so a
-    // fragment on a directory link can never resolve.
-    if (stat.isDirectory()) {
-      if (fragment) broken.push(`${relative(root, file)} -> ${target}`);
-      continue;
-    }
-    const destination = readFileSync(resolved, 'utf8');
     if (fragment && resolved.endsWith('.md') && !headingSlugs(destination).has(fragment)) {
       broken.push(`${relative(root, file)} -> ${target}`);
     }
