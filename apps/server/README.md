@@ -64,31 +64,45 @@ For the architectural rationale behind this primitive mapping, see [ADR-123](htt
 
 ## Quick start (local)
 
-1. Set env vars (minimal — auth disabled for local dev):
+1. Set env vars. This is the local no-auth path. `dev:observe:noauth` sets
+   `DANGEROUSLY_DISABLE_AUTH=true`, `SENTRY_MODE=off` and the local
+   `ALLOWED_HOSTS` itself, so you don't export them:
 
 ```bash
 export OAK_API_KEY=your_api_key
 export ELASTICSEARCH_URL=https://your-es-url
 export ELASTICSEARCH_API_KEY=your_es_api_key
-export DANGEROUSLY_DISABLE_AUTH=true
-export SENTRY_MODE=off
 ```
 
 `ALLOWED_HOSTS` is not needed locally: `localhost`, `127.0.0.1` and `::1` are
 always allowed. Set it only to name an _extra_ host.
 
-2. Run dev server:
+2. Install dependencies (Node 24):
 
 ```bash
-pnpm --filter @oaknational/mcp-server dev
+pnpm install --frozen-lockfile
 ```
+
+3. Build the workspace:
+
+```bash
+pnpm build
+```
+
+4. Run the dev server with auth disabled:
+
+```bash
+pnpm --filter @oaknational/mcp-server dev:observe:noauth
+```
+
+To run a copy with sign-in, see the docs site's Self-hosting page.
 
 `pnpm dev`, `pnpm dev:observe`, and `pnpm dev:observe:noauth` now perform the
 initial widget build automatically and regenerate the committed
 `src/generated/widget-html-content.ts` constant. Manual `pnpm build:widget` is
 only required when widget sources change outside the dev watcher.
 
-3. List tools (auth disabled path shown above):
+5. List tools (auth disabled path shown above):
 
 ```bash
 curl -sS \
