@@ -37,7 +37,7 @@
     "@clerk/express": "2.1.52",
     "@clerk/mcp-tools": "0.6.0",
     "@elastic/elasticsearch": "9.5.0",
-    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/ext-apps": "2.0.4",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@oaknational/build-metadata": "workspace:*",
     "@oaknational/curriculum-sdk": "workspace:*",
