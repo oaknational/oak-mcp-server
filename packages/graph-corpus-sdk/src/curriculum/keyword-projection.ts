@@ -6,18 +6,16 @@
  * Indexes lessons, units, and keywords by id and materialises the two
  * adjacencies the keyword view traverses: lesson→keywords (from
  * `containsKeyword` edges) and unit→lessons (from `containsLesson` edges,
- * for unit-anchored narrowing). Constructed once at module load by the view
- * module (the EEF precedent); exported for the startup-cost proof.
+ * for unit-anchored narrowing).
  */
-import {
-  graphCorpus,
-  type GraphCorpusKeywordNode,
-  type GraphCorpusLessonNode,
-  type GraphCorpusNodeId,
-  type GraphCorpusUnitNode,
+import type {
+  GraphCorpusKeywordNode,
+  GraphCorpusLessonNode,
+  GraphCorpusNodeId,
+  GraphCorpusUnitNode,
 } from '@oaknational/sdk-codegen/graph-corpus';
 
-import { buildEdgeAdjacency } from './projection-helpers.js';
+import { buildEdgeAdjacency, type CurriculumGraphCorpus } from './projection-helpers.js';
 
 /** The keyword view's per-kind node indexes plus its two traversal adjacencies. */
 export interface CurriculumKeywordProjection {
@@ -33,23 +31,24 @@ export interface CurriculumKeywordProjection {
  * parameter to the two types the keyword view traverses.
  */
 function buildAdjacency<TTarget extends { readonly id: GraphCorpusNodeId }>(
+  corpus: CurriculumGraphCorpus,
   edgeType: 'containsKeyword' | 'containsLesson',
   targetsById: ReadonlyMap<GraphCorpusNodeId, TTarget>,
 ): ReadonlyMap<GraphCorpusNodeId, readonly TTarget[]> {
-  return buildEdgeAdjacency(edgeType, targetsById);
+  return buildEdgeAdjacency(corpus, edgeType, targetsById);
 }
 
 /**
- * Builds the keyword projection over the one graph corpus: lesson, unit, and
+ * Builds the keyword projection over a graph corpus: lesson, unit, and
  * keyword indexes plus the lesson→keyword and unit→lesson adjacencies.
- * Exported for the startup-cost proof; runtime consumers use the view
- * module's module-load singleton.
  */
-export function buildCurriculumKeywordProjection(): CurriculumKeywordProjection {
+export function buildCurriculumKeywordProjection(
+  corpus: CurriculumGraphCorpus,
+): CurriculumKeywordProjection {
   const lessonsById = new Map<GraphCorpusNodeId, GraphCorpusLessonNode>();
   const unitsById = new Map<GraphCorpusNodeId, GraphCorpusUnitNode>();
   const keywordsById = new Map<GraphCorpusNodeId, GraphCorpusKeywordNode>();
-  for (const node of graphCorpus.nodes) {
+  for (const node of corpus.nodes) {
     if (node.kind === 'lesson') {
       lessonsById.set(node.id, node);
     } else if (node.kind === 'unit') {
@@ -69,7 +68,7 @@ export function buildCurriculumKeywordProjection(): CurriculumKeywordProjection 
   return {
     lessonsById,
     unitsById,
-    keywordsByLessonId: buildAdjacency('containsKeyword', keywordsById),
-    lessonsByUnitId: buildAdjacency('containsLesson', lessonsById),
+    keywordsByLessonId: buildAdjacency(corpus, 'containsKeyword', keywordsById),
+    lessonsByUnitId: buildAdjacency(corpus, 'containsLesson', lessonsById),
   };
 }

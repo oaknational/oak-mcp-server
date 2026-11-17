@@ -1,11 +1,11 @@
 /**
- * Misconception projection (G2 c2) — the module-load index over the
+ * Misconception projection (G2 c2) — the index over the
  * thread→unit→lesson→misconception chain of the one curriculum graph corpus.
  *
  * The chain is a fixed three-hop fan-out (never a variable-depth traversal),
  * so the misconception view is a direct projection over the per-view edge
  * subsets rather than a BFS: this module builds per-kind node indexes plus the
- * chain adjacency once at module load — per-view selection over the corpus,
+ * chain adjacency from a corpus value — per-view selection over the corpus,
  * the settled substrate mechanism.
  *
  * Which of the three hops carry order, and which do not (MCP-682):
@@ -23,16 +23,15 @@
  * measured cost of the id-sorted stance it replaced.
  */
 
-import {
-  graphCorpus,
-  type GraphCorpusLessonNode,
-  type GraphCorpusMisconceptionNode,
-  type GraphCorpusNodeId,
-  type GraphCorpusThreadNode,
-  type GraphCorpusUnitNode,
+import type {
+  GraphCorpusLessonNode,
+  GraphCorpusMisconceptionNode,
+  GraphCorpusNodeId,
+  GraphCorpusThreadNode,
+  GraphCorpusUnitNode,
 } from '@oaknational/sdk-codegen/graph-corpus';
 
-import { buildEdgeAdjacency } from './projection-helpers.js';
+import { buildEdgeAdjacency, type CurriculumGraphCorpus } from './projection-helpers.js';
 
 /**
  * A thread's units in Oak's curriculum order: each of the thread's per-subject
@@ -41,11 +40,12 @@ import { buildEdgeAdjacency } from './projection-helpers.js';
  * distinct units and a window can never serve the same unit twice.
  */
 function buildUnitsByThreadId(
+  corpus: CurriculumGraphCorpus,
   unitsById: ReadonlyMap<GraphCorpusNodeId, GraphCorpusUnitNode>,
 ): ReadonlyMap<GraphCorpusNodeId, readonly GraphCorpusUnitNode[]> {
   const byThread = new Map<GraphCorpusNodeId, GraphCorpusUnitNode[]>();
   const seen = new Map<GraphCorpusNodeId, Set<GraphCorpusNodeId>>();
-  for (const sequence of graphCorpus.sequences) {
+  for (const sequence of corpus.sequences) {
     const run = byThread.get(sequence.threadId) ?? [];
     const placed = seen.get(sequence.threadId) ?? new Set<GraphCorpusNodeId>();
     for (const placement of sequence.placements) {
@@ -76,10 +76,11 @@ function buildUnitsByThreadId(
  * traversal would have found — only the order differs.
  */
 function buildLessonsByUnitId(
+  corpus: CurriculumGraphCorpus,
   lessonsById: ReadonlyMap<GraphCorpusNodeId, GraphCorpusLessonNode>,
 ): ReadonlyMap<GraphCorpusNodeId, readonly GraphCorpusLessonNode[]> {
   const byUnit = new Map<GraphCorpusNodeId, GraphCorpusLessonNode[]>();
-  for (const run of graphCorpus.unitLessonRuns) {
+  for (const run of corpus.unitLessonRuns) {
     const lessons: GraphCorpusLessonNode[] = [];
     for (const lessonId of run.lessonIds) {
       const lesson = lessonsById.get(lessonId);
@@ -98,7 +99,7 @@ function buildLessonsByUnitId(
 }
 
 /**
- * The module-load projection: per-kind node indexes, the two ordered-section
+ * The misconception projection: per-kind node indexes, the two ordered-section
  * indexes (unit → lessons, thread → units), and the one set-valued edge
  * adjacency (lesson → misconceptions).
  */
@@ -122,24 +123,26 @@ export interface CurriculumMisconceptionProjection {
  * come from the corpus's ordered sections instead.
  */
 function buildAdjacency<TNode extends { readonly id: GraphCorpusNodeId }>(
+  corpus: CurriculumGraphCorpus,
   edgeType: 'addressesMisconception',
   targetsById: ReadonlyMap<GraphCorpusNodeId, TNode>,
 ): ReadonlyMap<GraphCorpusNodeId, readonly TNode[]> {
-  return buildEdgeAdjacency(edgeType, targetsById);
+  return buildEdgeAdjacency(corpus, edgeType, targetsById);
 }
 
 /**
- * Builds the misconception projection over the one graph corpus: per-kind node
+ * Builds the misconception projection over a graph corpus: per-kind node
  * indexes, the two ordered-section indexes, and the misconception adjacency
- * map. Exported for the startup-cost
- * proof; runtime consumers use the view module's module-load singleton.
+ * map.
  */
-export function buildCurriculumMisconceptionProjection(): CurriculumMisconceptionProjection {
+export function buildCurriculumMisconceptionProjection(
+  corpus: CurriculumGraphCorpus,
+): CurriculumMisconceptionProjection {
   const lessonsById = new Map<GraphCorpusNodeId, GraphCorpusLessonNode>();
   const unitsById = new Map<GraphCorpusNodeId, GraphCorpusUnitNode>();
   const threadsById = new Map<GraphCorpusNodeId, GraphCorpusThreadNode>();
   const misconceptionsById = new Map<GraphCorpusNodeId, GraphCorpusMisconceptionNode>();
-  for (const node of graphCorpus.nodes) {
+  for (const node of corpus.nodes) {
     if (node.kind === 'lesson') {
       lessonsById.set(node.id, node);
     } else if (node.kind === 'unit') {
@@ -162,8 +165,8 @@ export function buildCurriculumMisconceptionProjection(): CurriculumMisconceptio
     lessonsById,
     unitsById,
     threadsById,
-    misconceptionsByLessonId: buildAdjacency('addressesMisconception', misconceptionsById),
-    lessonsByUnitId: buildLessonsByUnitId(lessonsById),
-    unitsByThreadId: buildUnitsByThreadId(unitsById),
+    misconceptionsByLessonId: buildAdjacency(corpus, 'addressesMisconception', misconceptionsById),
+    lessonsByUnitId: buildLessonsByUnitId(corpus, lessonsById),
+    unitsByThreadId: buildUnitsByThreadId(corpus, unitsById),
   };
 }

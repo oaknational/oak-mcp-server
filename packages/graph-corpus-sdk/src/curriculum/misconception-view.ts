@@ -16,9 +16,6 @@
  * corpus `threadSlugs` membership (an empty list marks a thread-unreachable
  * unit — 15.7% of english-secondary units carry no thread, so thread-anchored
  * results are never subject-complete).
- *
- * The underlying adjacency lives in the `misconception-projection` module,
- * constructed once at module load (the EEF precedent).
  */
 
 import { ok, err, type Result } from '@oaknational/result';
@@ -33,10 +30,7 @@ import {
 } from '@oaknational/sdk-codegen/graph-corpus';
 
 import { resolveAnchors } from './anchor-resolution.js';
-import {
-  buildCurriculumMisconceptionProjection,
-  type CurriculumMisconceptionProjection,
-} from './misconception-projection.js';
+import type { CurriculumMisconceptionProjection } from './misconception-projection.js';
 import { mustGet } from './projection-helpers.js';
 
 /** Default unit-window size for thread anchors — bounds the heavy tail while returning median threads whole. */
@@ -102,11 +96,11 @@ export interface ThreadWindowInvalid {
   readonly maxUnitLimit: number;
 }
 
-/** The misconception projection, constructed once at module load (EEF precedent). */
-const projection: CurriculumMisconceptionProjection = buildCurriculumMisconceptionProjection();
-
 /** Builds one lesson entry: the lesson with its (possibly empty) id-sorted misconceptions. */
-function lessonEntry(lesson: GraphCorpusLessonNode): LessonMisconceptions {
+function lessonEntry(
+  projection: CurriculumMisconceptionProjection,
+  lesson: GraphCorpusLessonNode,
+): LessonMisconceptions {
   return { lesson, misconceptions: projection.misconceptionsByLessonId.get(lesson.id) ?? [] };
 }
 
@@ -115,9 +109,12 @@ function lessonEntry(lesson: GraphCorpusLessonNode): LessonMisconceptions {
  * misconceptions, the lessons in Oak's authored teaching order (MCP-682 — the
  * corpus `unitLessonRuns` section, not the id-sorted edge set).
  */
-function unitEntry(unit: GraphCorpusUnitNode): UnitMisconceptions {
+function unitEntry(
+  projection: CurriculumMisconceptionProjection,
+  unit: GraphCorpusUnitNode,
+): UnitMisconceptions {
   const lessons = projection.lessonsByUnitId.get(unit.id) ?? [];
-  return { unit, lessons: lessons.map(lessonEntry) };
+  return { unit, lessons: lessons.map((lesson) => lessonEntry(projection, lesson)) };
 }
 
 /** Resolves the caller window against the defaults and the [0, max] validity contract. */
@@ -149,6 +146,7 @@ function validateThreadWindow(
  * @param lessonSlugs - Anchor lesson slugs (corpus keys, not free text).
  */
 export function misconceptionsForLessons(
+  projection: CurriculumMisconceptionProjection,
   lessonSlugs: readonly string[],
 ): LessonMisconceptionsSubgraph {
   const { resolved, unknown } = resolveAnchors(
@@ -156,7 +154,9 @@ export function misconceptionsForLessons(
     (slug): GraphCorpusLessonNodeId => `lesson:${slug}`,
     projection.lessonsById,
   );
-  const lessons = resolved.map((id) => lessonEntry(mustGet(projection.lessonsById, id)));
+  const lessons = resolved.map((id) =>
+    lessonEntry(projection, mustGet(projection.lessonsById, id)),
+  );
   return { lessons, resolvedAnchors: resolved, unknownAnchors: unknown };
 }
 
@@ -169,13 +169,16 @@ export function misconceptionsForLessons(
  *
  * @param unitSlugs - Anchor unit slugs (corpus keys, not free text).
  */
-export function misconceptionsForUnits(unitSlugs: readonly string[]): UnitMisconceptionsSubgraph {
+export function misconceptionsForUnits(
+  projection: CurriculumMisconceptionProjection,
+  unitSlugs: readonly string[],
+): UnitMisconceptionsSubgraph {
   const { resolved, unknown } = resolveAnchors(
     unitSlugs,
     (slug): GraphCorpusUnitNodeId => `unit:${slug}`,
     projection.unitsById,
   );
-  const units = resolved.map((id) => unitEntry(mustGet(projection.unitsById, id)));
+  const units = resolved.map((id) => unitEntry(projection, mustGet(projection.unitsById, id)));
   return { units, resolvedAnchors: resolved, unknownAnchors: unknown };
 }
 
@@ -187,6 +190,7 @@ export function misconceptionsForUnits(unitSlugs: readonly string[]): UnitMiscon
  * what a numbered window claims to be.
  */
 function threadEntry(
+  projection: CurriculumMisconceptionProjection,
   id: GraphCorpusThreadNodeId,
   unitOffset: number,
   unitLimit: number,
@@ -199,7 +203,7 @@ function threadEntry(
     unitOffset,
     unitLimit,
     hasMore: unitOffset + windowUnits.length < allUnits.length,
-    units: windowUnits.map(unitEntry),
+    units: windowUnits.map((unit) => unitEntry(projection, unit)),
   };
 }
 
@@ -215,6 +219,7 @@ function threadEntry(
  *   {@link DEFAULT_THREAD_UNIT_LIMIT}, ceiling {@link MAX_THREAD_UNIT_LIMIT}.
  */
 export function misconceptionsForThread(
+  projection: CurriculumMisconceptionProjection,
   threadSlug: string,
   window: ThreadMisconceptionsWindow = {},
 ): Result<ThreadMisconceptionsSubgraph, ThreadWindowInvalid> {
@@ -229,6 +234,6 @@ export function misconceptionsForThread(
     (slug): GraphCorpusThreadNodeId => `thread:${slug}`,
     projection.threadsById,
   );
-  const threads = resolved.map((id) => threadEntry(id, unitOffset, unitLimit));
+  const threads = resolved.map((id) => threadEntry(projection, id, unitOffset, unitLimit));
   return ok({ threads, resolvedAnchors: resolved, unknownAnchors: unknown });
 }
