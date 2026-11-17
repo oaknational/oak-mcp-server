@@ -10,7 +10,7 @@
 
 import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import { describe, it, expect } from 'vitest';
-import { priorKnowledgeStatements } from './prior-knowledge-statements.js';
+import { priorKnowledgeStatements } from './index.js';
 import { required } from './test-helpers.js';
 
 /** The corpus's unit nodes, the fixture pool. */

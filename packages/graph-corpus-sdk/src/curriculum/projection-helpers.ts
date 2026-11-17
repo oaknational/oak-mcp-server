@@ -10,11 +10,17 @@
  * narrowing is the projection's contract; the traversal body lives once here.
  */
 
-import {
-  graphCorpus,
-  type GraphCorpusEdgeType,
-  type GraphCorpusNodeId,
+import type {
+  GraphCorpus,
+  GraphCorpusEdgeType,
+  GraphCorpusNodeId,
 } from '@oaknational/sdk-codegen/graph-corpus';
+
+/** The corpus sections the curriculum views read. */
+export type CurriculumGraphCorpus = Pick<
+  GraphCorpus,
+  'nodes' | 'edges' | 'sequences' | 'unitLessonRuns'
+>;
 
 /** Looks up a known node, failing loudly if the corpus integrity invariant is breached. */
 export function mustGet<TNode>(
@@ -30,11 +36,12 @@ export function mustGet<TNode>(
 
 /** Groups resolved target nodes per source id for one edge type, id-sorted per group. */
 export function buildEdgeAdjacency<TNode extends { readonly id: GraphCorpusNodeId }>(
+  corpus: Pick<CurriculumGraphCorpus, 'edges'>,
   edgeType: GraphCorpusEdgeType,
   targetsById: ReadonlyMap<GraphCorpusNodeId, TNode>,
 ): ReadonlyMap<GraphCorpusNodeId, readonly TNode[]> {
   const adjacency = new Map<GraphCorpusNodeId, TNode[]>();
-  for (const edge of graphCorpus.edges) {
+  for (const edge of corpus.edges) {
     if (edge.type !== edgeType) {
       continue;
     }

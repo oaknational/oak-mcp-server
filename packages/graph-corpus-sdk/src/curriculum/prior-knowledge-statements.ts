@@ -18,14 +18,13 @@
  * returned node for ordering context via the thread-progressions view.
  */
 
-import {
-  graphCorpus,
-  type GraphCorpusNodeId,
-  type GraphCorpusUnitNode,
-  type GraphCorpusUnitNodeId,
+import type {
+  GraphCorpusNodeId,
+  GraphCorpusUnitNode,
+  GraphCorpusUnitNodeId,
 } from '@oaknational/sdk-codegen/graph-corpus';
 import { resolveAnchors } from './anchor-resolution.js';
-import { mustGet } from './projection-helpers.js';
+import { mustGet, type CurriculumGraphCorpus } from './projection-helpers.js';
 
 /**
  * The stated prior knowledge for a set of anchor units.
@@ -46,12 +45,15 @@ function toUnitNodeId(unitSlug: string): GraphCorpusUnitNodeId {
   return `unit:${unitSlug}`;
 }
 
-/** The corpus's unit nodes by id, built once at module load (the view precedent). */
-const unitNodesById: ReadonlyMap<GraphCorpusNodeId, GraphCorpusUnitNode> = new Map(
-  graphCorpus.nodes
-    .filter((node): node is GraphCorpusUnitNode => node.kind === 'unit')
-    .map((node) => [node.id, node]),
-);
+export type UnitNodesById = ReadonlyMap<GraphCorpusNodeId, GraphCorpusUnitNode>;
+
+export function buildUnitNodesById(corpus: CurriculumGraphCorpus): UnitNodesById {
+  return new Map(
+    corpus.nodes
+      .filter((node): node is GraphCorpusUnitNode => node.kind === 'unit')
+      .map((node) => [node.id, node]),
+  );
+}
 
 /**
  * Returns the stated prior knowledge for the given anchor unit slugs.
@@ -64,7 +66,10 @@ const unitNodesById: ReadonlyMap<GraphCorpusNodeId, GraphCorpusUnitNode> = new M
  * @param unitSlugs - Anchor unit slugs (corpus keys, not free text).
  * @returns The anchor units with their stated prior-knowledge statements.
  */
-export function priorKnowledgeStatements(unitSlugs: readonly string[]): PriorKnowledgeStatements {
+export function priorKnowledgeStatements(
+  unitNodesById: UnitNodesById,
+  unitSlugs: readonly string[],
+): PriorKnowledgeStatements {
   const { resolved, unknown } = resolveAnchors(unitSlugs, toUnitNodeId, unitNodesById);
   // Collapse exact-duplicate statements (the corpus repeats some verbatim);
   // set semantics keep first-occurrence order. Other fields are the node's own.

@@ -15,9 +15,6 @@
  * (id-sorted, windowed at {@link KEYWORD_LESSON_DECORATION_LIMIT} with
  * `hasMoreLessons`) — richness arrives via edge traversal on the one-graph
  * substrate, never a fat node.
- *
- * The underlying indexes live in the `keyword-projection` module, constructed
- * once at module load (the EEF precedent).
  */
 
 import { ok, err, type Result } from '@oaknational/result';
@@ -30,10 +27,7 @@ import {
 } from '@oaknational/sdk-codegen/graph-corpus';
 
 import { resolveAnchors, type ResolvedAnchors } from './anchor-resolution.js';
-import {
-  buildCurriculumKeywordProjection,
-  type CurriculumKeywordProjection,
-} from './keyword-projection.js';
+import type { CurriculumKeywordProjection } from './keyword-projection.js';
 
 /** Default top-N keyword bound — a lean page of ranked vocabulary for one teaching context. */
 export const DEFAULT_KEYWORD_LIMIT = 25;
@@ -78,9 +72,6 @@ export interface KeywordLimitInvalid {
   readonly maxLimit: number;
 }
 
-/** The keyword projection, constructed once at module load (EEF precedent). */
-const projection: CurriculumKeywordProjection = buildCurriculumKeywordProjection();
-
 /** Resolves the caller limit against the default and the [1, max] validity contract. */
 function validateLimit(limit: number | undefined): Result<number, KeywordLimitInvalid> {
   const resolved = limit ?? DEFAULT_KEYWORD_LIMIT;
@@ -117,7 +108,10 @@ interface NarrowingScope {
  * restriction sets. A narrowing is ACTIVE only when its slug list is
  * non-empty (empty ≡ absent); an inactive narrowing restricts nothing.
  */
-function resolveNarrowing(options: KeywordRetrievalOptions): NarrowingScope {
+function resolveNarrowing(
+  projection: CurriculumKeywordProjection,
+  options: KeywordRetrievalOptions,
+): NarrowingScope {
   const unitSlugs = options.unitSlugs ?? [];
   const lessonSlugs = options.lessonSlugs ?? [];
   const units = resolveAnchors(
@@ -163,6 +157,7 @@ function lessonInScope(
 
 /** Fans out scope lessons to their keywords and ranks: scoped count descending, id ascending. */
 function rankScopedKeywords(
+  projection: CurriculumKeywordProjection,
   subject: string,
   keyStage: string,
   scope: NarrowingScope,
@@ -207,6 +202,7 @@ function rankScopedKeywords(
  *   (default {@link DEFAULT_KEYWORD_LIMIT}, ceiling {@link MAX_KEYWORD_LIMIT}).
  */
 export function keywordsForSubjectKeyStage(
+  projection: CurriculumKeywordProjection,
   subject: string,
   keyStage: string,
   options: KeywordRetrievalOptions = {},
@@ -216,8 +212,8 @@ export function keywordsForSubjectKeyStage(
     return err(validated.error);
   }
   const limit = validated.value;
-  const scope = resolveNarrowing(options);
-  const ranked = rankScopedKeywords(subject, keyStage, scope);
+  const scope = resolveNarrowing(projection, options);
+  const ranked = rankScopedKeywords(projection, subject, keyStage, scope);
   return ok({
     keywords: ranked.slice(0, limit),
     totalMatchingKeywords: ranked.length,

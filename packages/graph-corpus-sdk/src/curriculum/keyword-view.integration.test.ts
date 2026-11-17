@@ -28,7 +28,7 @@ import {
   KEYWORD_LESSON_DECORATION_LIMIT,
   MAX_KEYWORD_LIMIT,
   keywordsForSubjectKeyStage,
-} from './keyword-view.js';
+} from './index.js';
 import { bareSlug, required, unwrapOk } from './test-helpers.js';
 
 /** Lesson nodes by id (reference index; string-keyed so reference adjacency ids look up directly). */

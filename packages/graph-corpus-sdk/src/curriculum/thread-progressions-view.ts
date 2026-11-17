@@ -17,9 +17,6 @@
  * authored unit order within a year, "All years" units last — and a thread
  * spanning several subjects returns parallel runs, never an interleaved
  * chain. `year` rides each entry as data.
- *
- * The underlying sequence map lives in the `thread-progressions-projection`
- * module, constructed once at module load (the EEF and G2 precedent).
  */
 
 import type {
@@ -30,10 +27,7 @@ import type {
 } from '@oaknational/sdk-codegen/graph-corpus';
 
 import { mustGet } from './projection-helpers.js';
-import {
-  buildCurriculumThreadProgressionsProjection,
-  type CurriculumThreadProgressionsProjection,
-} from './thread-progressions-projection.js';
+import type { CurriculumThreadProgressionsProjection } from './thread-progressions-projection.js';
 
 /** One step of a subject run: the unit at its curriculum position. */
 export interface ThreadProgressionEntry {
@@ -93,10 +87,6 @@ export interface ThreadProgressionStats {
   readonly subjectsCovered: readonly string[];
 }
 
-/** The thread-progressions projection, constructed once at module load. */
-const projection: CurriculumThreadProgressionsProjection =
-  buildCurriculumThreadProgressionsProjection();
-
 /** The unique subjects the thread sequences run through, sorted. */
 function sequencedSubjects(p: CurriculumThreadProgressionsProjection): readonly string[] {
   const subjects = new Set<string>();
@@ -109,19 +99,25 @@ function sequencedSubjects(p: CurriculumThreadProgressionsProjection): readonly 
 }
 
 /**
- * Thread-estate stats for description interpolation (the consumers that
- * previously interpolated the legacy threadProgressionGraph stats). Both
+ * Thread-estate stats over a projection, for description interpolation. Both
  * fields derive from the sequences themselves — never from corpus-wide unit
  * stats — so "N threads across M subjects" describes thread coverage by
  * construction, not by coincidence.
  */
-export const threadProgressionStats: ThreadProgressionStats = {
-  threadCount: projection.sequencesByThreadId.size,
-  subjectsCovered: sequencedSubjects(projection),
-};
+export function buildThreadProgressionStats(
+  projection: CurriculumThreadProgressionsProjection,
+): ThreadProgressionStats {
+  return {
+    threadCount: projection.sequencesByThreadId.size,
+    subjectsCovered: sequencedSubjects(projection),
+  };
+}
 
 /** Joins one subject sequence's placements to their unit nodes. */
-function subjectProgression(sequence: GraphCorpusSequence): SubjectProgression {
+function subjectProgression(
+  projection: CurriculumThreadProgressionsProjection,
+  sequence: GraphCorpusSequence,
+): SubjectProgression {
   const entries = sequence.placements.map((placement): ThreadProgressionEntry => ({
     unit: mustGet(projection.unitsById, placement.unitId),
     year: placement.year,
@@ -130,8 +126,13 @@ function subjectProgression(sequence: GraphCorpusSequence): SubjectProgression {
 }
 
 /** Builds one thread's progression: one curriculum-ordered run per subject. */
-function progressionEntry(id: GraphCorpusThreadNodeId): ThreadProgression {
-  const progressions = (projection.sequencesByThreadId.get(id) ?? []).map(subjectProgression);
+function progressionEntry(
+  projection: CurriculumThreadProgressionsProjection,
+  id: GraphCorpusThreadNodeId,
+): ThreadProgression {
+  const progressions = (projection.sequencesByThreadId.get(id) ?? []).map((sequence) =>
+    subjectProgression(projection, sequence),
+  );
   const totalUnits = progressions.reduce((sum, run) => sum + run.totalUnits, 0);
   return { thread: mustGet(projection.threadsById, id), totalUnits, progressions };
 }
@@ -144,16 +145,24 @@ function progressionEntry(id: GraphCorpusThreadNodeId): ThreadProgression {
  *
  * @param threadSlug - The anchor thread slug (a corpus key, not free text).
  */
-export function progressionForThread(threadSlug: string): ThreadProgressionSubgraph {
+export function progressionForThread(
+  projection: CurriculumThreadProgressionsProjection,
+  threadSlug: string,
+): ThreadProgressionSubgraph {
   const id: GraphCorpusThreadNodeId = `thread:${threadSlug}`;
   if (!projection.threadsById.has(id)) {
     return { threads: [], resolvedAnchors: [], unknownAnchors: [threadSlug] };
   }
-  return { threads: [progressionEntry(id)], resolvedAnchors: [id], unknownAnchors: [] };
+  return {
+    threads: [progressionEntry(projection, id)],
+    resolvedAnchors: [id],
+    unknownAnchors: [],
+  };
 }
 
 /** Builds a discovery descriptor from one thread's subject sequences. */
 function describeThread(
+  projection: CurriculumThreadProgressionsProjection,
   id: GraphCorpusThreadNodeId,
   sequences: readonly GraphCorpusSequence[],
 ): ThreadDescriptor {
@@ -174,7 +183,11 @@ function describeThread(
  * @param subject - The anchor subject (a corpus key, e.g. `maths`).
  * @param keyStage - The anchor key stage (a corpus key, e.g. `ks2`).
  */
-export function progressionsForSubjectKeyStage(subject: string, keyStage: string): ThreadDiscovery {
+export function progressionsForSubjectKeyStage(
+  projection: CurriculumThreadProgressionsProjection,
+  subject: string,
+  keyStage: string,
+): ThreadDiscovery {
   const matching: ThreadDescriptor[] = [];
   for (const [threadId, sequences] of projection.sequencesByThreadId) {
     const matches = sequences.some(
@@ -185,7 +198,7 @@ export function progressionsForSubjectKeyStage(subject: string, keyStage: string
         ),
     );
     if (matches) {
-      matching.push(describeThread(threadId, sequences));
+      matching.push(describeThread(projection, threadId, sequences));
     }
   }
   matching.sort((a, b) => a.thread.id.localeCompare(b.thread.id));

@@ -23,7 +23,7 @@ import {
   misconceptionsForLessons,
   misconceptionsForThread,
   misconceptionsForUnits,
-} from './misconception-view.js';
+} from './index.js';
 import { bareSlug, required, unwrapOk } from './test-helpers.js';
 
 /** Independent reference adjacency: source id → sorted target ids, per edge type. */

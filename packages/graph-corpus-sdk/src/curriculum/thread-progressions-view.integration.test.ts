@@ -25,7 +25,7 @@ import {
   progressionForThread,
   progressionsForSubjectKeyStage,
   threadProgressionStats,
-} from './thread-progressions-view.js';
+} from './index.js';
 import { bareSlug, required } from './test-helpers.js';
 
 /** A thread slug with at least one placement, chosen deterministically (first emitted sequence). */
@@ -67,7 +67,7 @@ const KNOWN_KEY_STAGE: string = sequencedUnit.kind === 'unit' ? sequencedUnit.ke
 
 describe('thread-progressions projection', () => {
   it('indexes every corpus sequence under its thread with integrity-checked endpoints', () => {
-    const projection = buildCurriculumThreadProgressionsProjection();
+    const projection = buildCurriculumThreadProgressionsProjection(graphCorpus);
 
     expect(projection.sequencesByThreadId.size).toBe(sequenceCountByThread.size);
     expect(
