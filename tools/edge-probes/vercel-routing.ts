@@ -5,6 +5,9 @@ import { listen, type StubOrigin } from './stub-origins.ts';
 
 export const SERVER_PATHS: readonly string[] = serverPaths;
 
+export const isServerPath = (path: string): boolean =>
+  SERVER_PATHS.some((source) => compileSource(source)(path) !== undefined);
+
 export const serverRewrites = (origin: string): VercelConfig => ({
   rewrites: SERVER_PATHS.map((source) => ({ source, destination: `${origin}${source}` })),
 });
