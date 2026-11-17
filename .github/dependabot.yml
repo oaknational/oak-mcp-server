@@ -38,3 +38,8 @@ updates:
       # markdownlint-cli2 release depends on markdownlint 0.42.1 or later.
       - dependency-name: markdownlint-cli2
         versions: ['0.24.0']
+      # Every release after 0.11.4 needs @posthog/core above 1.47.0, where
+      # pnpm-workspace.yaml's overrides hold it. Lift when that override can
+      # move to the core version the target release needs.
+      - dependency-name: '@posthog/mcp'
+        versions: ['>=0.11.5']
