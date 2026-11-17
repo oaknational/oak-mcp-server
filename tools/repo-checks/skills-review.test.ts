@@ -6,6 +6,7 @@ import { checkSkillsReview } from './skills-review.ts';
 const OLD = 'a'.repeat(40);
 const NEW = 'b'.repeat(40);
 const SKILL_PATH = 'skills/example/SKILL.md';
+const CONTENT = ['- Runs: nothing.', '- Verdict: safe to pin.'];
 const SOURCE_LINE = `- Source: \`example/skills\`, path \`${SKILL_PATH}\``;
 
 function lock(ref: string): string {
@@ -16,7 +17,7 @@ function lock(ref: string): string {
 }
 
 function section(sha: string, name = 'example-skill', source = SOURCE_LINE): string[] {
-  return ['', `### ${name}`, '', source, `- SHA: \`${sha}\``];
+  return ['', `### ${name}`, '', source, `- SHA: \`${sha}\``, ...CONTENT];
 }
 
 function review(...shas: string[]): string {
@@ -56,6 +57,41 @@ describe('skills-review', () => {
 
   it('refuses a pin whose ref is not a full SHA', () => {
     expect(checkSkillsReview(lock('main'), review(OLD))[0]).toContain('40-character');
+  });
+
+  describe('content', () => {
+    const body = (...lines: string[]) =>
+      reviewWith(['', '### example-skill', '', SOURCE_LINE, `- SHA: \`${OLD}\``, ...lines]);
+    const refused = (text: string) => checkSkillsReview(lock(OLD), text);
+
+    it('refuses a section with only Source and SHA lines', () => {
+      const [error] = refused(body());
+      expect(error).toContain('example-skill');
+      expect(error).toContain('Runs');
+    });
+
+    it('refuses a section with no Verdict line', () => {
+      const [error] = refused(body('- Runs: nothing.'));
+      expect(error).toContain('Verdict');
+    });
+
+    it('refuses a section with no Runs line', () => {
+      const [error] = refused(body('- Verdict: safe to pin.'));
+      expect(error).toContain('Runs');
+    });
+
+    it('refuses a Runs or Verdict line with no text after the label', () => {
+      expect(refused(body('- Runs:', '- Verdict: safe.'))).toHaveLength(1);
+      expect(refused(body('- Runs: nothing.', '- Verdict:   '))).toHaveLength(1);
+    });
+
+    it('refuses Runs and Verdict written outside a list item', () => {
+      expect(refused(body('', 'Runs: nothing.', '', 'Verdict: safe.'))).toHaveLength(2);
+    });
+
+    it('passes a section whose Runs and Verdict lines carry text', () => {
+      expect(refused(body('- Runs: nothing.', '- Verdict: safe to pin.'))).toEqual([]);
+    });
   });
 
   describe('bypasses', () => {

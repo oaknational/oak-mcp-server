@@ -106,13 +106,16 @@ function tokenize(text) {
   let segment = [];
   let token = '';
   let hasToken = false;
+  let quoted = false;
   let quote = '';
   const endToken = () => {
     if (hasToken) {
-      segment.push(token);
+      // A quoted '>' is a literal argument, so keep it from reading as a redirection.
+      segment.push(quoted && OUTPUT_REDIRECT.test(token) ? `./${token}` : token);
     }
     token = '';
     hasToken = false;
+    quoted = false;
   };
   const endSegment = () => {
     endToken();
@@ -132,6 +135,7 @@ function tokenize(text) {
     } else if (char === '"' || char === "'") {
       quote = char;
       hasToken = true;
+      quoted = true;
     } else if (char === ' ' || char === '\t') {
       endToken();
     } else if (SEPARATORS.has(char)) {
@@ -150,6 +154,7 @@ function tokenize(text) {
         at += 1;
       }
       hasToken = true;
+      quoted = false;
       endToken();
     } else {
       token += char;
@@ -375,6 +380,10 @@ const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
 const HOOK_FILES = /(?:^|\/)(?:\.husky(?:\/|$)|\.git\/config(?:\.worktree)?$)/;
 const OUTPUT_REDIRECT = /^\d*>>?[|&]?$/;
+const withoutRedirects = (args) =>
+  args.filter(
+    (word, index) => !OUTPUT_REDIRECT.test(word) && !OUTPUT_REDIRECT.test(args[index - 1] ?? ''),
+  );
 const INCLUDE_PATH = /^include(?:if\..+)?\.path$/i;
 const TEMP_DIR = /^\/(?:tmp|private\/tmp|var\/folders)\//;
 const SKIP_MESSAGE = "editing .husky/ or .git/config changes the repository's hooks";
@@ -682,7 +691,7 @@ function checkRm(args, dir) {
   if (!recursive || !force) {
     return;
   }
-  for (const path of args.filter((word) => !word.startsWith('-'))) {
+  for (const path of withoutRedirects(args).filter((word) => !word.startsWith('-'))) {
     const resolved = resolve(dir, path);
     const inside =
       isAbsolute(path) ||
@@ -833,7 +842,7 @@ function touchesHooks(command, args, hookFile) {
     return args.includes('inplace');
   }
   if (COPIERS.has(command)) {
-    const operands = args.filter((word) => !word.startsWith('-'));
+    const operands = withoutRedirects(args).filter((word) => !word.startsWith('-'));
     return (
       hookFile(operands.at(-1) ?? '') ||
       args.some((word, index) => {

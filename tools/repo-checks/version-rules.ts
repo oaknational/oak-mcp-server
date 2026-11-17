@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import {
   diffSurfaces,
@@ -14,7 +14,6 @@ const BREAKING_FOOTER = /^BREAKING[ -]CHANGES?\b/m;
 const NON_RELEASING = new Set(['chore', 'docs', 'ci', 'test']);
 const RELEASING = new Set(['feat', 'fix']);
 const BREAKING_SECTION = /^##\s+Breaking change\s*$/im;
-const BASELINE = 'tools/surface-diff/baseline.json';
 const SERVED_SURFACE = 'apps/server/served-surface.json';
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)__tests__\//;
 
@@ -29,8 +28,8 @@ export function isRuntimeFile(path: string): boolean {
 }
 
 export interface SurfaceChange {
-  readonly before: SurfaceSnapshot | undefined;
-  readonly after: SurfaceSnapshot | undefined;
+  readonly before: SurfaceSnapshot;
+  readonly after: SurfaceSnapshot;
 }
 
 function isObject(value: Json | undefined): value is JsonObject {
@@ -48,7 +47,7 @@ function classifySurfaceChange(change: SurfaceChange | undefined): {
   toolsChanged: boolean;
   breaking: string[];
 } {
-  if (change?.before === undefined || change.after === undefined) {
+  if (change === undefined) {
     return { toolsChanged: false, breaking: [] };
   }
   const { before, after } = change;
@@ -110,15 +109,15 @@ export function checkVersion(input: {
       `The type '${type}' does not release, but the diff changes runtime code (${runtime.slice(0, 3).join(', ')}). Use feat or fix.`,
     );
   }
-  if (RELEASING.has(type) && runtime.length === 0) {
+  const { toolsChanged, breaking } = classifySurfaceChange(surface);
+  if (RELEASING.has(type) && runtime.length === 0 && !toolsChanged) {
     errors.push(
-      `The type '${type}' releases, but the diff changes no runtime code under apps/ or packages/. Use chore, docs, ci or test.`,
+      `The type '${type}' releases, but the diff changes no runtime code under apps/ or packages/ and no served tool in ${SERVED_SURFACE}. Use chore, docs, ci or test.`,
     );
   }
-  const { toolsChanged, breaking } = classifySurfaceChange(surface);
   if (toolsChanged && !RELEASING.has(type)) {
     errors.push(
-      `The diff changes the served tools in ${BASELINE}, so the type '${type}' must release. Use feat or fix.`,
+      `The diff changes the served tools in ${SERVED_SURFACE}, so the type '${type}' must release. Use feat or fix.`,
     );
   }
   if (breaking.length > 0 && !BREAKING_SECTION.test(body)) {
@@ -129,28 +128,22 @@ export function checkVersion(input: {
   return errors;
 }
 
-function readBaselineAt(baseSha: string | undefined): SurfaceSnapshot | undefined {
-  if (baseSha === undefined || baseSha === '') {
-    return undefined;
+function readServedSurfaceAt(sha: string): SurfaceSnapshot {
+  const result = spawnSync('git', ['show', `${sha}:${SERVED_SURFACE}`], { encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(
+      `cannot read ${SERVED_SURFACE} at the merge base ${sha}. Rebase onto main so the base has it.`,
+    );
   }
-  let text: string;
-  try {
-    text = execFileSync('git', ['show', `${baseSha}:${BASELINE}`], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-  } catch {
-    return undefined;
-  }
-  return parseBaseline(text);
+  return parseBaseline(result.stdout);
 }
 
 if (import.meta.main) {
   const { mergeBase, changed } = diffFromMergeBase(process.env['BASE_SHA'] ?? '');
   const title = process.env['PR_TITLE'] ?? '';
   const surface: SurfaceChange = {
-    before: readBaselineAt(mergeBase),
-    after: parseBaseline(readFileSync(BASELINE, 'utf8')),
+    before: readServedSurfaceAt(mergeBase),
+    after: parseBaseline(readFileSync(SERVED_SURFACE, 'utf8')),
   };
   const errors = checkVersion({ title, body: process.env['PR_BODY'] ?? '', changed, surface });
   if (errors.length > 0) {

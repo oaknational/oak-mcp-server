@@ -92,6 +92,62 @@ describe('skills-check', () => {
     );
   });
 
+  describe('mirror-only entries', () => {
+    it('fails on a file added to a mirrored local skill with no source', () => {
+      writeFileSync(join(copy, '.claude/skills/mcp-tool-design/extra.md'), 'extra\n');
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/mcp-tool-design/extra.md: no counterpart');
+    });
+
+    it('fails on a skill directory that exists only under .claude/skills', () => {
+      mkdirSync(join(copy, '.claude/skills/stray'));
+      writeFileSync(join(copy, '.claude/skills/stray/SKILL.md'), 'stray\n');
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/stray: no counterpart');
+    });
+
+    it('fails on an empty directory under .claude/skills', () => {
+      mkdirSync(join(copy, '.claude/skills/hollow'));
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/hollow: no counterpart');
+    });
+
+    it('fails on a loose file directly under .claude/skills', () => {
+      writeFileSync(join(copy, '.claude/skills/notes.md'), 'notes\n');
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/notes.md: no counterpart');
+    });
+
+    it('fails on an extra file added to a vendored skill under .claude/skills', () => {
+      writeFileSync(join(copy, '.claude/skills/oak-tdd/extra.md'), 'extra\n');
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/oak-tdd/extra.md');
+    });
+
+    it('fails on a symlinked skill directory under .claude/skills', () => {
+      symlinkSync('/etc', join(copy, '.claude/skills/linked'));
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/linked: symlink');
+    });
+
+    it('fails on a symlink inside a mirrored local skill', () => {
+      symlinkSync('/etc', join(copy, '.claude/skills/mcp-tool-design/link'));
+      const result = run(copy);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('.claude/skills/mcp-tool-design/link: symlink');
+    });
+
+    it('passes the Claude-only verify skill', () => {
+      expect(run(copy).status).toBe(0);
+    });
+  });
+
   it.each([
     ['a file symlink', join(repoRoot, 'README.md'), 'oak-tdd/file-link.md'],
     ['a directory symlink', '/etc', 'oak-tdd/dir-link'],

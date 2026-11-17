@@ -3,9 +3,8 @@
  *
  * Types and hand-authored domain ontology for vocabulary graphs.
  *
- * Runtime graph DATA (large generated structures) is in the separate
- * `@oaknational/sdk-codegen/vocab-data` subpath to avoid loading
- * ~688K lines into the TypeScript project service during linting.
+ * Mined synonym DATA is in the separate `@oaknational/sdk-codegen/vocab-data`
+ * subpath.
  *
  * Pipeline APIs (readers, extractors, generators) remain in the
  * `/bulk` subpath.

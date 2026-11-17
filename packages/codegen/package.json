@@ -61,7 +61,7 @@
   },
   "scripts": {
     "sdk-codegen": "pnpm generate:types",
-    "postsdk-codegen": "pnpm -w format:root",
+    "postsdk-codegen": "pnpm -w format:fix",
     "pregenerate:types": "pnpm generate:clean",
     "generate:types": "pnpm generate:openapi && pnpm generate:zod && pnpm generate:bulk",
     "generate:openapi": "pnpm exec tsx code-generation/codegen.ts",

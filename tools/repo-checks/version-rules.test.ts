@@ -135,13 +135,37 @@ describe('version-rules', () => {
       expect(surfaceVerdict('MCP-1: feat: add tool', after)).toBe('');
     });
 
-    it('skips the surface rules when the base has no baseline', () => {
+    describe('from a dependency bump', () => {
+      const bump = ['package.json', 'pnpm-lock.yaml', 'apps/server/served-surface.json'];
+      const bumpVerdict = (title: string, after: SurfaceSnapshot, body = ''): string =>
+        checkVersion({ title, body, changed: bump, surface: { before: base, after } }).join('\n');
+
+      it('passes a served tool change under fix with no runtime code', () => {
+        const after = withLookup({ description: 'Look up a fixture by id.' });
+        expect(bumpVerdict('MCP-1: fix(deps): bump the SDK', after)).toBe('');
+        expect(bumpVerdict('MCP-1: chore(deps): bump the SDK', after)).toContain('must release');
+      });
+
+      it('still needs a Breaking change section when the bump removes a tool', () => {
+        const after = surfaceOf({});
+        expect(bumpVerdict('MCP-1: feat(deps): bump the SDK', after)).toContain(
+          `removes or renames tool "fixture-lookup"`,
+        );
+        expect(bumpVerdict('MCP-1: feat(deps): bump the SDK', after, breakingBody)).toBe('');
+      });
+
+      it('still refuses fix when the served tools are unchanged', () => {
+        expect(bumpVerdict('MCP-1: fix(deps): bump the SDK', base)).toContain("'fix' releases");
+      });
+    });
+
+    it('passes a baseline-only re-snapshot under chore when the served surface is unchanged', () => {
       expect(
         checkVersion({
-          title: 'MCP-1: chore: x',
+          title: 'MCP-1: chore(surface-diff): re-snapshot the OOCE baseline',
           body: '',
-          changed: docsOnly,
-          surface: { before: undefined, after: base },
+          changed: ['tools/surface-diff/baseline.json'],
+          surface: { before: base, after: base },
         }),
       ).toEqual([]);
     });
