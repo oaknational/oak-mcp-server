@@ -63,9 +63,11 @@ describe('CODEOWNERS and Dependabot', () => {
       'markdownlint-cli2',
       'typescript',
     ]);
-    expect(npm?.ignore?.find((i) => i['dependency-name'] === 'typescript')?.versions).toEqual([
-      '>=6.1',
-    ]);
+    const versionsOf = (name: string) =>
+      npm?.ignore?.find((i) => i['dependency-name'] === name)?.versions;
+    expect(versionsOf('typescript')).toEqual(['>=6.1']);
+    expect(versionsOf('@mcpjam/cli')).toEqual(['>=5.0.0']);
+    expect(versionsOf('@modelcontextprotocol/ext-apps')).toEqual(['>=2.0.0']);
   });
 });
 
