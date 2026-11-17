@@ -1,6 +1,6 @@
 # 0005. Route the shared host with rewrites from the docs project
 
-- **Status:** Proposed (2026-11-17). It becomes Accepted when the staging measurements in "What is not yet verified" pass. If they fail, the fallback below applies and this record is amended.
+- **Status:** Proposed (2026-11-17). It becomes Accepted once every item in "What is not yet verified" is checked and recorded. Only the plan's three measurements switch to the fallback: a probe fails, a stream over 60 seconds is buffered or cut, or routed p95 is more than 50 ms above direct.
 - **Date:** 2026-11-17
 
 ## Context
@@ -73,7 +73,7 @@ Mechanism 1 stays the fallback. Switch to it, and amend this record, if mechanis
 
 ## What is not yet verified
 
-None of these can run before the staging DNS record (MCP-812) exists and both Vercel projects deploy. Each one confirms the decision or triggers the fallback.
+None of these can run before the staging DNS record (MCP-812) exists and both Vercel projects deploy. Each one must be checked and recorded before this record is Accepted. Only the probes, the stream and the p95 measurement trigger the fallback. A failure in any other item is fixed under this mechanism or brought back as an amendment, and does not by itself switch mechanisms.
 
 - Every ADR 0004 path and the MCP-617 probes, run through a docs deployment's rewrites, including `/mcpfoo` and `/mcp-not-a-path` reaching docs.
 - A streamed tool call over 60 seconds, checking that events arrive one by one and the call completes. That includes whether Vercel's 120-second limit applies between chunks of a rewritten response, which the error page does not say.
@@ -85,4 +85,4 @@ None of these can run before the staging DNS record (MCP-812) exists and both Ve
 - Cache headers on every server path through the rewrite, and that none comes back cached (`x-vercel-cache`), since Vercel caches external rewrites by upstream `cache-control` for new projects.
 - Whether the server project's firewall, rate limits and Bot Protection see the visitor's IP or the docs project's edge on a rewritten request.
 - That the staging protected-resource metadata `resource`, and the `resource_metadata` in the 401 `WWW-Authenticate`, name the staging host, not the server's Vercel host.
-- For the fallback only: the zone's Cloudflare plan, and whether `www`'s origin rules are one rule or several and in what order.
+- For the fallback only: the zone's Cloudflare plan, and which Cloudflare feature implements the `www` routing, which nobody has confirmed.
