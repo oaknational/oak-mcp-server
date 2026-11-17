@@ -231,7 +231,29 @@ function redactStaticSpanAttributeValue(
     return value.map((entry) => (typeof entry === 'string' ? redactText(entry, key) : entry));
   }
 
-  return value;
+  if (isStaticSpanAttributeNumberOrBooleanArray(value)) {
+    return value;
+  }
+
+  // The attribute type allows only scalars and scalar arrays, but the SDK
+  // sends whatever a caller sets. Redact anything else recursively and send
+  // it as JSON text, which the attribute type does allow.
+  return JSON.stringify(redactUnknownValue(value, key));
+}
+
+function isStaticSpanAttributeNumberOrBooleanArray(
+  value: SentryStaticSpanPayload['data'][string],
+): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        entry === null ||
+        entry === undefined ||
+        typeof entry === 'number' ||
+        typeof entry === 'boolean',
+    )
+  );
 }
 
 function redactStaticSpanData(

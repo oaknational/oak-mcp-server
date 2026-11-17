@@ -83,4 +83,28 @@ describe('Sentry redaction on the wire', () => {
     expect(transaction?.payload).toContain('"authorization":"[REDACTED]"');
     expect(items.filter((item) => item.type === 'event')).toHaveLength(2);
   });
+
+  it('redacts structured span attributes that bypass the attribute type', async () => {
+    const { envelopes } = initWithCapturingTransport();
+    const structured = {
+      request: { authorization: `Bearer ${TOKEN}` },
+      redirects: { history: [CALLBACK_URL] },
+    };
+
+    Sentry.startSpan({ name: 'POST /mcp', op: 'http.server' }, () => {
+      Sentry.startSpan({ name: 'upstream', op: 'http.client' }, (span) => {
+        span.setAttributes(structured as unknown as Parameters<typeof span.setAttributes>[0]);
+      });
+    });
+    await Sentry.flush(2_000);
+
+    const transaction = envelopes
+      .flatMap(envelopeItems)
+      .find((item) => item.type === 'transaction');
+    expect(transaction?.payload).toContain('"op":"http.client"');
+    for (const envelope of envelopes) {
+      expect(envelope).not.toContain(TOKEN);
+      expect(envelope).not.toContain(OAUTH_CODE);
+    }
+  });
 });
