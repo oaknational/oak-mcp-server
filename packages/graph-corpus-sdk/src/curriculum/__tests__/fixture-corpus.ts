@@ -114,6 +114,7 @@ const THREADS: readonly ThreadSpec[] = [
       {
         subject: 'maths',
         placements: [
+          ['unit-e', 4],
           ['unit-d', 4],
           ['unit-j', 6],
         ],

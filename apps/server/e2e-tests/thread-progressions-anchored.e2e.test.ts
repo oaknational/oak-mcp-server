@@ -1,15 +1,6 @@
-/**
- * E2E (G3 c2): `tools/call` on the anchored get-thread-progressions.
- *
- * Exercises the real corpus path through the full HTTP stack — no upstream
- * stub is involved because the aggregated graph tool reads the compile-time
- * corpus, not the live API. The anchor is chosen deterministically from the
- * corpus so the test describes behaviour over any valid corpus.
- */
-
 import assert from 'node:assert/strict';
 
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
+import { fixtureCorpus } from '../../../packages/graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import { request, type Response } from '../src/test-helpers/loopback-request.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
@@ -60,7 +51,7 @@ const DISCOVERY_ENVELOPE = z.object({
 });
 
 /** A thread slug with at least one placement, chosen deterministically (first emitted sequence). */
-const firstSequence = graphCorpus.sequences.find((sequence) => sequence.placements.length > 0);
+const firstSequence = fixtureCorpus.sequences.find((sequence) => sequence.placements.length > 0);
 assert.ok(firstSequence !== undefined, 'corpus has no non-empty sequence to anchor the e2e test');
 const knownThreadSlug: string = firstSequence.threadId.slice(
   firstSequence.threadId.indexOf(':') + 1,
@@ -68,11 +59,11 @@ const knownThreadSlug: string = firstSequence.threadId.slice(
 
 /** A (subject, keyStage) pair carried by a sequenced unit, chosen deterministically. */
 const placedUnitIds = new Set(
-  graphCorpus.sequences.flatMap((sequence) =>
+  fixtureCorpus.sequences.flatMap((sequence) =>
     sequence.placements.map((placement) => placement.unitId),
   ),
 );
-const sequencedUnit = graphCorpus.nodes.find(
+const sequencedUnit = fixtureCorpus.nodes.find(
   (node) => node.kind === 'unit' && placedUnitIds.has(node.id),
 );
 assert.ok(
@@ -129,7 +120,7 @@ describe('get-thread-progressions anchored tools/call', () => {
     // provably differs from id order, and prove the served entries reproduce
     // it. A stray sort anywhere between the view and the envelope would
     // re-alphabetise this and fail here, invisibly to in-process tests.
-    const disagreeing = graphCorpus.sequences.find((sequence) => {
+    const disagreeing = fixtureCorpus.sequences.find((sequence) => {
       const ids = sequence.placements.map((placement) => placement.unitId);
       const idSorted = [...ids].sort((a, b) => a.localeCompare(b));
       return ids.length > 2 && ids.join() !== idSorted.join();
@@ -167,7 +158,7 @@ describe('get-thread-progressions anchored tools/call', () => {
 
     const structured = DISCOVERY_ENVELOPE.parse(getStructuredContentData(result));
     expect(structured.threads.length).toBeGreaterThan(0);
-    expect(structured.threads.length).toBeLessThan(graphCorpus.sequences.length);
+    expect(structured.threads.length).toBeLessThan(fixtureCorpus.sequences.length);
     expect(structured.threads[0]).not.toHaveProperty('entries');
   });
 

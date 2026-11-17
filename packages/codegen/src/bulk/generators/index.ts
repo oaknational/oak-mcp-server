@@ -61,8 +61,6 @@ export {
   type VocabularyNode,
 } from './vocabulary-graph-generator.js';
 
-export { writeGraphCorpusAsJson, graphCorpusDescriptor } from './write-json-graph-corpus-file.js';
-
 export {
   serializeDatasetToJson,
   writeJsonDataset,

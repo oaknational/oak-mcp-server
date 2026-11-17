@@ -1,13 +1,4 @@
-/**
- * E2E: `tools/call` on the anchored get-prior-knowledge-graph.
- *
- * Exercises the real corpus path through the full HTTP stack — no upstream
- * stub is involved because the aggregated tool reads the compile-time
- * corpus, not the live API. The anchor is chosen deterministically from the
- * corpus so the test describes behaviour over any valid corpus.
- */
-
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
+import { fixtureCorpus } from '../../../packages/graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import { request, type Response } from '../src/test-helpers/loopback-request.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
@@ -41,7 +32,7 @@ const STATEMENTS_ENVELOPE = z.object({
 });
 
 /** A corpus unit node, chosen deterministically (lexicographic minimum slug). */
-const firstUnit = graphCorpus.nodes
+const firstUnit = fixtureCorpus.nodes
   .filter((node) => node.kind === 'unit')
   .sort((a, b) => a.unitSlug.localeCompare(b.unitSlug))[0];
 if (firstUnit === undefined) {

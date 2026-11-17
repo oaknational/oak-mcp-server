@@ -185,7 +185,6 @@ export {
   serializeVocabularyGraph,
   writeVocabularyGraphAsJson,
   generateGraphCorpusData,
-  writeGraphCorpusAsJson,
 } from './generators/index.js';
 
 export type {

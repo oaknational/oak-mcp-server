@@ -1,38 +1,17 @@
-/**
- * Curriculum graph subpath barrel: `@oaknational/graph-corpus-sdk/curriculum`.
- *
- * The generated one-graph corpus (G1a) plus the bounded anchored views over
- * it: `priorKnowledgeStatements` answers "what is the prior knowledge of
- * these units?" as each unit's stated prior-knowledge statements;
- * `misconceptionsForLessons` / `misconceptionsForUnits` /
- * `misconceptionsForThread` (G2) answer "which misconceptions does this
- * anchor address?" over the thread→unit→lesson→misconception chain;
- * `progressionForThread` / `progressionsForSubjectKeyStage` (G3) answer "how
- * does this thread progress across years?" over the per-subject,
- * curriculum-ordered sequences;
- * `keywordsForSubjectKeyStage` (G4b) answers "what is the key vocabulary for
- * this teaching context?" as a bounded frequency-ranked keyword page with
- * lesson decoration.
- */
+import type { ThreadProgressionStats } from './thread-progressions-view.js';
 
-import { graphCorpus } from './graph-corpus.js';
-import { buildCurriculumThreadProgressionsProjection } from './thread-progressions-projection.js';
-import { buildThreadProgressionStats } from './thread-progressions-view.js';
-import { createCurriculumGraphViews } from './views.js';
-
-export {
-  graphCorpus,
-  type GraphCorpus,
-  type GraphCorpusEdge,
-  type GraphCorpusLessonNode,
-  type GraphCorpusMisconceptionNode,
-  type GraphCorpusNodeId,
-  type GraphCorpusSequence,
-  type GraphCorpusSequencePlacement,
-  type GraphCorpusUnitLessonRun,
-  type GraphCorpusThreadNode,
-  type GraphCorpusUnitNode,
-} from './graph-corpus.js';
+export type {
+  GraphCorpus,
+  GraphCorpusEdge,
+  GraphCorpusLessonNode,
+  GraphCorpusMisconceptionNode,
+  GraphCorpusNodeId,
+  GraphCorpusSequence,
+  GraphCorpusSequencePlacement,
+  GraphCorpusUnitLessonRun,
+  GraphCorpusThreadNode,
+  GraphCorpusUnitNode,
+} from '@oaknational/sdk-codegen/graph-corpus';
 
 export { createCurriculumGraphViews, type CurriculumGraphViews } from './views.js';
 
@@ -88,18 +67,27 @@ export {
   type KeywordSubgraph,
 } from './keyword-view.js';
 
-/** The views bound to the generated corpus. */
-export const {
-  priorKnowledgeStatements,
-  misconceptionsForLessons,
-  misconceptionsForUnits,
-  misconceptionsForThread,
-  progressionForThread,
-  progressionsForSubjectKeyStage,
-  keywordsForSubjectKeyStage,
-} = createCurriculumGraphViews(graphCorpus);
+const THREAD_STATS_FROZEN_AT_2026_09_03_BULK_DOWNLOAD: ThreadProgressionStats = {
+  threadCount: 160,
+  subjectsCovered: [
+    'art',
+    'citizenship',
+    'computing',
+    'cooking-nutrition',
+    'design-technology',
+    'english',
+    'french',
+    'geography',
+    'german',
+    'history',
+    'maths',
+    'music',
+    'physical-education',
+    'religious-education',
+    'rshe-pshe',
+    'science',
+    'spanish',
+  ],
+};
 
-/** Thread-estate counts over the generated corpus. */
-export const threadProgressionStats = buildThreadProgressionStats(
-  buildCurriculumThreadProgressionsProjection(graphCorpus),
-);
+export const threadProgressionStats = THREAD_STATS_FROZEN_AT_2026_09_03_BULK_DOWNLOAD;

@@ -31,8 +31,6 @@ import {
   writeMinedSynonymsFile,
   writeNCCoverageGraphAsJson,
   writeVocabularyGraphAsJson,
-  generateGraphCorpusData,
-  writeGraphCorpusAsJson,
 } from '../src/bulk.js';
 import { readAllBulkFiles } from './lib/index.js';
 import { processBulkData, type ProcessingResult } from './vocab-gen-core.js';
@@ -110,23 +108,6 @@ async function generateOutputFiles(
 ): Promise<string[]> {
   const outputFiles: string[] = [];
   const sourceVersion = await readSourceVersion(config.bulkDataPath);
-
-  // Generate the graph corpus (one-graph foundation + G2 chain + G3 sequences
-  // + G4b keywords: unit/thread/lesson/misconception/keyword nodes,
-  // prerequisiteFor + chain edges, and the two ordered sections: per-subject
-  // curriculum-ordered thread→unit sequences, and authored-order unit→lesson
-  // runs)
-  const graphCorpus = generateGraphCorpusData({
-    priorKnowledge: result.extractedData.priorKnowledge,
-    threads: result.extractedData.threads,
-    lessons: result.extractedData.lessons,
-    unitLessons: result.extractedData.unitLessons,
-    misconceptions: result.extractedData.misconceptions,
-    keywords: result.extractedData.keywords,
-    sourceVersion,
-  });
-  const graphCorpusDirPath = await writeGraphCorpusAsJson(graphCorpus, config.outputPath, logger);
-  outputFiles.push(basename(graphCorpusDirPath));
 
   // Generate analysis report (written to vocab-gen/reports in the SDK)
   const analysisReport = generateAnalysisReport(result.extractedData);
