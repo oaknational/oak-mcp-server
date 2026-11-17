@@ -1,11 +1,12 @@
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { brokenLinks, root, trackedMarkdownFiles } from './markdown-files.js';
 
 const fixtures = join(import.meta.dirname, 'fixtures');
-const scanned = trackedMarkdownFiles().filter((file) => !file.startsWith(fixtures));
+const fixturesPrefix = `${fixtures}${sep}`;
+const scanned = trackedMarkdownFiles().filter((file) => !file.startsWith(fixturesPrefix));
 
 describe('markdown links', () => {
   it('scans root files as well as docs', () => {
@@ -13,6 +14,11 @@ describe('markdown links', () => {
     expect(names).toEqual(
       expect.arrayContaining(['README.md', 'LICENCE-DATA.md', 'docs/adr/README.md']),
     );
+  });
+
+  it('scans a tracked file whose name merely starts with "fixtures", not just the fixtures folder', () => {
+    const names = scanned.map((file) => file.slice(root.length + 1));
+    expect(names).toContain('tools/repo-checks/fixtures-notes.md');
   });
 
   it.each(scanned.map((file) => [file.slice(root.length + 1), file]))(
@@ -82,6 +88,16 @@ describe('markdown links', () => {
   it('checks a target that contains parentheses', () => {
     expect(brokenLinks(join(fixtures, 'parenthesised-target.md'))).toEqual([
       'tools/repo-checks/fixtures/parenthesised-target.md -> missing(1).md',
+    ]);
+  });
+
+  it('decodes a percent-encoded target before resolving it', () => {
+    expect(brokenLinks(join(fixtures, 'percent-encoded-target.md'))).toEqual([]);
+  });
+
+  it('does not report a link to a directory as broken, but still checks its fragment', () => {
+    expect(brokenLinks(join(fixtures, 'directory-target.md'))).toEqual([
+      'tools/repo-checks/fixtures/directory-target.md -> a-directory#no-such-heading',
     ]);
   });
 });
