@@ -13,6 +13,8 @@ function snapshotText(downloadedAt: string): string {
     stats: { totalNodes: 5, totalEdges: 4 },
     nodes: [],
     edges: [],
+    sequences: [],
+    unitLessonRuns: [],
   } as unknown as GraphCorpus;
   const snapshot: GraphCorpusSnapshot = {
     schemaVersion: GRAPH_CORPUS_SCHEMA_VERSION,

@@ -13,13 +13,17 @@ import {
   type ToolExecutionResult,
 } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
 import { createDefaultRequestExecutor } from './tool-executor-factory.js';
-import { createFakeSearchRetrieval } from './test-helpers/fakes.js';
+import {
+  createFakeCurriculumGraphLoader,
+  createFakeSearchRetrieval,
+} from './test-helpers/fakes.js';
 
 describe('createDefaultRequestExecutor', () => {
   it('returns an executor function', () => {
     const executor = createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(() => Promise.resolve(ok({ status: 200 as const, data: {} }))),
       createExecutor: vi.fn(() => vi.fn()),
@@ -35,6 +39,7 @@ describe('createDefaultRequestExecutor', () => {
     createDefaultRequestExecutor({
       apiKey: 'my-api-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient,
       executeToolCall: vi.fn(),
       createExecutor,
@@ -50,6 +55,7 @@ describe('createDefaultRequestExecutor', () => {
     createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval,
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(),
       createExecutor,
@@ -65,6 +71,7 @@ describe('createDefaultRequestExecutor', () => {
     createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(),
       createExecutor,
@@ -86,6 +93,7 @@ describe('createDefaultRequestExecutor', () => {
     const executor = createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(),
       createExecutor,
@@ -118,6 +126,7 @@ describe('createDefaultRequestExecutor', () => {
     createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(() => Promise.resolve(successResult)),
       createExecutor,
@@ -156,6 +165,7 @@ describe('createDefaultRequestExecutor', () => {
     createDefaultRequestExecutor({
       apiKey: 'test-key',
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       createClient: vi.fn(() => ({})),
       executeToolCall: vi.fn(() => Promise.resolve(failureResult)),
       createExecutor,

@@ -9,6 +9,7 @@
 
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
 import type { Logger } from '@oaknational/logger';
 import type { ProductAnalyticsSink } from '@oaknational/observability';
 import type { RuntimeConfig } from './runtime-config.js';
@@ -70,6 +71,7 @@ interface RegisterHandlersOptions {
   readonly resourceUrl: string;
   /** Pre-created search retrieval service (shared across per-request servers). */
   readonly searchRetrieval: SearchRetrievalService;
+  readonly loadCurriculumGraph: () => Promise<CurriculumGraphResult>;
   /** Factory for generating signed asset download URLs (HTTP-only). */
   readonly createAssetDownloadUrl?: (lesson: string, type: string) => string;
   /** Returns the built widget HTML content (DI per ADR-078). */
@@ -94,20 +96,20 @@ interface RegisterHandlersOptions {
 function buildToolHandlerDependencies(
   resourceUrl: string,
   overrides: ToolHandlerOverrides | undefined,
-  searchRetrieval: SearchRetrievalService,
+  services: Pick<RegisterHandlersOptions, 'searchRetrieval' | 'loadCurriculumGraph'>,
   stubExecutor: ReturnType<typeof createStubToolExecutionAdapter> | undefined,
 ): ToolHandlerDependencies {
   const createRequestExecutor: ToolHandlerDependencies['createRequestExecutor'] = stubExecutor
     ? (config) =>
         createStubRequestExecutor({
-          factoryConfig: { ...config, searchRetrieval },
+          factoryConfig: { ...config, ...services },
           stubExecutor,
           createExecutor: createUniversalToolExecutor,
         })
     : (config) =>
         createDefaultRequestExecutor({
           ...config,
-          searchRetrieval,
+          ...services,
           createClient: createOakPathBasedClient,
           executeToolCall,
           createExecutor: createUniversalToolExecutor,
@@ -164,7 +166,7 @@ export function registerHandlers(
   const deps = buildToolHandlerDependencies(
     resourceUrl,
     options.overrides,
-    options.searchRetrieval,
+    { searchRetrieval: options.searchRetrieval, loadCurriculumGraph: options.loadCurriculumGraph },
     stubExecutor,
   );
 

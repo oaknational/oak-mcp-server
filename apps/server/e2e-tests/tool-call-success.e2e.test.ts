@@ -15,6 +15,7 @@ import {
   readFirstTextContent,
   parseToolSuccessPayload,
 } from './helpers/sse.js';
+import { createFakeCurriculumGraphLoader } from '../src/test-helpers/fakes.js';
 import { stubSearchRetrieval } from './helpers/stub-search-retrieval.js';
 import { createMockObservability, createMockRuntimeConfig } from './helpers/test-config.js';
 import { getScratchStaticRoot } from '../src/test-helpers/static-root-fixture.js';
@@ -49,6 +50,7 @@ function createStubOverrides(captured: CapturedCall[]): ToolHandlerOverrides {
           return Promise.resolve(result);
         },
         searchRetrieval: stubSearchRetrieval,
+        loadCurriculumGraph: createFakeCurriculumGraphLoader(),
         generatedTools: generatedToolRegistry,
         createAssetDownloadUrl: config.createAssetDownloadUrl,
       });

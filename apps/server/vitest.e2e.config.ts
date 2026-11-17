@@ -4,5 +4,6 @@ import { baseE2EConfig } from './vitest.e2e.base';
 export default mergeConfig(baseE2EConfig, {
   test: {
     include: ['e2e-tests/**/*.e2e.test.ts'],
+    globalSetup: ['./e2e-tests/helpers/graph-corpus-store.ts'],
   },
 });

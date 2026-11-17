@@ -28,9 +28,8 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
 import {
-  progressionForThread,
-  progressionsForSubjectKeyStage,
   threadProgressionStats,
+  type CurriculumGraphViews,
   type ThreadDiscovery,
   type ThreadProgressionSubgraph,
 } from '@oaknational/graph-corpus-sdk/curriculum';
@@ -172,12 +171,15 @@ function summariseDiscovery(discovery: ThreadDiscovery): string {
 }
 
 /** Dispatches the validated single-anchor input to the owning view function. */
-function dispatchAnchor(input: z.infer<typeof THREAD_PROGRESSIONS_INPUT>): {
+function dispatchAnchor(
+  input: z.infer<typeof THREAD_PROGRESSIONS_INPUT>,
+  views: CurriculumGraphViews,
+): {
   readonly summary: string;
   readonly data: ThreadProgressionsEnvelopeData;
 } {
   if (input.threadSlug !== undefined) {
-    const subgraph = progressionForThread(input.threadSlug);
+    const subgraph = views.progressionForThread(input.threadSlug);
     return {
       summary: summariseProgression(subgraph),
       data: { anchorKind: 'thread', ...subgraph },
@@ -192,7 +194,7 @@ function dispatchAnchor(input: z.infer<typeof THREAD_PROGRESSIONS_INPUT>): {
       'get-thread-progressions invariant breach: discovery anchor missing subject or keyStage after validated parse',
     );
   }
-  const discovery = progressionsForSubjectKeyStage(subject, keyStage);
+  const discovery = views.progressionsForSubjectKeyStage(subject, keyStage);
   return {
     summary: summariseDiscovery(discovery),
     data: { anchorKind: 'subjectKeyStage', ...discovery },
@@ -208,15 +210,19 @@ function dispatchAnchor(input: z.infer<typeof THREAD_PROGRESSIONS_INPUT>): {
  * TextContent (MCP spec SHOULD for structured results).
  *
  * @param input - Raw MCP tool-call arguments.
+ * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored result in structuredContent.
  */
-export function runThreadProgressionsTool(input: unknown): CallToolResult {
+export function runThreadProgressionsTool(
+  input: unknown,
+  views: CurriculumGraphViews,
+): CallToolResult {
   const parsed = THREAD_PROGRESSIONS_INPUT_VALIDATED.safeParse(input);
   if (!parsed.success) {
     return formatError(`Invalid get-thread-progressions input: ${parsed.error.message}`);
   }
 
-  const dispatched = dispatchAnchor(parsed.data);
+  const dispatched = dispatchAnchor(parsed.data, views);
   return formatToolResponse({
     summary: dispatched.summary,
     data: dispatched.data,

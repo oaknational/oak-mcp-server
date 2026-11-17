@@ -1,6 +1,7 @@
-import { err, ok, type Result } from '@oaknational/result';
+import { err, isOk, ok, type Result } from '@oaknational/result';
 import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 
+import { isRecord, parseGraphCorpus } from './corpus-shape.js';
 import type { ObjectStore } from './object-store.js';
 
 /** Version of the stored snapshot shape. */
@@ -28,22 +29,11 @@ function datedKey(downloadedAt: string): string {
   return `${PREFIX}${new Date(downloadedAt).toISOString().replace(/[:.]/g, '-')}.json`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isCorpusShaped(value: unknown): value is GraphCorpus {
-  return (
-    isRecord(value) &&
-    Array.isArray(value['nodes']) &&
-    Array.isArray(value['edges']) &&
-    isRecord(value['stats']) &&
-    typeof value['stats']['totalNodes'] === 'number' &&
-    typeof value['stats']['totalEdges'] === 'number'
-  );
-}
-
-/** Parses a stored snapshot, checking the envelope and the schema version. */
+/**
+ * Parses a stored snapshot, checking the envelope, the schema version and
+ * that every node, edge, sequence and unit lesson run in the corpus is one
+ * the curriculum views can read.
+ */
 export function parseGraphCorpusSnapshot(text: string): Result<GraphCorpusSnapshot, string> {
   let value: unknown;
   try {
@@ -63,15 +53,16 @@ export function parseGraphCorpusSnapshot(text: string): Result<GraphCorpusSnapsh
   if (typeof downloadedAt !== 'string' || typeof generatedAt !== 'string') {
     return err('snapshot is missing downloadedAt or generatedAt');
   }
-  if (!isCorpusShaped(corpus)) {
-    return err('snapshot corpus is missing nodes, edges or stats');
+  const parsed = parseGraphCorpus(corpus);
+  if (!isOk(parsed)) {
+    return err(`snapshot corpus ${parsed.error}`);
   }
   return ok({
     schemaVersion,
     downloadedAt,
     generatedAt,
     ...(typeof sourceDigest === 'string' ? { sourceDigest } : {}),
-    corpus,
+    corpus: parsed.value,
   });
 }
 

@@ -30,6 +30,8 @@ function createMockExecutor(result: ToolExecutionResult): UniversalToolExecutorD
     executeMcpTool: () => Promise.resolve(result),
     searchRetrieval: createStubSearchRetrieval(),
     generatedTools: createNullGeneratedToolRegistry(),
+    loadCurriculumGraph: () =>
+      Promise.resolve(err({ kind: 'not-found', message: 'no graph in this test' })),
   };
 }
 
@@ -274,6 +276,8 @@ describe('runFetchTool result structure per OpenAI Apps SDK', () => {
         },
         searchRetrieval: createStubSearchRetrieval(),
         generatedTools: createNullGeneratedToolRegistry(),
+        loadCurriculumGraph: () =>
+          Promise.resolve(err({ kind: 'not-found', message: 'no graph in this test' })),
       };
 
       await runFetchTool({ id: 'thread:algebra' }, deps);
@@ -299,6 +303,8 @@ describe('runFetchTool result structure per OpenAI Apps SDK', () => {
           Promise.resolve(err(new McpToolError('API failure', 'get-lessons-summary'))),
         searchRetrieval: createStubSearchRetrieval(),
         generatedTools: createNullGeneratedToolRegistry(),
+        loadCurriculumGraph: () =>
+          Promise.resolve(err({ kind: 'not-found', message: 'no graph in this test' })),
       };
 
       const result = await runFetchTool({ id: 'lesson:test' }, deps);

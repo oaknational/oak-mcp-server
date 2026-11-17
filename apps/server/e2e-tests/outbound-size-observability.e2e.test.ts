@@ -32,6 +32,7 @@ import {
 } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
 import { ok } from '@oaknational/result';
 import { createFakeHttpObservability } from '../src/test-helpers/observability-fakes.js';
+import { createFakeCurriculumGraphLoader } from '../src/test-helpers/fakes.js';
 import { stubSearchRetrieval } from './helpers/stub-search-retrieval.js';
 import { createMockRuntimeConfig } from './helpers/test-config.js';
 import { getScratchStaticRoot } from '../src/test-helpers/static-root-fixture.js';
@@ -65,6 +66,7 @@ function createStubOverrides(): ToolHandlerOverrides {
           return Promise.resolve(result);
         },
         searchRetrieval: stubSearchRetrieval,
+        loadCurriculumGraph: createFakeCurriculumGraphLoader(),
         generatedTools: generatedToolRegistry,
         createAssetDownloadUrl: config.createAssetDownloadUrl,
       }),

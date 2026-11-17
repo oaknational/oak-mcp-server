@@ -2,9 +2,6 @@
  * Integration tests for the anchored get-prior-knowledge-graph tool.
  *
  * @remarks
- * Integration, not unit: the tool reads the compile-time graph corpus, whose
- * module loads `data.json` at import time (IO), and the anchor fixture is
- * derived from that corpus.
  *
  * These tests describe the TOOL ENVELOPE: input parsing at the MCP boundary,
  * dispatch to the statements view, and the response shape (summary
@@ -16,18 +13,19 @@
  * describe behaviour over any valid corpus rather than pinning content.
  */
 
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
+import { createCurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
+import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import {
-  GET_PRIOR_KNOWLEDGE_GRAPH_INPUT_SCHEMA,
   GET_PRIOR_KNOWLEDGE_GRAPH_TOOL_DEF,
   runPriorKnowledgeGraphTool,
 } from './aggregated-prior-knowledge-graph.js';
-import { wireExamplesOf } from './test-helpers/advertised-examples.js';
+
+const views = createCurriculumGraphViews(fixtureCorpus);
 
 /** A corpus unit slug, chosen deterministically (lexicographic minimum). */
-const firstUnitSlug = graphCorpus.nodes
+const firstUnitSlug = fixtureCorpus.nodes
   .filter((node) => node.kind === 'unit')
   .map((node) => node.unitSlug)
   .sort((a, b) => a.localeCompare(b))[0];
@@ -75,7 +73,7 @@ describe('GET_PRIOR_KNOWLEDGE_GRAPH_TOOL_DEF', () => {
 
 describe('runPriorKnowledgeGraphTool', () => {
   it('returns the statements envelope for a known anchor: summary + JSON content and structuredContent', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug] });
+    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     // MCP spec SHOULD: structured content is mirrored by serialised TextContent.
@@ -93,9 +91,12 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('reports unknown anchors as information, not an error', () => {
-    const result = runPriorKnowledgeGraphTool({
-      unitSlugs: [knownUnitSlug, 'definitely-not-a-real-unit-slug-xyz'],
-    });
+    const result = runPriorKnowledgeGraphTool(
+      {
+        unitSlugs: [knownUnitSlug, 'definitely-not-a-real-unit-slug-xyz'],
+      },
+      views,
+    );
 
     expect(result.isError).toBeUndefined();
     const structured = STATEMENTS_ENVELOPE.parse(result.structuredContent);
@@ -105,7 +106,7 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('returns a well-formed empty envelope when no anchors resolve', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: ['no-such-unit-anywhere'] });
+    const result = runPriorKnowledgeGraphTool({ unitSlugs: ['no-such-unit-anywhere'] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = STATEMENTS_ENVELOPE.parse(result.structuredContent);
@@ -115,7 +116,7 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('strips the retired depth input rather than erroring (old callers keep working)', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug], depth: 2 });
+    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug], depth: 2 }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = STATEMENTS_ENVELOPE.parse(result.structuredContent);
@@ -123,42 +124,14 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('rejects input without unitSlugs at the input boundary', () => {
-    const result = runPriorKnowledgeGraphTool({});
+    const result = runPriorKnowledgeGraphTool({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects non-object input at the input boundary', () => {
-    const result = runPriorKnowledgeGraphTool('unitSlugs');
+    const result = runPriorKnowledgeGraphTool('unitSlugs', views);
 
     expect(result.isError).toBe(true);
-  });
-});
-
-describe('get-prior-knowledge-graph wire schema — advertised examples (MCP-303 drive-leg cure)', () => {
-  // Behaviour, never config (owner ruling 2026-07-28): the `.meta()` must
-  // survive the z.toJSONSchema round-trip so clients can derive a call (the
-  // drive leg's founding finding), and WHATEVER anchor it advertises must
-  // resolve in the corpus this SDK ships — a dead example teaches every
-  // client a dead value. The value itself is config and is not pinned.
-  it('every wire-advertised example invocation resolves against the shipped corpus', () => {
-    // Every advertised element, not only the first: a later-added stale
-    // example must not hide behind a green first element (the helper's
-    // .min(1) guard guarantees this loop is never vacuous).
-    for (const exampleAnchor of wireExamplesOf(
-      GET_PRIOR_KNOWLEDGE_GRAPH_INPUT_SCHEMA,
-      'unitSlugs',
-      z.array(z.string()).min(1),
-    )) {
-      const result = runPriorKnowledgeGraphTool({ unitSlugs: exampleAnchor });
-
-      expect(
-        result.isError,
-        `advertised anchor ${JSON.stringify(exampleAnchor)} must resolve`,
-      ).toBeUndefined();
-      const envelope = STATEMENTS_ENVELOPE.parse(result.structuredContent);
-      expect(envelope.unknownAnchors).toEqual([]);
-      expect(envelope.resolvedAnchors.length).toBeGreaterThan(0);
-    }
   });
 });

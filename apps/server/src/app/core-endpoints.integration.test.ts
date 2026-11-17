@@ -27,6 +27,7 @@ import type { McpTransportObserver } from '@oaknational/observability';
 import { initializeCoreEndpoints } from './core-endpoints.js';
 import { registerHandlers } from '../handlers.js';
 import {
+  createFakeCurriculumGraphLoader,
   createFakeSearchRetrieval,
   createFakeLogger,
   createFakeHttpObservability,
@@ -46,6 +47,7 @@ describe('native Sentry MCP wrapping is inert without Sentry.init', () => {
       logger: createFakeLogger(),
       observability: createFakeHttpObservability(),
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       resourceUrl: 'https://probe.test/mcp',
       getWidgetHtml: () => '<!doctype html><html><body>test</body></html>',
     });

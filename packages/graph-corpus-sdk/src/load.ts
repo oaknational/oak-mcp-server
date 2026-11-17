@@ -94,3 +94,5 @@ export function createGraphCorpusLoaderFromEnv(
     store: createGraphCorpusSnapshotStore(createObjectStoreFromEnv(env)),
   });
 }
+
+export { createCurriculumGraph, type CurriculumGraphResult } from './curriculum-graph.js';

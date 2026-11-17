@@ -6,6 +6,7 @@ import { isOk, unwrap } from '@oaknational/result';
 import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { fixtureCorpus } from '../curriculum/__tests__/fixture-corpus.js';
 import {
   GRAPH_CORPUS_SCHEMA_VERSION,
   LATEST_KEY,
@@ -62,6 +63,8 @@ function snapshotAt(downloadedAt: string, totalNodes = 3): GraphCorpusSnapshot {
     stats: { totalNodes, totalEdges: 2 },
     nodes: [],
     edges: [],
+    sequences: [],
+    unitLessonRuns: [],
   } as unknown as GraphCorpus;
   return {
     schemaVersion: GRAPH_CORPUS_SCHEMA_VERSION,
@@ -183,6 +186,112 @@ describe('parseGraphCorpusSnapshot', () => {
     ['no corpus body', JSON.stringify({ ...snapshotAt(day(1)), corpus: { nodes: [] } }), 'corpus'],
   ])('refuses %s', (_name, text, message) => {
     const result = parseGraphCorpusSnapshot(text);
+    expect(isOk(result)).toBe(false);
+    expect(result).toMatchObject({ error: expect.stringContaining(message) as unknown });
+  });
+});
+
+describe('parseGraphCorpusSnapshot corpus validation', () => {
+  type Corpus = Record<string, unknown> & { nodes: unknown[]; edges: unknown[] };
+
+  function editedSnapshot(edit: (corpus: Corpus) => void): string {
+    const corpus = structuredClone(fixtureCorpus) as unknown as Corpus;
+    edit(corpus);
+    return JSON.stringify({ ...snapshotAt(day(1)), corpus });
+  }
+
+  const nodeWithId = (corpus: Corpus, id: string): Record<string, unknown> => {
+    const node = corpus.nodes.find((candidate) => (candidate as { id: string }).id === id);
+    if (node === undefined) {
+      throw new Error(`fixture has no node ${id}`);
+    }
+    return node as Record<string, unknown>;
+  };
+
+  it('accepts a well-formed corpus and keeps it intact', () => {
+    const result = parseGraphCorpusSnapshot(editedSnapshot(() => undefined));
+    expect(unwrap(result).corpus).toEqual(fixtureCorpus);
+  });
+
+  it.each([
+    [
+      'an unknown node kind',
+      (c: Corpus) => (nodeWithId(c, 'unit:unit-a')['kind'] = 'topic'),
+      'kind',
+    ],
+    [
+      'a node id without its kind qualifier',
+      (c: Corpus) => (nodeWithId(c, 'unit:unit-a')['id'] = 'unit-a'),
+      'unit-a',
+    ],
+    [
+      'a node id qualified with another kind',
+      (c: Corpus) => (nodeWithId(c, 'unit:unit-a')['id'] = 'lesson:unit-a'),
+      'lesson:unit-a',
+    ],
+    [
+      'a node missing a field its kind carries',
+      (c: Corpus) => delete nodeWithId(c, 'lesson:lesson-a-1')['lessonTitle'],
+      'lessonTitle',
+    ],
+    [
+      'a unit whose prior knowledge is not a list of strings',
+      (c: Corpus) => (nodeWithId(c, 'unit:unit-a')['priorKnowledge'] = 'Counts in tens.'),
+      'priorKnowledge',
+    ],
+    [
+      'an unknown edge type',
+      (c: Corpus) =>
+        c.edges.push({ source: 'unit:unit-a', type: 'teaches', target: 'unit:unit-b' }),
+      'teaches',
+    ],
+    [
+      'an edge to a node that does not exist',
+      (c: Corpus) =>
+        c.edges.push({ source: 'unit:unit-a', type: 'containsLesson', target: 'lesson:missing' }),
+      'lesson:missing',
+    ],
+    [
+      'an edge whose target is the wrong kind for its type',
+      (c: Corpus) =>
+        c.edges.push({ source: 'unit:unit-a', type: 'containsLesson', target: 'unit:unit-b' }),
+      'containsLesson',
+    ],
+    [
+      'an edge whose source is the wrong kind for its type',
+      (c: Corpus) =>
+        c.edges.push({
+          source: 'unit:unit-a',
+          type: 'addressesMisconception',
+          target: c.nodes
+            .map((node) => (node as { id: string }).id)
+            .find((id) => id.startsWith('misconception:')),
+        }),
+      'addressesMisconception',
+    ],
+    [
+      'a sequence placing a unit that does not exist',
+      (c: Corpus) =>
+        (c['sequences'] as { placements: unknown[] }[])[0]?.placements.push({
+          unitId: 'unit:missing',
+          year: 3,
+        }),
+      'unit:missing',
+    ],
+    [
+      'a unit lesson run naming a lesson that does not exist',
+      (c: Corpus) =>
+        (c['unitLessonRuns'] as { lessonIds: unknown[] }[])[0]?.lessonIds.push('lesson:missing'),
+      'lesson:missing',
+    ],
+    ['a corpus without sequences', (c: Corpus) => delete c['sequences'], 'sequences'],
+    [
+      'a corpus without unit lesson runs',
+      (c: Corpus) => delete c['unitLessonRuns'],
+      'unitLessonRuns',
+    ],
+  ])('refuses %s', (_name, edit, message) => {
+    const result = parseGraphCorpusSnapshot(editedSnapshot(edit));
     expect(isOk(result)).toBe(false);
     expect(result).toMatchObject({ error: expect.stringContaining(message) as unknown });
   });

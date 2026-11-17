@@ -7,11 +7,14 @@
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import { isOk } from '@oaknational/result';
 import type { ToolExecutionResult } from '../execute-tool-call.js';
 import {
   formatToolResponse,
   formatError,
   formatUnknownTool,
+  resolveUniversalToolLogger,
   toErrorMessage,
   type UniversalToolExecutorDependencies,
 } from '../universal-tool-shared.js';
@@ -166,13 +169,50 @@ type AggregatedHandler = (
   deps: UniversalToolExecutorDependencies,
 ) => Promise<CallToolResult>;
 
+type CurriculumGraphToolName = Extract<
+  AggregatedToolName,
+  | 'get-thread-progressions'
+  | 'get-prior-knowledge-graph'
+  | 'get-misconception-graph'
+  | 'get-keyword-graph'
+>;
+
+function withCurriculumGraph(
+  tool: CurriculumGraphToolName,
+  run: (input: unknown, views: CurriculumGraphViews) => CallToolResult,
+): AggregatedHandler {
+  return async (input, deps) => {
+    const graph = await deps.loadCurriculumGraph();
+    if (isOk(graph)) {
+      return run(input, graph.value);
+    }
+    resolveUniversalToolLogger(deps).error('mcp-tool.curriculum-graph.unavailable', {
+      tool,
+      kind: graph.error.kind,
+      message: graph.error.message,
+    });
+    return formatError(
+      `${tool} could not read Oak's curriculum graph. This is a server-side problem, so retrying now is unlikely to help. Use search, fetch or browse-curriculum instead.`,
+    );
+  };
+}
+
 const AGGREGATED_HANDLERS: Readonly<Record<AggregatedToolName, AggregatedHandler>> = {
   search: handleSearchTool,
   'get-curriculum-model': () => Promise.resolve(handleCurriculumModelTool()),
-  'get-thread-progressions': (input) => Promise.resolve(runThreadProgressionsTool(input)),
-  'get-prior-knowledge-graph': (input) => Promise.resolve(runPriorKnowledgeGraphTool(input)),
-  'get-misconception-graph': (input) => Promise.resolve(runMisconceptionGraphTool(input)),
-  'get-keyword-graph': (input) => Promise.resolve(runKeywordGraphTool(input)),
+  'get-thread-progressions': withCurriculumGraph(
+    'get-thread-progressions',
+    runThreadProgressionsTool,
+  ),
+  'get-prior-knowledge-graph': withCurriculumGraph(
+    'get-prior-knowledge-graph',
+    runPriorKnowledgeGraphTool,
+  ),
+  'get-misconception-graph': withCurriculumGraph(
+    'get-misconception-graph',
+    runMisconceptionGraphTool,
+  ),
+  'get-keyword-graph': withCurriculumGraph('get-keyword-graph', runKeywordGraphTool),
   'get-eef-evidence': (input) =>
     Promise.resolve(eefEvidenceToCallToolResult(runEefEvidenceTool(input))),
   fetch: handleFetchTool,
