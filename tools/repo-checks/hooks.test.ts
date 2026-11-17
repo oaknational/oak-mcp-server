@@ -47,12 +47,14 @@ beforeEach(() => {
   ]) {
     copyFileSync(join(root, '.husky', file), join(repo, '.husky', file));
   }
-  for (const file of ['commitlint.config.mjs', 'package.json', '.gitleaks.toml']) {
+  // No package.json: its packageManager field makes `pnpm exec` in the hooks
+  // resolve pnpm from the registry when the fixture has no lockfile.
+  for (const file of ['commitlint.config.mjs', '.gitleaks.toml']) {
     copyFileSync(join(root, file), join(repo, file));
   }
   symlinkSync(join(root, 'node_modules'), join(repo, 'node_modules'));
   symlinkSync(join(root, 'tools', 'repo-checks'), join(repo, 'tools', 'repo-checks'));
-  git('add', '.husky', 'commitlint.config.mjs', 'package.json', '.gitleaks.toml');
+  git('add', '.husky', 'commitlint.config.mjs', '.gitleaks.toml');
   commit('chore: init');
 });
 
@@ -132,7 +134,7 @@ describe('pre-merge-commit', () => {
 
 describe('hook installation', () => {
   it('runs the hooks in a linked worktree before any install', () => {
-    const manifest = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
+    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
       scripts: { prepare: string };
     };
     stubPreCommit(1);
