@@ -53,3 +53,7 @@ updates:
       # move to the core version the target release needs.
       - dependency-name: '@posthog/mcp'
         versions: ['>=0.11.5']
+      # Every release after 5.48.1 needs @posthog/core above 1.47.0, where
+      # pnpm-workspace.yaml's overrides hold it. Lift with MCP-907.
+      - dependency-name: posthog-node
+        versions: ['>=5.48.2']
