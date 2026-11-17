@@ -12,7 +12,7 @@ const sourceFileFor = (typesEntry: string): string =>
   typesEntry
     .replace(/^\.\/dist\//, 'src/')
     .replace(/\.d\.ts$/, '.ts')
-    .replace('*', '$1');
+    .replaceAll('*', '$1');
 
 export const sourceAliases = globSync('packages/*/package.json', {
   cwd: import.meta.dirname,
@@ -24,7 +24,7 @@ export const sourceAliases = globSync('packages/*/package.json', {
       ? []
       : [
           {
-            find: new RegExp(`^${escape(posix.join(name, subpath)).replace('*', '(.+)')}$`),
+            find: new RegExp(`^${escape(posix.join(name, subpath)).replaceAll('*', '(.+)')}$`),
             replacement: join(dirname(manifest), sourceFileFor(target.types)),
           },
         ],

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -42,4 +42,16 @@ describe.each([
       .filter((path) => !existsSync(path));
     expect(missing).toEqual([]);
   });
+});
+
+it('finds no export pattern with more than one *, which Node rejects', () => {
+  const patterns = globSync('packages/*/package.json', { cwd: repo }).flatMap((file) =>
+    Object.entries(
+      (JSON.parse(readFileSync(join(repo, file), 'utf8')) as { exports: Record<string, unknown> })
+        .exports,
+    ).flatMap(([subpath, target]) =>
+      typeof target === 'string' ? [] : [subpath, (target as { types: string }).types],
+    ),
+  );
+  expect(patterns.filter((pattern) => pattern.split('*').length > 2)).toEqual([]);
 });
