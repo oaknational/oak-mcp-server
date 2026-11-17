@@ -1,0 +1,64 @@
+{
+  "tsconfig": "apps/server/tsconfig.json",
+  "scope": "apps/server/src",
+  "testOnly": ["apps/server/src/test-helpers/", "apps/server/src/test.setup.ts"],
+  "roots": ["apps/server/src/server.ts", "apps/server/src/index.ts"],
+  "devRoots": [
+    "apps/server/scripts/",
+    "apps/server/build-scripts/",
+    "apps/server/operations/",
+    "apps/server/conformance/src/",
+    "apps/server/esbuild.config.ts",
+    "tools/surface-diff/surface-diff.ts",
+    "tools/surface-diff/surface-snapshot.ts"
+  ],
+  "devGates": [
+    { "file": "apps/server/src/test-error/test-error-route.ts", "name": "registerTestErrorRoute" },
+    { "file": "apps/server/src/tool-executor-factory.ts", "name": "createStubRequestExecutor" }
+  ],
+  "anchors": {
+    "initialize and tools/list (McpServer per request)": "apps/server/src/app/core-endpoints.ts",
+    "POST /mcp and GET /mcp": "apps/server/src/auth-routes.ts",
+    "tools/call": "apps/server/src/tool-handler-with-auth.ts",
+    "tool registration": "apps/server/src/handlers.ts",
+    "resources/list and resources/read": "apps/server/src/register-resources.ts",
+    "OAuth proxy routes": "apps/server/src/oauth-proxy/oauth-proxy-routes.ts",
+    "MCP auth (token check)": "apps/server/src/auth/mcp-auth/mcp-auth.ts",
+    "/healthz": "apps/server/src/app/health-endpoints.ts",
+    "cron /api/cron/refresh-graph": "apps/server/src/cron/refresh-graph.ts",
+    "static asset routes": "apps/server/src/app/static-content.ts"
+  },
+  "groups": {
+    "MCP transport and request routing": [
+      "apps/server/src/mcp-handler.ts",
+      "apps/server/src/mcp-router.ts",
+      "apps/server/src/mcp-middleware.ts",
+      "apps/server/src/mcp-request-context.ts",
+      "apps/server/src/mcp-public-browser-leg.ts",
+      "apps/server/src/host-header-validation.ts",
+      "apps/server/src/host-validation-error.ts",
+      "apps/server/src/security.ts",
+      "apps/server/src/auth/mcp-body-parser.ts"
+    ],
+    "Auth: Clerk, OAuth proxy, PRM, token checks": [
+      "apps/server/src/auth/mcp-auth/",
+      "apps/server/src/oauth-proxy/",
+      "apps/server/src/auth/public-resources.ts",
+      "apps/server/src/check-mcp-client-auth.ts",
+      "apps/server/src/conditional-clerk-middleware.ts",
+      "apps/server/src/clerk-skip-surfaces.ts",
+      "apps/server/src/global-auth-context.ts",
+      "apps/server/src/tool-auth-checker.ts",
+      "apps/server/src/tool-handler-with-auth.ts",
+      "apps/server/src/auth-error-detector.ts",
+      "apps/server/src/auth-error-response.ts",
+      "apps/server/src/auth-instrumentation.ts",
+      "apps/server/src/auth-middleware-instrumentation.ts",
+      "apps/server/src/auth-routes.ts",
+      "apps/server/src/app/oauth-and-caching-setup.ts",
+      "apps/server/src/app/upstream-metadata-fetch.ts",
+      "apps/server/src/app/clerk-key-pairing.ts"
+    ],
+    "Diagnostic test-error route": ["apps/server/src/test-error/"]
+  }
+}
