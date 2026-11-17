@@ -1,6 +1,6 @@
 # 0006. Route each environment with Vercel microfrontends
 
-- **Status:** Proposed (2026-11-17). Amends ADR 0005 (open in #73), once the operator approves the microfrontends group.
+- **Status:** Proposed (2026-11-17). Amends [0005](0005-route-the-shared-host-with-vercel-rewrites.md), once the operator approves the microfrontends group.
 - **Date:** 2026-11-17
 
 ## Context
