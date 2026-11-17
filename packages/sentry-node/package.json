@@ -31,9 +31,10 @@
     "@oaknational/logger": "workspace:*",
     "@oaknational/observability": "workspace:*",
     "@oaknational/result": "workspace:*",
-    "@sentry/node": "10.70.0"
+    "@sentry/node": "11.11.0"
   },
   "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
     "@types/node": "^24.13.3",
     "tsup": "^9.0.0",
     "typescript": "^6.0.3",

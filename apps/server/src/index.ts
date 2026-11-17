@@ -67,7 +67,10 @@ await startConfiguredHttpServer({
       transportObserver: analytics.transportObserver,
       productAnalyticsSink: analytics.sink,
       setupSentryErrorHandler:
-        config.env.SENTRY_MODE === 'sentry' ? setupExpressErrorHandler : undefined,
+        config.env.SENTRY_MODE === 'sentry'
+          ? // eslint-disable-next-line @typescript-eslint/no-deprecated -- v11's expressIntegration() auto-captures now; replacing this is MCP-887, which needs its own review of error-capture ordering
+            setupExpressErrorHandler
+          : undefined,
     }),
   bootstrapApp,
   createServer: (app) => {

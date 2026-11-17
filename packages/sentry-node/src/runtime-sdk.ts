@@ -8,6 +8,7 @@ import {
   setContext as sentrySetContext,
   setTag as sentrySetTag,
   setUser as sentrySetUser,
+  withStaticSpan,
   type NodeOptions,
 } from '@sentry/node';
 import type {
@@ -21,10 +22,34 @@ import {
   redactSentryBreadcrumb,
   redactSentryEvent,
   redactSentryLog,
-  redactSentrySpan,
+  redactSentryStaticSpan,
   redactSentryTransaction,
 } from './runtime-redaction.js';
 import { applyFingerprint } from './runtime-fingerprint.js';
+
+/**
+ * v11 replaces the boolean `sendDefaultPii` option with a `dataCollection`
+ * object whose unset fields default to collect-everything. This repo's
+ * `SentryLiveConfig.sendDefaultPii` is a `false` literal, enforced at parse
+ * time (`SENTRY_SEND_DEFAULT_PII=true` is a config error). This constant
+ * turns off every on/off category, which is stricter than v10's
+ * `sendDefaultPii: false`. `frameContextLines` stays at the SDK default.
+ * `dataCollection.mcp` also sets the default for `wrapMcpServerWithSentry`'s
+ * `recordInputs` and `recordOutputs`.
+ */
+const DENY_ALL_DATA_COLLECTION: NonNullable<NodeOptions['dataCollection']> = {
+  userInfo: false,
+  cookies: false,
+  httpHeaders: false,
+  httpBodies: [],
+  urlQueryParams: false,
+  graphQL: { document: false, variables: false },
+  genAI: { inputs: false, outputs: false },
+  mcp: { inputs: false, outputs: false },
+  databaseQueryData: false,
+  queues: false,
+  stackFrameVariables: false,
+};
 
 /**
  * Default timeout used by {@link SentryNodeRuntime.flush} and
@@ -108,9 +133,18 @@ function createSentryHooks(postRedactionHooks?: SentryPostRedactionHooks): Sentr
     beforeSendLog(log) {
       return redactSentryLog(log);
     },
-    beforeSendSpan(span) {
-      return redactSentrySpan(span);
-    },
+    // `traceLifecycle: 'static'` (below) means @sentry/core only ever applies
+    // `beforeSendSpan` — to the transaction's root span AND to every entry of
+    // `TransactionEvent.spans[]` — when the callback is wrapped with
+    // `Sentry.withStaticSpan()`; an unwrapped callback is silently never
+    // invoked in static mode (confirmed against @sentry/core@11.11.0's
+    // client.js: the constructor logs a debug warning, and processBeforeSend
+    // skips span processing entirely). `redactSentryStaticSpan` operates on
+    // the static `SpanJSON` shape (`data`/`description`); see
+    // runtime-redaction.ts for why the unwrapped `redactSentrySpan`
+    // (`StreamedSpanJSON` shape) is kept alongside it.
+    beforeSendSpan: withStaticSpan((span) => redactSentryStaticSpan(span)),
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- kept alive by `traceLifecycle: 'static'` above; migrating to beforeSendSpan/is_segment is a follow-up, not this dependency bump
     beforeSendTransaction(event, hint) {
       const redactedEvent = redactSentryTransaction(event);
       return postRedactionHooks?.beforeSendTransaction
@@ -129,9 +163,18 @@ export function createSentryInitOptions(
     environment: config.environment,
     release: config.release,
     tracesSampleRate: config.tracesSampleRate,
-    enableLogs: config.enableLogs,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- the option OOCE ships; moving to dataCollection changes what Sentry records, so it is a follow-up
-    sendDefaultPii: config.sendDefaultPii,
+    // v11 defaults this to false, which drops spans created through `@opentelemetry/api`.
+    enableOpenTelemetrySetup: true,
+    // v11 removed `enableLogs`; `runtime-sinks.ts` gates log forwarding on `config.enableLogs`.
+    // v11 defaults to `traceLifecycle: 'stream'`, under which `beforeSendTransaction`
+    // is never invoked — this would silently drop `redactSentryTransaction` and
+    // apps/server's MCP-route sanitisation (both wired through this hook). Stay on
+    // `'static'` to keep today's behaviour until a dedicated migration moves both
+    // onto `beforeSendSpan`/`is_segment` (follow-up, not this dependency bump).
+    traceLifecycle: 'static',
+    // v11 removed `sendDefaultPii` outright; `config.sendDefaultPii` (always
+    // `false`, enforced at parse time) is now expressed as `dataCollection`.
+    dataCollection: DENY_ALL_DATA_COLLECTION,
     debug: config.debug,
     tracePropagationTargets: [...DEFAULT_TRACE_PROPAGATION_TARGETS],
     // L-IMM Sub-item 2 — allow-list scaffold. Both fields are
