@@ -216,19 +216,22 @@ const refuseUnclosed = (word, stripTabs) =>
   );
 
 const HEREDOC_RUNNERS = new Set([...SHELLS, 'ksh', 'source', '.', 'eval']);
-// A $(...) or `...` that opens a command, rather than an argument or an assignment value,
-// runs its output, so a heredoc inside it runs too.
-const COMMAND_SUBSTITUTION =
-  /(?:^|[;&|(])\s*(?:(?:if|then|do|else|elif|while|until|!|\{)\s+)*(?:\$\(|`)/m;
 const runsHeredoc = (line) =>
-  COMMAND_SUBSTITUTION.test(line) ||
   tokenize(line).some((segment) =>
     segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
   );
 
+// A $(...) or `...` that starts a command, rather than an argument or an assignment value,
+// runs its output, so a heredoc inside it runs too.
+const startsCommand = (before) =>
+  /(?:^|[;&|(`{\n])[ \t]*$|(?:^|[\s;&|(])(?:if|then|do|else|elif|while|until|!)[ \t]+$/.test(
+    before,
+  );
+
 // Removes heredoc bodies so the env-file check skips prose that mentions .env. A body
-// that runs (its line names a shell, source, . or eval, or `bodiesRun` is set) is
-// returned in `commands`, as is any $(...) or `...` the shell expands in an unquoted body.
+// that runs (its line names a shell, source, . or eval, the innermost substitution
+// around it starts a command, or `bodiesRun` is set) is returned in `commands`, as is
+// any $(...) or `...` the shell expands in an unquoted body.
 function stripHeredocs(text, bodiesRun) {
   let result = '';
   let quote = '';
@@ -238,15 +241,17 @@ function stripHeredocs(text, bodiesRun) {
   let lineStart = 0;
   const pending = [];
   const commands = [];
+  // Open $( ( and ` outside quotes. A substitution records whether its output runs.
+  const nesting = [];
   while (at < text.length) {
     const char = text[at];
     if (char === '\n') {
-      const runs = pending.length > 0 && (bodiesRun || runsHeredoc(text.slice(lineStart, at)));
+      const lineRuns = pending.length > 0 && (bodiesRun || runsHeredoc(text.slice(lineStart, at)));
       inComment = false;
       result += char;
       at += 1;
       while (pending.length > 0) {
-        const { word, stripTabs, quoted } = pending.shift();
+        const { word, stripTabs, quoted, enclosedRuns } = pending.shift();
         let body = '';
         let terminated = false;
         for (;;) {
@@ -267,7 +272,7 @@ function stripHeredocs(text, bodiesRun) {
         if (!terminated) {
           refuseUnclosed(word, stripTabs);
         }
-        if (runs) {
+        if (lineRuns || enclosedRuns) {
           commands.push(body);
         } else if (!quoted) {
           for (const [, inner] of body.matchAll(/\$\(([^()]*)\)/g)) {
@@ -324,6 +329,25 @@ function stripHeredocs(text, bodiesRun) {
       at += 1;
       continue;
     }
+    if (char === '$' && text[at + 1] === '(' && text[at + 2] !== '(') {
+      nesting.push({ close: ')', runs: startsCommand(text.slice(0, at)) });
+      result += '$(';
+      at += 2;
+      continue;
+    }
+    if (char === '`') {
+      if (nesting.at(-1)?.close === '`') {
+        nesting.pop();
+      } else {
+        nesting.push({ close: '`', runs: startsCommand(text.slice(0, at)) });
+      }
+    } else if (char === '(' && text[at + 1] !== '(') {
+      nesting.push({ close: ')' });
+    } else if (char === ')' && !(text[at + 1] === ')' && arith > 0)) {
+      if (nesting.at(-1)?.close === ')') {
+        nesting.pop();
+      }
+    }
     // ((...)) arithmetic evaluation, including $((...)) arithmetic expansion, also
     // spells << as a bitwise shift. Track it so that form is never read as a heredoc.
     if (char === '(' && text[at + 1] === '(') {
@@ -360,7 +384,12 @@ function stripHeredocs(text, bodiesRun) {
         // substitution wrapped around this heredoc is rescanned once stripping is
         // done, and a leftover "<<DELIM" with its body already gone would misread
         // as a second, unterminated heredoc there.
-        pending.push({ word: delimiter.word, stripTabs, quoted: delimiter.quoted });
+        pending.push({
+          word: delimiter.word,
+          stripTabs,
+          quoted: delimiter.quoted,
+          enclosedRuns: nesting.findLast((open) => open.runs !== undefined)?.runs ?? false,
+        });
         at = delimiter.next;
         continue;
       }

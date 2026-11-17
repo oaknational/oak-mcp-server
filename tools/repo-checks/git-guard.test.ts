@@ -818,6 +818,10 @@ describe('git-guard heredocs that a shell runs', () => {
     '$(cat <<EOF\ncat .env\nEOF\n)',
     '`cat <<EOF\ncat .env\nEOF\n`',
     'cd /tmp && $(cat <<EOF\ncat .env\nEOF\n)',
+    '$(\ncat <<EOF\ncat .env\nEOF\n)',
+    '`\ncat <<EOF\ncat .env\nEOF\n`',
+    'cd /tmp && $(\ncat <<EOF\ncat .env\nEOF\n)',
+    'true; $(\ncat <<EOF\ncat .env\nEOF\n)',
   ])('refuses %s, whose substitution runs as a command', (command) => {
     expect(bash(clean, command).status).toBe(2);
   });
@@ -826,6 +830,9 @@ describe('git-guard heredocs that a shell runs', () => {
     'gh pr comment 1 --body "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
     "X=$(cat <<'EOF'\nnever read .env\nEOF\n)",
     "X=`cat <<'EOF'\nnever read .env\nEOF\n`",
+    "X=$(\ncat <<'EOF'\nnever read .env\nEOF\n)",
+    'gh pr comment 1 --body "$(\ncat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    'X=$(\ncat <<EOF\nnever read .env\nEOF\n)',
   ])('allows %s, whose substitution is only an argument or a value', (command) => {
     expect(bash(clean, command).status).toBe(0);
   });
