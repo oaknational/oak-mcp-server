@@ -807,6 +807,32 @@ describe('git-guard heredocs that a shell runs', () => {
     expect(bash(clean, command).status).toBe(2);
   });
 
+  it.each([
+    '$(cat <<EOF\ncat .env\nEOF\n)',
+    '`cat <<EOF\ncat .env\nEOF\n`',
+    'cd /tmp && $(cat <<EOF\ncat .env\nEOF\n)',
+  ])('refuses %s, whose substitution runs as a command', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    'gh pr comment 1 --body "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    "X=$(cat <<'EOF'\nnever read .env\nEOF\n)",
+    "X=`cat <<'EOF'\nnever read .env\nEOF\n`",
+  ])('allows %s, whose substitution is only an argument or a value', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it('refuses heredocs that a shell runs nested too deep to check', () => {
+    const levels = ['0', '1', '2', '3', '4'];
+    const command = [
+      ...levels.map((level) => `bash <<EOF${level}`),
+      'cat .env',
+      ...levels.toReversed().map((level) => `EOF${level}`),
+    ].join('\n');
+    expect(bash(clean, command).status).toBe(2);
+  });
+
   it('refuses a git stash run by a heredoc in a dirty repo', () => {
     expect(bash(dirty, 'bash <<EOF\ngit stash\nEOF').status).toBe(2);
   });

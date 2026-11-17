@@ -206,7 +206,12 @@ const refuseUnclosed = (word, stripTabs) =>
   );
 
 const HEREDOC_RUNNERS = new Set([...SHELLS, 'ksh', 'source', '.', 'eval']);
+// A $(...) or `...` that opens a command, rather than an argument or an assignment value,
+// runs its output, so a heredoc inside it runs too.
+const COMMAND_SUBSTITUTION =
+  /(?:^|[;&|(])\s*(?:(?:if|then|do|else|elif|while|until|!|\{)\s+)*(?:\$\(|`)/m;
 const runsHeredoc = (line) =>
+  COMMAND_SUBSTITUTION.test(line) ||
   tokenize(line).some((segment) =>
     segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
   );
@@ -854,7 +859,9 @@ function touchesHooks(command, args, hookFile) {
 // reads each body or substitution that the shell runs.
 function checkCommand(text, callDir, depth = 0, checkEnv = true, bodiesRun = false) {
   if (depth > 4) {
-    return;
+    refuse(
+      'the command nests shells, substitutions or heredocs too deeply for the guard to check. Flatten it.',
+    );
   }
   if (checkEnv) {
     const { text: cleaned, commands } = stripHeredocs(text, bodiesRun);
