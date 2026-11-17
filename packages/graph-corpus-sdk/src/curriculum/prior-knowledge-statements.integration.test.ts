@@ -1,24 +1,15 @@
-/**
- * Integration tests for the prior-knowledge statements view.
- *
- * @remarks
- * Integration, not unit: the view reads the compile-time graph corpus, whose
- * module loads `data.json` at import time (IO). Fixtures are chosen
- * deterministically from the corpus so the tests describe behaviour over any
- * valid corpus rather than pinning content.
- */
-
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import { describe, it, expect } from 'vitest';
-import { priorKnowledgeStatements } from './index.js';
-import { required } from './test-helpers.js';
 
-/** The corpus's unit nodes, the fixture pool. */
-const unitNodes = graphCorpus.nodes.filter((node) => node.kind === 'unit');
-const firstUnit = [...unitNodes].sort((a, b) => a.unitSlug.localeCompare(b.unitSlug))[0];
-if (firstUnit === undefined) {
-  throw new Error('corpus has no unit nodes to anchor the view tests');
-}
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
+import { required } from './test-helpers.js';
+import { createCurriculumGraphViews } from './views.js';
+
+const { priorKnowledgeStatements } = createCurriculumGraphViews(fixtureCorpus);
+
+const unitNodes = fixtureCorpus.nodes
+  .filter((node) => node.kind === 'unit')
+  .sort((a, b) => a.unitSlug.localeCompare(b.unitSlug));
+const firstUnit = required(unitNodes[0], 'fixture has no unit nodes');
 const knownSlug: string = firstUnit.unitSlug;
 
 describe('priorKnowledgeStatements', () => {
@@ -30,10 +21,6 @@ describe('priorKnowledgeStatements', () => {
     expect(result.units).toHaveLength(1);
     const unit = result.units[0];
     expect(unit?.unitSlug).toBe(knownSlug);
-    // The fields the statements contract serves. priorKnowledge is compared
-    // against the deduped corpus values — the view's contract collapses exact
-    // duplicates, so raw-equality would be fragile on a corpus where this unit
-    // gains repeats (threadSlugs are served verbatim).
     expect(unit?.priorKnowledge).toStrictEqual([...new Set(firstUnit.priorKnowledge)]);
     expect(unit?.threadSlugs).toStrictEqual(firstUnit.threadSlugs);
   });
@@ -46,38 +33,23 @@ describe('priorKnowledgeStatements', () => {
   });
 
   it('collapses exact-duplicate statements within a unit, first occurrence kept', () => {
-    // Deterministic fixture: the lexicographically-first unit whose corpus
-    // statements contain a duplicate, so the assertion actually exercises the
-    // collapse. `required` fails loudly if the corpus ever holds no such unit,
-    // rather than letting this test pass vacuously against clean data.
     const dupUnit = required(
-      [...unitNodes]
-        .sort((a, b) => a.unitSlug.localeCompare(b.unitSlug))
-        .find((node) => new Set(node.priorKnowledge).size !== node.priorKnowledge.length),
-      'corpus has no unit with duplicate prior-knowledge statements to exercise the collapse',
+      unitNodes.find((node) => new Set(node.priorKnowledge).size !== node.priorKnowledge.length),
+      'fixture has no unit with duplicate prior-knowledge statements',
     );
 
     const result = priorKnowledgeStatements([dupUnit.unitSlug]);
     const served = required(result.units[0], 'anchor unit did not resolve').priorKnowledge;
 
-    // Collapsed: no internal duplicates, and shorter than the raw duplicated list.
     expect(new Set(served).size).toBe(served.length);
     expect(served.length).toBeLessThan(dupUnit.priorKnowledge.length);
-    // First-occurrence order preserved.
     expect(served).toStrictEqual([...new Set(dupUnit.priorKnowledge)]);
   });
 
   it('returns a known unit that records no statements as empty, not as unknown', () => {
-    // Deterministic fixture: the lexicographically-first unit whose corpus
-    // statements are empty. The contract distinguishes "known, states none"
-    // (resolved, empty list) from "unknown anchor" (reported), so filtering
-    // such units out must not regress unnoticed. `required` fails loudly if
-    // the corpus ever holds no such unit.
     const emptyUnit = required(
-      [...unitNodes]
-        .sort((a, b) => a.unitSlug.localeCompare(b.unitSlug))
-        .find((node) => node.priorKnowledge.length === 0),
-      'corpus has no unit with an empty prior-knowledge list to exercise the known-empty case',
+      unitNodes.find((node) => node.priorKnowledge.length === 0),
+      'fixture has no unit with an empty prior-knowledge list',
     );
 
     const result = priorKnowledgeStatements([emptyUnit.unitSlug]);
@@ -103,12 +75,7 @@ describe('priorKnowledgeStatements', () => {
   });
 
   it('keeps units in resolved-anchor order for multi-anchor calls', () => {
-    const secondUnit = required(
-      [...unitNodes]
-        .sort((a, b) => a.unitSlug.localeCompare(b.unitSlug))
-        .find((node) => node.unitSlug !== knownSlug),
-      'corpus has fewer than two unit nodes',
-    );
+    const secondUnit = required(unitNodes[1], 'fixture has fewer than two unit nodes');
 
     const result = priorKnowledgeStatements([secondUnit.unitSlug, knownSlug]);
 

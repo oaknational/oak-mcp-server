@@ -1,35 +1,32 @@
 /**
- * Integration test (G2 c2): the misconception view describes bounded anchored
- * retrieval of the thread→unit→lesson→misconception chain over the real
- * emitted corpus.
+ * Tests (G2 c2): the misconception view describes bounded anchored retrieval
+ * of the thread→unit→lesson→misconception chain, over the invented fixture
+ * corpus.
  *
  * @remarks
  * Anchors per the owner ratification (2026-06-09): lesson (leaf, ≤2 items),
  * unit (core), thread (bounded with heavy-tail semantics — a unit-granular
- * window, since one mega-thread spans 77% of its subject's units). These
- * tests exercise the REAL corpus and check results against INDEPENDENT
- * reference adjacency computed here from `graphCorpus.edges`, so they specify
- * behaviour without mirroring the implementation. Reachability honesty is
- * data, not prose: thread results echo their window against `totalUnits`, and
- * unit entries carry their `threadSlugs` (an empty list is a thread-unreachable
- * unit — thread-anchored results are never subject-complete).
+ * window). These tests check results against INDEPENDENT reference adjacency
+ * computed here from `fixtureCorpus.edges`, so they specify behaviour without
+ * mirroring the implementation. Reachability honesty is data, not prose:
+ * thread results echo their window against `totalUnits`, and unit entries
+ * carry their `threadSlugs` (an empty list is a thread-unreachable unit —
+ * thread-anchored results are never subject-complete).
  */
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import { describe, expect, it } from 'vitest';
 
-import {
-  DEFAULT_THREAD_UNIT_LIMIT,
-  MAX_THREAD_UNIT_LIMIT,
-  misconceptionsForLessons,
-  misconceptionsForThread,
-  misconceptionsForUnits,
-} from './index.js';
+import { DEFAULT_THREAD_UNIT_LIMIT, MAX_THREAD_UNIT_LIMIT } from './misconception-view.js';
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
 import { bareSlug, required, unwrapOk } from './test-helpers.js';
+import { createCurriculumGraphViews } from './views.js';
+
+const { misconceptionsForLessons, misconceptionsForThread, misconceptionsForUnits } =
+  createCurriculumGraphViews(fixtureCorpus);
 
 /** Independent reference adjacency: source id → sorted target ids, per edge type. */
 function referenceAdjacency(edgeType: string): Map<string, string[]> {
   const adjacency = new Map<string, string[]>();
-  for (const edge of graphCorpus.edges) {
+  for (const edge of fixtureCorpus.edges) {
     if (edge.type !== edgeType) {
       continue;
     }
@@ -61,7 +58,7 @@ const unitsByThread = referenceAdjacency('containsUnit');
  */
 function orderedUnitsByThread(): Map<string, string[]> {
   const byThread = new Map<string, string[]>();
-  for (const sequence of graphCorpus.sequences) {
+  for (const sequence of fixtureCorpus.sequences) {
     const run = byThread.get(sequence.threadId) ?? [];
     for (const placement of sequence.placements) {
       if (!run.includes(placement.unitId)) {
@@ -74,7 +71,7 @@ function orderedUnitsByThread(): Map<string, string[]> {
 }
 
 function orderedLessonsByUnit(): Map<string, string[]> {
-  return new Map(graphCorpus.unitLessonRuns.map((run) => [run.unitId, [...run.lessonIds]]));
+  return new Map(fixtureCorpus.unitLessonRuns.map((run) => [run.unitId, [...run.lessonIds]]));
 }
 
 const curriculumUnitsByThread = orderedUnitsByThread();
@@ -85,22 +82,21 @@ const misconceptionsByLesson = referenceAdjacency('addressesMisconception');
 /** A lesson with at least one misconception, chosen deterministically. */
 const lessonWithMisconceptions = required(
   [...misconceptionsByLesson.keys()].sort((a, b) => a.localeCompare(b))[0],
-  'corpus has no lesson with a misconception',
+  'fixture has no lesson with a misconception',
 );
 
-/** A lesson carrying NO misconception (well-formed absence — six exist on the pinned corpus). */
 const lessonWithoutMisconceptions = required(
-  graphCorpus.nodes
+  fixtureCorpus.nodes
     .filter((node) => node.kind === 'lesson' && !misconceptionsByLesson.has(node.id))
     .map((node) => node.id)
     .sort((a, b) => a.localeCompare(b))[0],
-  'corpus has no lesson without misconceptions',
+  'fixture has no lesson without misconceptions',
 );
 
 /** A unit with at least one lesson, chosen deterministically. */
 const unitWithLessons = required(
   [...lessonsByUnit.keys()].sort((a, b) => a.localeCompare(b))[0],
-  'corpus has no unit with lessons',
+  'fixture has no unit with lessons',
 );
 
 /** Reference reverse-placement: lesson id → the unit ids placing it (from `lessonsByUnit`). */
@@ -119,7 +115,6 @@ function referencePlacements(): Map<string, string[]> {
   return placements;
 }
 
-/** A lesson placed in MORE than one unit (the multi-placement shape; 473 exist). */
 const multiPlacedLesson = required(
   [...referencePlacements().entries()]
     .filter(([, unitIds]) => unitIds.length > 1)
@@ -128,15 +123,14 @@ const multiPlacedLesson = required(
       unitIds: [...unitIds].sort((a, b) => a.localeCompare(b)),
     }))
     .sort((a, b) => a.lessonId.localeCompare(b.lessonId))[0],
-  'corpus has no multi-placed lesson',
+  'fixture has no multi-placed lesson',
 );
 
-/** The thread with the most units — the heavy-tail (mega-thread) fixture. */
-const megaThread = required(
+const longThread = required(
   [...unitsByThread.entries()]
     .map(([threadId, unitIds]) => ({ threadId, unitCount: unitIds.length }))
     .sort((a, b) => b.unitCount - a.unitCount || a.threadId.localeCompare(b.threadId))[0],
-  'corpus has no thread with units',
+  'fixture has no thread with units',
 );
 
 describe('misconception view — bounded anchored chain retrieval', () => {
@@ -219,14 +213,12 @@ describe('misconception view — bounded anchored chain retrieval', () => {
   // the chain-retrieval behaviour above.
   describe('curriculum ordering', () => {
     it('serves a unit’s lessons in Oak’s authored order, not in lesson-id order', () => {
-      // Chosen for the property under test: a real unit whose authored lesson
-      // order DIFFERS from id order, so an id-sorted implementation fails here.
       const reordered = required(
-        graphCorpus.unitLessonRuns.find((run) => {
+        fixtureCorpus.unitLessonRuns.find((run) => {
           const idSorted = [...run.lessonIds].sort((a, b) => a.localeCompare(b));
           return run.lessonIds.length > 2 && idSorted.join() !== run.lessonIds.join();
         }),
-        'corpus has no unit whose authored lesson order differs from id order',
+        'fixture has no unit whose authored lesson order differs from id order',
       );
 
       const result = misconceptionsForUnits([bareSlug(reordered.unitId)]);
@@ -242,9 +234,9 @@ describe('misconception view — bounded anchored chain retrieval', () => {
       // otherwise a reorder that silently dropped or duplicated a unit would
       // still satisfy every order assertion in this file.
       const served: string[] = [];
-      for (let offset = 0; offset < megaThread.unitCount; offset += MAX_THREAD_UNIT_LIMIT) {
+      for (let offset = 0; offset < longThread.unitCount; offset += MAX_THREAD_UNIT_LIMIT) {
         const page = unwrapOk(
-          misconceptionsForThread(bareSlug(megaThread.threadId), {
+          misconceptionsForThread(bareSlug(longThread.threadId), {
             unitOffset: offset,
             unitLimit: MAX_THREAD_UNIT_LIMIT,
           }),
@@ -254,26 +246,23 @@ describe('misconception view — bounded anchored chain retrieval', () => {
 
       expect(new Set(served).size).toBe(served.length);
       expect([...served].sort((a, b) => a.localeCompare(b))).toStrictEqual(
-        unitsByThread.get(megaThread.threadId),
+        unitsByThread.get(longThread.threadId),
       );
     });
 
     it('serves a unit the curriculum revisits at two years exactly once', () => {
-      // Deterministically the thread that HAS a revisited unit — the earlier
-      // dedup assertion ran on the mega-thread, which was never shown to
-      // contain one, so the property was exercised zero times.
       const revisited = required(
-        graphCorpus.sequences.find((sequence) => {
+        fixtureCorpus.sequences.find((sequence) => {
           const ids = sequence.placements.map((placement) => placement.unitId);
           return new Set(ids).size !== ids.length;
         }),
-        'corpus has no sequence that places a unit at two years',
+        'fixture has no sequence that places a unit at two years',
       );
       // Derive the expectation the way the view builds it: every subject run of
       // the thread, joined in corpus order — not just the sequence that carries
       // the repeat — and page the WHOLE thread, so a future corpus that makes
       // this thread multi-subject or longer than one page cannot fail it.
-      const placements = graphCorpus.sequences
+      const placements = fixtureCorpus.sequences
         .filter((sequence) => sequence.threadId === revisited.threadId)
         .flatMap((sequence) => sequence.placements.map((placement) => placement.unitId));
       const twice = required(
@@ -303,12 +292,9 @@ describe('misconception view — bounded anchored chain retrieval', () => {
       // thread whose curriculum order provably differs from id order, and prove
       // the served window is not the id-sorted one.
       const disagreeing = required(
-        graphCorpus.sequences
+        fixtureCorpus.sequences
           .map((sequence) => sequence.threadId)
           .find((threadId) => {
-            // Select on the WINDOW the test reads, not the whole thread: a
-            // thread whose first page ascends by id would pass selection yet
-            // prove nothing, and a future snapshot could pick exactly that.
             const window = (curriculumUnitsByThread.get(threadId) ?? []).slice(
               0,
               MAX_THREAD_UNIT_LIMIT,
@@ -316,7 +302,7 @@ describe('misconception view — bounded anchored chain retrieval', () => {
             const idSorted = [...window].sort((a, b) => a.localeCompare(b));
             return window.length > 2 && idSorted.join() !== window.join();
           }),
-        'corpus has no thread whose first-page window differs from id order',
+        'fixture has no thread whose first-page window differs from id order',
       );
 
       const result = unwrapOk(
@@ -328,7 +314,7 @@ describe('misconception view — bounded anchored chain retrieval', () => {
 
     it('serves authored lesson order inside a thread window too, not just at the unit anchor', () => {
       const result = unwrapOk(
-        misconceptionsForThread(bareSlug(megaThread.threadId), { unitLimit: 10 }),
+        misconceptionsForThread(bareSlug(longThread.threadId), { unitLimit: 10 }),
       );
       for (const unitEntry of result.threads[0]?.units ?? []) {
         expect(unitEntry.lessons.map((l) => l.lesson.id)).toStrictEqual(
@@ -346,37 +332,38 @@ describe('misconception view — bounded anchored chain retrieval', () => {
     expect(result.unknownAnchors).toStrictEqual(['no-such-unit-slug-xyz']);
   });
 
-  it('windows a mega-thread to the default unit limit with honest totals (heavy tail)', () => {
-    const value = unwrapOk(misconceptionsForThread(bareSlug(megaThread.threadId)));
-    expect(value.resolvedAnchors).toStrictEqual([megaThread.threadId]);
-    const entry = required(value.threads[0], 'mega-thread anchor resolved no entry');
+  it('windows a long thread to the default unit limit with honest totals (heavy tail)', () => {
+    const value = unwrapOk(misconceptionsForThread(bareSlug(longThread.threadId)));
+    expect(value.resolvedAnchors).toStrictEqual([longThread.threadId]);
+    const entry = required(value.threads[0], 'long thread anchor resolved no entry');
     const referenceUnits = required(
-      curriculumUnitsByThread.get(megaThread.threadId),
-      'mega-thread has no reference units',
+      curriculumUnitsByThread.get(longThread.threadId),
+      'long thread has no reference units',
     );
-    expect(entry.thread.id).toBe(megaThread.threadId);
-    expect(entry.totalUnits).toBe(megaThread.unitCount);
+    expect(entry.thread.id).toBe(longThread.threadId);
+    expect(entry.totalUnits).toBe(longThread.unitCount);
     expect(entry.unitOffset).toBe(0);
     expect(entry.unitLimit).toBe(DEFAULT_THREAD_UNIT_LIMIT);
     expect(entry.units.map((u) => u.unit.id)).toStrictEqual(
       referenceUnits.slice(0, DEFAULT_THREAD_UNIT_LIMIT),
     );
-    expect(entry.hasMore).toBe(megaThread.unitCount > DEFAULT_THREAD_UNIT_LIMIT);
+    expect(longThread.unitCount).toBeGreaterThan(DEFAULT_THREAD_UNIT_LIMIT);
+    expect(entry.hasMore).toBe(true);
   });
 
   it('pages a thread window deterministically: the second page is the next disjoint slice', () => {
-    const first = misconceptionsForThread(bareSlug(megaThread.threadId), {
+    const first = misconceptionsForThread(bareSlug(longThread.threadId), {
       unitOffset: 0,
       unitLimit: 5,
     });
-    const second = misconceptionsForThread(bareSlug(megaThread.threadId), {
+    const second = misconceptionsForThread(bareSlug(longThread.threadId), {
       unitOffset: 5,
       unitLimit: 5,
     });
 
     const firstPage = unwrapOk(first);
     const secondPage = unwrapOk(second);
-    const reference = curriculumUnitsByThread.get(megaThread.threadId) ?? [];
+    const reference = curriculumUnitsByThread.get(longThread.threadId) ?? [];
     expect(firstPage.threads[0]?.units.map((u) => u.unit.id)).toStrictEqual(reference.slice(0, 5));
     expect(secondPage.threads[0]?.units.map((u) => u.unit.id)).toStrictEqual(
       reference.slice(5, 10),
@@ -385,19 +372,19 @@ describe('misconception view — bounded anchored chain retrieval', () => {
 
   it('returns an empty window with hasMore false for an offset beyond the thread length', () => {
     const value = unwrapOk(
-      misconceptionsForThread(bareSlug(megaThread.threadId), {
-        unitOffset: megaThread.unitCount,
+      misconceptionsForThread(bareSlug(longThread.threadId), {
+        unitOffset: longThread.unitCount,
         unitLimit: 5,
       }),
     );
     const entry = value.threads[0];
     expect(entry?.units).toStrictEqual([]);
     expect(entry?.hasMore).toBe(false);
-    expect(entry?.totalUnits).toBe(megaThread.unitCount);
+    expect(entry?.totalUnits).toBe(longThread.unitCount);
   });
 
   it('accepts a window exactly at the unit-limit ceiling (inclusive upper bound)', () => {
-    const result = misconceptionsForThread(bareSlug(megaThread.threadId), {
+    const result = misconceptionsForThread(bareSlug(longThread.threadId), {
       unitLimit: MAX_THREAD_UNIT_LIMIT,
     });
 
@@ -405,7 +392,7 @@ describe('misconception view — bounded anchored chain retrieval', () => {
   });
 
   it('rejects a window beyond the unit-limit ceiling', () => {
-    const result = misconceptionsForThread(bareSlug(megaThread.threadId), {
+    const result = misconceptionsForThread(bareSlug(longThread.threadId), {
       unitLimit: MAX_THREAD_UNIT_LIMIT + 1,
     });
 
@@ -417,10 +404,10 @@ describe('misconception view — bounded anchored chain retrieval', () => {
   });
 
   it('rejects a negative offset and a non-positive limit', () => {
-    const negativeOffset = misconceptionsForThread(bareSlug(megaThread.threadId), {
+    const negativeOffset = misconceptionsForThread(bareSlug(longThread.threadId), {
       unitOffset: -1,
     });
-    const zeroLimit = misconceptionsForThread(bareSlug(megaThread.threadId), { unitLimit: 0 });
+    const zeroLimit = misconceptionsForThread(bareSlug(longThread.threadId), { unitLimit: 0 });
 
     expect(negativeOffset.ok).toBe(false);
     expect(zeroLimit.ok).toBe(false);
