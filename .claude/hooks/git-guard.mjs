@@ -221,12 +221,49 @@ const runsHeredoc = (line) =>
     segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
   );
 
-// A $(...) or `...` that starts a command, rather than an argument or an assignment value,
-// runs its output, so a heredoc inside it runs too.
-const startsCommand = (before) =>
-  /(?:^|[;&|(`{\n])[ \t]*$|(?:^|[\s;&|(])(?:if|then|do|else|elif|while|until|!)[ \t]+$/.test(
-    before,
-  );
+// The index of the command word in a simple command's words, past leading NAME=value
+// words and the wrappers checkSegment unwraps. words.length means none is there yet.
+function commandWordIndex(words) {
+  let start = 0;
+  let wrapped = false;
+  for (; start < words.length; start += 1) {
+    const word = words[start];
+    wrapped ||= PREFIXES.has(word);
+    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
+    if (option !== undefined) {
+      start += option.consumesNext ? 1 : 0;
+      continue;
+    }
+    if (!word.includes('=') && !PREFIXES.has(word) && word !== 'builtin' && !word.startsWith('-')) {
+      break;
+    }
+  }
+  if (start >= words.length) {
+    return start;
+  }
+  const inner = unwrap(words[start].replace(/^\\/, '').split('/').pop(), words.slice(start + 1));
+  return inner === undefined ? start : words.length - inner.length + commandWordIndex(inner);
+}
+
+// A $(...) or `...` runs its output unless it is data: an assignment value, or a word
+// after the command word. `before` is the command text up to the substitution.
+function substitutionRuns(before) {
+  const last = before.at(-1) ?? '';
+  if (last === '' || SEPARATORS.has(last) || /[ \t]/.test(last)) {
+    const trimmed = before.replace(/[ \t]+$/, '');
+    if (trimmed === '' || SEPARATORS.has(trimmed.at(-1))) {
+      return true;
+    }
+  }
+  const words = tokenize(before).at(-1) ?? [];
+  const inWord = !/[ \t]/.test(last);
+  const at = inWord ? words.length - 1 : words.length;
+  const command = commandWordIndex(words.slice(0, Math.max(at, 0)));
+  if (command < at) {
+    return false;
+  }
+  return !(inWord && /^[A-Za-z_]\w*=/.test(words[at] ?? ''));
+}
 
 // Removes heredoc bodies so the env-file check skips prose that mentions .env. A body
 // that runs (its line names a shell, source, . or eval, the innermost substitution
@@ -330,7 +367,7 @@ function stripHeredocs(text, bodiesRun) {
       continue;
     }
     if (char === '$' && text[at + 1] === '(' && text[at + 2] !== '(') {
-      nesting.push({ close: ')', runs: startsCommand(text.slice(0, at)) });
+      nesting.push({ close: ')', runs: substitutionRuns(text.slice(0, at)) });
       result += '$(';
       at += 2;
       continue;
@@ -339,7 +376,7 @@ function stripHeredocs(text, bodiesRun) {
       if (nesting.at(-1)?.close === '`') {
         nesting.pop();
       } else {
-        nesting.push({ close: '`', runs: startsCommand(text.slice(0, at)) });
+        nesting.push({ close: '`', runs: substitutionRuns(text.slice(0, at)) });
       }
     } else if (char === '(' && text[at + 1] !== '(') {
       nesting.push({ close: ')' });
@@ -918,8 +955,9 @@ function checkCommand(text, callDir, depth = 0, checkEnv = true, bodiesRun = fal
 
 function scanSegments(text, callDir, depth, checkEnv, bodiesRun) {
   const dirs = [callDir];
-  for (const [, inner] of text.matchAll(/\$\(([^()]*)\)/g)) {
-    checkCommand(inner ?? '', callDir, depth + 1, checkEnv, bodiesRun);
+  for (const match of text.matchAll(/\$\(([^()]*)\)/g)) {
+    const runs = bodiesRun || (checkEnv && substitutionRuns(text.slice(0, match.index)));
+    checkCommand(match[1] ?? '', callDir, depth + 1, checkEnv, runs);
   }
   for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
     const words = segment.filter((word, at) => at > 0 || !['builtin', 'command'].includes(word));

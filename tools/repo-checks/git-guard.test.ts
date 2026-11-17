@@ -822,6 +822,15 @@ describe('git-guard heredocs that a shell runs', () => {
     '`\ncat <<EOF\ncat .env\nEOF\n`',
     'cd /tmp && $(\ncat <<EOF\ncat .env\nEOF\n)',
     'true; $(\ncat <<EOF\ncat .env\nEOF\n)',
+    'exec $(cat <<EOF\ncat .env\nEOF\n)',
+    'command $(cat <<EOF\ncat .env\nEOF\n)',
+    'builtin $(cat <<EOF\ncat .env\nEOF\n)',
+    'nohup sudo pnpm exec $(cat <<EOF\ncat .env\nEOF\n)',
+    'env $(cat <<EOF\ncat .env\nEOF\n)',
+    'timeout 5 $(cat <<EOF\ncat .env\nEOF\n)',
+    'FOO=bar $(cat <<EOF\ncat .env\nEOF\n)',
+    'case x in x) $(cat <<EOF\ncat .env\nEOF\n) ;; esac',
+    '"$(cat <<EOF\ncat .env\nEOF\n)"',
   ])('refuses %s, whose substitution runs as a command', (command) => {
     expect(bash(clean, command).status).toBe(2);
   });
@@ -831,6 +840,9 @@ describe('git-guard heredocs that a shell runs', () => {
     "X=$(cat <<'EOF'\nnever read .env\nEOF\n)",
     "X=`cat <<'EOF'\nnever read .env\nEOF\n`",
     "X=$(\ncat <<'EOF'\nnever read .env\nEOF\n)",
+    "echo $(cat <<'EOF'\nnever read .env\nEOF\n)",
+    "FOO=$(cat <<'EOF'\nnever read .env\nEOF\n) true",
+    'timeout 5 git commit -m "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
     'gh pr comment 1 --body "$(\ncat <<\'EOF\'\nnever read .env\nEOF\n)"',
     'X=$(\ncat <<EOF\nnever read .env\nEOF\n)',
   ])('allows %s, whose substitution is only an argument or a value', (command) => {
