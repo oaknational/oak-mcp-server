@@ -1,6 +1,6 @@
 /**
- * Integration test (G4b c2): the keyword view describes bounded anchored
- * frequency-ranked keyword retrieval over the real emitted corpus.
+ * Tests (G4b c2): the keyword view describes bounded anchored
+ * frequency-ranked keyword retrieval over a corpus value.
  *
  * @remarks
  * The anchor is `subject` + `keyStage` (lesson attributes — keywords reach
@@ -12,34 +12,37 @@
  * {@link MAX_KEYWORD_LIMIT} ceiling) with honest totals, and each entry is
  * decorated with its in-scope placing lessons (id-sorted, windowed at
  * {@link KEYWORD_LESSON_DECORATION_LIMIT} — richness via edge traversal,
- * never a fat node). These tests exercise the REAL corpus and check results
- * against a separately-computed reference adjacency built here from
- * `graphCorpus.edges` (same corpus source, deliberately simpler accumulation
- * than the projection's), plus implementation-independent ordering and
- * boundedness invariants — the invariants, not the reference counts, are the
- * assertions that survive an equivalent reimplementation.
+ * never a fat node). These tests run over the invented fixture corpus and
+ * check results against a separately-computed reference adjacency built here
+ * from `fixtureCorpus.edges` (same corpus source, deliberately simpler
+ * accumulation than the projection's), plus implementation-independent
+ * ordering and boundedness invariants — the invariants, not the reference
+ * counts, are the assertions that survive an equivalent reimplementation.
  */
 import { unwrapErr } from '@oaknational/result';
-import { graphCorpus, type GraphCorpusNode } from '@oaknational/sdk-codegen/graph-corpus';
+import type { GraphCorpusNode } from '@oaknational/sdk-codegen/graph-corpus';
 import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_KEYWORD_LIMIT,
   KEYWORD_LESSON_DECORATION_LIMIT,
   MAX_KEYWORD_LIMIT,
-  keywordsForSubjectKeyStage,
-} from './index.js';
+} from './keyword-view.js';
+import { fixtureCorpus } from './test-fixture-corpus.js';
 import { bareSlug, required, unwrapOk } from './test-helpers.js';
+import { createCurriculumGraphViews } from './views.js';
+
+const { keywordsForSubjectKeyStage } = createCurriculumGraphViews(fixtureCorpus);
 
 /** Lesson nodes by id (reference index; string-keyed so reference adjacency ids look up directly). */
 const lessonNodesById: ReadonlyMap<string, GraphCorpusNode> = new Map(
-  graphCorpus.nodes.filter((node) => node.kind === 'lesson').map((node) => [node.id, node]),
+  fixtureCorpus.nodes.filter((node) => node.kind === 'lesson').map((node) => [node.id, node]),
 );
 
 /** Reference adjacency: lesson id → sorted keyword ids (from containsKeyword edges). */
 const keywordIdsByLessonId = (() => {
   const adjacency = new Map<string, string[]>();
-  for (const edge of graphCorpus.edges) {
+  for (const edge of fixtureCorpus.edges) {
     if (edge.type !== 'containsKeyword') {
       continue;
     }
@@ -59,7 +62,7 @@ const keywordIdsByLessonId = (() => {
 /** Reference adjacency: unit id → sorted lesson ids (from containsLesson edges). */
 const lessonIdsByUnitId = (() => {
   const adjacency = new Map<string, string[]>();
-  for (const edge of graphCorpus.edges) {
+  for (const edge of fixtureCorpus.edges) {
     if (edge.type !== 'containsLesson') {
       continue;
     }
@@ -94,10 +97,6 @@ function referenceScopedCounts(subject: string, keyStage: string): Map<string, n
   return counts;
 }
 
-/**
- * The (subject, keyStage) pair placing the most keyworded lessons — a
- * deterministic rich anchor guaranteed to exceed the default top-N bound.
- */
 const richAnchor = required(
   (() => {
     const pairCounts = new Map<string, number>();
@@ -116,7 +115,7 @@ const richAnchor = required(
       })
       .sort((a, b) => b.count - a.count || a.subject.localeCompare(b.subject))[0];
   })(),
-  'corpus has no keyworded lessons',
+  'fixture has no keyworded lessons',
 );
 
 const richCounts = referenceScopedCounts(richAnchor.subject, richAnchor.keyStage);
@@ -137,7 +136,7 @@ const keywordedUnit = required(
     )
     .map(([unitId]) => unitId)
     .sort((a, b) => a.localeCompare(b))[0],
-  'corpus has no in-scope unit with keyworded lessons',
+  'fixture has no in-scope unit with keyworded lessons',
 );
 
 /** An in-scope lesson with keywords, chosen deterministically. */
@@ -152,7 +151,7 @@ const keywordedLesson = required(
       );
     })
     .sort((a, b) => a.localeCompare(b))[0],
-  'corpus has no in-scope keyworded lesson',
+  'fixture has no in-scope keyworded lesson',
 );
 
 describe('keyword view — bounded anchored frequency-ranked retrieval', () => {
@@ -183,10 +182,9 @@ describe('keyword view — bounded anchored frequency-ranked retrieval', () => {
     const result = keywordsForSubjectKeyStage(richAnchor.subject, richAnchor.keyStage);
 
     const top = required(unwrapOk(result).keywords[0], 'rich anchor returned no keywords');
-    expect(top.lessons).toHaveLength(
-      Math.min(top.scopedLessonCount, KEYWORD_LESSON_DECORATION_LIMIT),
-    );
-    expect(top.hasMoreLessons).toBe(top.scopedLessonCount > KEYWORD_LESSON_DECORATION_LIMIT);
+    expect(top.scopedLessonCount).toBeGreaterThan(KEYWORD_LESSON_DECORATION_LIMIT);
+    expect(top.lessons).toHaveLength(KEYWORD_LESSON_DECORATION_LIMIT);
+    expect(top.hasMoreLessons).toBe(true);
     const ids = top.lessons.map((lesson) => lesson.id);
     expect(ids).toStrictEqual([...ids].sort((a, b) => a.localeCompare(b)));
     for (const lesson of top.lessons) {

@@ -1,11 +1,8 @@
 /**
- * Integration tests for the thread-progressions view (G3 c1).
+ * Tests for the thread-progressions view (G3 c1), over the invented fixture
+ * corpus.
  *
  * @remarks
- * TDD: these tests describe the view's bounded anchored retrieval over the
- * real generated corpus — the describing surface en route to the
- * `get-thread-progressions` wire envelope (plan `graph-tools-value-redesign`,
- * deliverable G3):
  * - the detail anchor returns ONE thread's full progression as one
  *   curriculum-ordered run per subject the thread spans (years ascending,
  *   year-less entries last, Oak's authored unit order within a year) — never
@@ -19,25 +16,27 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { graphCorpus } from './graph-corpus.js';
+import { fixtureCorpus } from './test-fixture-corpus.js';
 import { buildCurriculumThreadProgressionsProjection } from './thread-progressions-projection.js';
-import {
-  progressionForThread,
-  progressionsForSubjectKeyStage,
-  threadProgressionStats,
-} from './index.js';
+import { buildThreadProgressionStats } from './thread-progressions-view.js';
 import { bareSlug, required } from './test-helpers.js';
+import { createCurriculumGraphViews } from './views.js';
+
+const { progressionForThread, progressionsForSubjectKeyStage } =
+  createCurriculumGraphViews(fixtureCorpus);
+const threadProgressionStats = buildThreadProgressionStats(
+  buildCurriculumThreadProgressionsProjection(fixtureCorpus),
+);
 
 /** A thread slug with at least one placement, chosen deterministically (first emitted sequence). */
 const firstSequence = required(
-  graphCorpus.sequences.find((sequence) => sequence.placements.length > 0),
-  'corpus has no non-empty sequence to anchor the view tests',
+  fixtureCorpus.sequences.find((sequence) => sequence.placements.length > 0),
+  'fixture has no non-empty sequence',
 );
 const KNOWN_THREAD_SLUG: string = bareSlug(firstSequence.threadId);
 
-/** Sequences per thread id, to find a thread the corpus runs through several subjects. */
 const sequenceCountByThread = new Map<string, number>();
-for (const sequence of graphCorpus.sequences) {
+for (const sequence of fixtureCorpus.sequences) {
   sequenceCountByThread.set(
     sequence.threadId,
     (sequenceCountByThread.get(sequence.threadId) ?? 0) + 1,
@@ -47,32 +46,32 @@ const multiSubjectThread = required(
   [...sequenceCountByThread.entries()]
     .filter(([, count]) => count > 1)
     .sort(([a], [b]) => a.localeCompare(b))[0],
-  'corpus has no thread spanning several subjects (the modern-language threads do)',
+  'fixture has no thread spanning several subjects',
 );
 const MULTI_SUBJECT_THREAD_SLUG: string = bareSlug(multiSubjectThread[0]);
 const MULTI_SUBJECT_RUN_COUNT: number = multiSubjectThread[1];
 
 /** A (subject, keyStage) pair carried by a sequenced unit, chosen deterministically. */
 const placedUnitIds = new Set(
-  graphCorpus.sequences.flatMap((sequence) =>
+  fixtureCorpus.sequences.flatMap((sequence) =>
     sequence.placements.map((placement) => placement.unitId),
   ),
 );
 const sequencedUnit = required(
-  graphCorpus.nodes.find((node) => node.kind === 'unit' && placedUnitIds.has(node.id)),
-  'corpus has no sequenced unit to derive a subject+keyStage anchor',
+  fixtureCorpus.nodes.find((node) => node.kind === 'unit' && placedUnitIds.has(node.id)),
+  'fixture has no sequenced unit',
 );
 const KNOWN_SUBJECT: string = sequencedUnit.kind === 'unit' ? sequencedUnit.subject : '';
 const KNOWN_KEY_STAGE: string = sequencedUnit.kind === 'unit' ? sequencedUnit.keyStage : '';
 
 describe('thread-progressions projection', () => {
   it('indexes every corpus sequence under its thread with integrity-checked endpoints', () => {
-    const projection = buildCurriculumThreadProgressionsProjection(graphCorpus);
+    const projection = buildCurriculumThreadProgressionsProjection(fixtureCorpus);
 
     expect(projection.sequencesByThreadId.size).toBe(sequenceCountByThread.size);
     expect(
       [...projection.sequencesByThreadId.values()].reduce((sum, list) => sum + list.length, 0),
-    ).toBe(graphCorpus.sequences.length);
+    ).toBe(fixtureCorpus.sequences.length);
     expect(projection.sequencesByThreadId.size).toBeGreaterThan(0);
   });
 });
@@ -110,38 +109,20 @@ describe('progressionForThread (detail anchor)', () => {
     }
   });
 
-  it('serves at least one same-year group in an order the alphabet would not produce', () => {
-    // The defect this view was corrected for served same-year units sorted by
-    // unit slug. Proving the negative on real data: somewhere in the corpus a
-    // same-year group must disagree with alphabetical order, or the corpus is
-    // still alphabetical however the comparator reads.
-    const alphabeticalGroups: number[] = [];
-    const disagreeingGroups: number[] = [];
+  it('serves each run in the corpus’s authored placement order, not alphabetically', () => {
+    const result = progressionForThread(KNOWN_THREAD_SLUG);
+    const run = required(result.threads[0]?.progressions[0], 'thread has no run');
 
-    for (const sequence of graphCorpus.sequences) {
-      const byYear = new Map<string, string[]>();
-      for (const placement of sequence.placements) {
-        const key = String(placement.year);
-        byYear.set(key, [...(byYear.get(key) ?? []), placement.unitId]);
-      }
-      for (const unitIds of byYear.values()) {
-        if (unitIds.length < 2) {
-          continue;
-        }
-        const alphabetical = [...unitIds].sort((a, b) => a.localeCompare(b));
-        const matchesAlphabet = alphabetical.every((id, index) => id === unitIds[index]);
-        (matchesAlphabet ? alphabeticalGroups : disagreeingGroups).push(unitIds.length);
-      }
-    }
-
-    // A floor, not a pin: 625 of 857 groups (73%) disagreed with the alphabet
-    // on the 2026-09-03 snapshot. Alphabetical order would put this near 0%;
-    // a regression that re-sorted most groups fails here, while ordinary
-    // content drift does not. Re-adjudicate the floor only if Oak's authored
-    // order genuinely converges on the alphabet.
-    const groups = alphabeticalGroups.length + disagreeingGroups.length;
-    expect(groups).toBeGreaterThan(0);
-    expect(disagreeingGroups.length / groups).toBeGreaterThan(0.5);
+    expect(run.entries.map((entry) => [entry.unit.id, entry.year])).toStrictEqual(
+      firstSequence.placements.map((placement) => [placement.unitId, placement.year]),
+    );
+    const firstYearGroup = run.entries
+      .filter((entry) => entry.year === run.entries[0]?.year)
+      .map((entry) => entry.unit.id);
+    expect(firstYearGroup.length).toBeGreaterThan(1);
+    expect(firstYearGroup).not.toStrictEqual(
+      [...firstYearGroup].sort((a, b) => a.localeCompare(b)),
+    );
   });
 
   it('keeps every run within its own subject', () => {
@@ -219,7 +200,7 @@ describe('threadProgressionStats (interpolator continuity)', () => {
   });
 
   it('derives subjectsCovered from the sequences themselves (thread coverage by construction)', () => {
-    const sequencedSubjects = new Set(graphCorpus.sequences.map((sequence) => sequence.subject));
+    const sequencedSubjects = new Set(fixtureCorpus.sequences.map((sequence) => sequence.subject));
 
     expect(new Set(threadProgressionStats.subjectsCovered)).toEqual(sequencedSubjects);
     expect(threadProgressionStats.subjectsCovered.length).toBeGreaterThan(0);
