@@ -62,12 +62,14 @@ describe('CODEOWNERS and Dependabot', () => {
       '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
+      'posthog-node',
       'typescript',
     ]);
     const versionsOf = (name: string) =>
       npm?.ignore?.find((i) => i['dependency-name'] === name)?.versions;
     expect(versionsOf('typescript')).toEqual(['>=6.1']);
     expect(versionsOf('@posthog/mcp')).toEqual(['>=0.11.5']);
+    expect(versionsOf('posthog-node')).toEqual(['>=5.48.2']);
     expect(versionsOf('@mcpjam/cli')).toEqual(['>=5.0.0']);
     expect(versionsOf('@modelcontextprotocol/ext-apps')).toEqual(['>=2.0.0']);
   });
@@ -247,9 +249,11 @@ describe('lockfile-rebuild', () => {
       '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
+      'posthog-node',
       'typescript',
     ]);
     expect(holds.find((h) => h.name === '@posthog/mcp')?.below).toBe('0.11.5');
+    expect(holds.find((h) => h.name === 'posthog-node')?.below).toBe('5.48.2');
     expect(holds.find((h) => h.name === '@mcpjam/cli')?.below).toBe('5.0.0');
     expect(holds.find((h) => h.name === '@modelcontextprotocol/ext-apps')?.below).toBe('2.0.0');
   });
