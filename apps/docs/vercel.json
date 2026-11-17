@@ -1,0 +1,215 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/mcp",
+      "destination": "https://server-staging-origin.invalid/mcp"
+    },
+    {
+      "source": "/mcp/",
+      "destination": "https://server-staging-origin.invalid/mcp/"
+    },
+    {
+      "source": "/mcp/:path*",
+      "destination": "https://server-staging-origin.invalid/mcp/:path*"
+    },
+    {
+      "source": "/oauth/:path*",
+      "destination": "https://server-staging-origin.invalid/oauth/:path*"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "https://server-staging-origin.invalid/.well-known/oauth-protected-resource"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/mcp",
+      "destination": "https://server-staging-origin.invalid/.well-known/oauth-protected-resource/mcp"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "https://server-staging-origin.invalid/.well-known/oauth-authorization-server"
+    },
+    {
+      "source": "/.well-known/openai-apps-challenge",
+      "destination": "https://server-staging-origin.invalid/.well-known/openai-apps-challenge"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "https://server-staging-origin.invalid/robots.txt"
+    },
+    {
+      "source": "/assets/download/:lesson/:type",
+      "destination": "https://server-staging-origin.invalid/assets/download/:lesson/:type"
+    },
+    {
+      "source": "/api/cron/refresh-graph",
+      "destination": "https://server-staging-origin.invalid/api/cron/refresh-graph"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://server-staging-origin.invalid/healthz"
+    },
+    {
+      "source": "/favicons/:path*",
+      "destination": "https://server-staging-origin.invalid/favicons/:path*"
+    },
+    {
+      "source": "/carousel/:path*",
+      "destination": "https://server-staging-origin.invalid/carousel/:path*"
+    },
+    {
+      "source": "/oak-ds/:path*",
+      "destination": "https://server-staging-origin.invalid/oak-ds/:path*"
+    },
+    {
+      "source": "/oak-assets/:path*",
+      "destination": "https://server-staging-origin.invalid/oak-assets/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/mcp",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/mcp/",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/mcp/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/oauth/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/mcp",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/openai-apps-challenge",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/assets/download/:lesson/:type",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/api/cron/refresh-graph",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/healthz",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/favicons/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/carousel/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/oak-ds/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/oak-assets/:path*",
+      "headers": [
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}
