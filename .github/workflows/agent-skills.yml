@@ -27,4 +27,5 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: pnpm skills:check
+      - run: node tools/repo-checks/skills-upstream-check.ts
       - run: node tools/repo-checks/skills-review.ts
