@@ -747,6 +747,13 @@ describe('git-guard heredoc bodies', () => {
     expect(bash(clean, 'cat <<EOF\nnever read .env').status).toBe(2);
   });
 
+  it.each(['cat <<EOF', 'git commit -F - <<EOF'])(
+    'refuses %s, a heredoc opener with no body or trailing newline',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
   it('refuses a heredoc whose delimiter it cannot parse (ANSI-C quoting), rather than guessing', () => {
     expect(bash(clean, "cat <<$'EOF'\nbody\nEOF\ncat .env").status).toBe(2);
   });

@@ -200,6 +200,11 @@ function readHeredocDelimiter(text, at) {
   return word === '' ? null : { word, next: index, quoted };
 }
 
+const refuseUnclosed = (word, stripTabs) =>
+  refuse(
+    `a heredoc opened with <<${stripTabs ? '-' : ''}${word} never reaches a closing ${word} line, so the guard cannot tell what the rest of the command does. Close every heredoc you open.`,
+  );
+
 const HEREDOC_RUNNERS = new Set([...SHELLS, 'ksh', 'source', '.', 'eval']);
 const runsHeredoc = (line) =>
   tokenize(line).some((segment) =>
@@ -245,9 +250,7 @@ function stripHeredocs(text, bodiesRun) {
           }
         }
         if (!terminated) {
-          refuse(
-            `a heredoc opened with <<${stripTabs ? '-' : ''}${word} never reaches a closing ${word} line, so the guard cannot tell what the rest of the command does. Close every heredoc you open.`,
-          );
+          refuseUnclosed(word, stripTabs);
         }
         if (runs) {
           commands.push(body);
@@ -349,6 +352,9 @@ function stripHeredocs(text, bodiesRun) {
     }
     result += char;
     at += 1;
+  }
+  if (pending.length > 0) {
+    refuseUnclosed(pending[0].word, pending[0].stripTabs);
   }
   return { text: result, commands };
 }
