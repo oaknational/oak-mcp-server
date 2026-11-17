@@ -174,6 +174,11 @@ function readHeredocDelimiter(text, at) {
   let quoted = false;
   while (index < text.length) {
     const char = text[index];
+    if (char === '$' && (text[index + 1] === "'" || text[index + 1] === '"')) {
+      refuse(
+        `a heredoc delimiter quoted with ${char}${text[index + 1]} is one the guard cannot read. Use a plain or quoted delimiter such as 'EOF'.`,
+      );
+    }
     if (char === "'" || char === '"') {
       const end = text.indexOf(char, index + 1);
       if (end === -1) {

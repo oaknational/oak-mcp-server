@@ -758,6 +758,13 @@ describe('git-guard heredoc bodies', () => {
     expect(bash(clean, "cat <<$'EOF'\nbody\nEOF\ncat .env").status).toBe(2);
   });
 
+  it.each(["cat <<$'EOF'\nprose\nEOF\ncat .env\n$EOF", 'cat <<$"EOF"\nprose\nEOF\ncat .env\n$EOF'])(
+    'refuses %s, whose $-quoted delimiter it cannot read, even when a later line matches it',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
   it('still recognizes a heredoc after a word containing an unrelated #', () => {
     expect(bash(clean, 'md5sum file#1 <<EOF\nnever read .env\nEOF').status).toBe(0);
   });
