@@ -31,9 +31,11 @@ import { applyFingerprint } from './runtime-fingerprint.js';
  * v11 replaces the boolean `sendDefaultPii` option with a `dataCollection`
  * object whose unset fields default to collect-everything. This repo's
  * `SentryLiveConfig.sendDefaultPii` is a `false` literal, enforced at parse
- * time (`SENTRY_SEND_DEFAULT_PII=true` is a config error) — this constant
- * reproduces that same deny-everything posture under the new shape rather
- * than silently inheriting v11's permissive defaults.
+ * time (`SENTRY_SEND_DEFAULT_PII=true` is a config error). This constant
+ * turns off every on/off category, which is stricter than v10's
+ * `sendDefaultPii: false`. `frameContextLines` stays at the SDK default.
+ * `dataCollection.mcp` also sets the default for `wrapMcpServerWithSentry`'s
+ * `recordInputs` and `recordOutputs`.
  */
 const DENY_ALL_DATA_COLLECTION: NonNullable<NodeOptions['dataCollection']> = {
   userInfo: false,

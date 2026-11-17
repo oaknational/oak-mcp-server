@@ -108,9 +108,10 @@ configuration enforces the ban on `process.env` reads inside `src/**` at
 
 [ADR-160](https://github.com/oaknational/oak-open-curriculum-ecosystem/blob/d5846cf6f37270c73291640a526124429369ee97/docs/architecture/architectural-decisions/160-non-bypassable-redaction-barrier-as-principle.md)
 establishes the non-bypassable redaction barrier as the single closure point
-for every payload that would otherwise leave the process. `sendDefaultPii:
-false` (ADR-143) is set as the floor; the barrier adds structural redaction
-on top so every outbound event, transaction, span, log, and breadcrumb is
+for every payload that would otherwise leave the process. The floor is a
+`dataCollection` setting that turns off every on/off SDK data-collection
+category (ADR-143; Sentry v11 replaced `sendDefaultPii` with
+`dataCollection`). The barrier adds structural redaction on top so every outbound event, transaction, span, log, and breadcrumb is
 sanitised before transmission.
 
 The **shared delegates** are the mechanism. The barrier wires five hooks
