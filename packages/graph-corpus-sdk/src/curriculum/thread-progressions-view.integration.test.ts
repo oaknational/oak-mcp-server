@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { fixtureCorpus } from './test-fixture-corpus.js';
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
 import { buildCurriculumThreadProgressionsProjection } from './thread-progressions-projection.js';
 import { buildThreadProgressionStats } from './thread-progressions-view.js';
 import { bareSlug, required } from './test-helpers.js';

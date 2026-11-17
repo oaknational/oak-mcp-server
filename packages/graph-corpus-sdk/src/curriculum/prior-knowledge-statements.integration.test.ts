@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { fixtureCorpus } from './test-fixture-corpus.js';
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
 import { required } from './test-helpers.js';
 import { createCurriculumGraphViews } from './views.js';
 

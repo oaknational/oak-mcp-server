@@ -16,7 +16,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_THREAD_UNIT_LIMIT, MAX_THREAD_UNIT_LIMIT } from './misconception-view.js';
-import { fixtureCorpus } from './test-fixture-corpus.js';
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
 import { bareSlug, required, unwrapOk } from './test-helpers.js';
 import { createCurriculumGraphViews } from './views.js';
 

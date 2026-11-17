@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CurriculumGraphCorpus } from './projection-helpers.js';
-import { fixtureCorpus } from './test-fixture-corpus.js';
+import { fixtureCorpus } from './__tests__/fixture-corpus.js';
 import { unwrapOk } from './test-helpers.js';
 import { createCurriculumGraphViews } from './views.js';
 
