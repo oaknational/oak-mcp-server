@@ -5,7 +5,7 @@
 
 ## Context
 
-[ADR 0003](0003-docs-at-root-server-at-mcp.md) lists the paths the server owns, so that edge routing can send the rest to the documentation site. Checked against the route registrations in `apps/server/src` at the pinned OOCE import SHA (`PROVENANCE.md`), that list missed paths the server already serves: `/.well-known/openai-apps-challenge`, `/robots.txt`, `/assets/download/:lesson/:type`, the cron trigger at `/api/cron/refresh-graph`, and the root static asset tree. Routing built from ADR 0003's list alone would send each of these to the documentation site instead of the server, breaking OpenAI's domain verification, lesson asset downloads, the graph refresh cron, and the design system and brand assets the pages reference.
+[ADR 0003](0003-docs-at-root-server-at-mcp.md) lists the paths the server owns, so that edge routing can send the rest to the documentation site. Checked against the route registrations and static mounts in `apps/server/src` at this repository's `main` commit `0c81f5242f09768cec6193611e8082cf02a5dff5`, that list misses paths the server serves: `/.well-known/openai-apps-challenge`, `/robots.txt`, `/assets/download/:lesson/:type`, the cron trigger at `/api/cron/refresh-graph`, and the root static asset tree. All but the cron trigger came with the server import (MCP-801). The cron trigger was added in this repository afterwards (MCP-803, MCP-870). Routing built from ADR 0003's list alone would send each of these to the documentation site instead of the server, breaking OpenAI's domain verification, lesson asset downloads, the graph refresh cron, and the design system and brand assets the pages reference.
 
 ## Decision
 
@@ -18,7 +18,7 @@ The server owns every path below. This list replaces the one in ADR 0003's "Deci
 - `/.well-known/openai-apps-challenge` (`openai-domain-verification.ts`). OpenAI fetches this to verify the host for the Apps SDK listing.
 - `/robots.txt` (`robots-txt.ts`).
 - `/assets/download/:lesson/:type` (`asset-download/asset-download-route.ts`). Signed lesson asset downloads.
-- `/api/cron/refresh-graph` (`cron/refresh-graph.ts`). Vercel's cron trigger for the curriculum graph refresh, registered whenever `CRON_SECRET` is set, which it is in every deployed environment.
+- `/api/cron/refresh-graph` (`cron/refresh-graph.ts`). Vercel's cron trigger for the curriculum graph refresh, registered whenever `CRON_SECRET` is set.
 - `/healthz`, and the routed `/mcp/healthz` (`app/health-paths.ts`). The routed form already falls under `/mcp/*` above; it is named here because it is a probe target in its own right.
 - The root static asset tree (`app/static-content.ts`, `app/static-asset-paths.ts`): every path under `/favicons/`, `/carousel/`, `/oak-ds/` and `/oak-assets/`, such as `/oak-ds/styles.css`. Each is mounted at both the root and under `/mcp/`.
 
