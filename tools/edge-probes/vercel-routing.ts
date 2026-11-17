@@ -1,6 +1,13 @@
 import { request as forward } from 'node:http';
 
+import serverPaths from './server-paths.json' with { type: 'json' };
 import { listen, type StubOrigin } from './stub-origins.ts';
+
+export const SERVER_PATHS: readonly string[] = serverPaths;
+
+export const serverRewrites = (origin: string): VercelConfig => ({
+  rewrites: SERVER_PATHS.map((source) => ({ source, destination: `${origin}${source}` })),
+});
 
 interface Rewrite {
   readonly source: string;
@@ -100,14 +107,15 @@ export function startVercelFront(
       response.writeHead(308, { location: routed.location }).end();
       return;
     }
-    let local = new URL(pathname + search, docs.url);
-    if (routed.kind === 'rewrite') {
-      const destination = new URL(routed.destination);
-      local = new URL(
-        destination.pathname + search,
-        localOriginFor.get(destination.origin) ?? destination.origin,
-      );
+    const destination = routed.kind === 'rewrite' ? new URL(routed.destination) : undefined;
+    const origin = destination === undefined ? docs.url : localOriginFor.get(destination.origin);
+    if (origin === undefined) {
+      response.writeHead(502).end();
+      return;
     }
+    const local = new URL(origin);
+    local.pathname = destination?.pathname ?? pathname;
+    local.search = search;
     const upstream = forward(
       local,
       { method: request.method, headers: { ...request.headers, host: local.host } },
