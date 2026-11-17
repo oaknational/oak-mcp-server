@@ -221,20 +221,46 @@ const runsHeredoc = (line) =>
     segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
   );
 
+const UNCERTAIN = -1;
+const XARGS_VALUE_FLAGS = /^-[ILnPsdEa]/;
+const XARGS_FLAGS = new Set(['-0', '-r', '-t', '-p', '-x', '--null', '--no-run-if-empty']);
+const isRedirect = (word) => OUTPUT_REDIRECT.test(word) || /^\d*<[<&]*$/.test(word);
+
 // The index of the command word in a simple command's words, past leading NAME=value
-// words and the wrappers checkSegment unwraps. words.length means none is there yet.
+// words, redirections and the wrappers checkSegment unwraps. words.length means none is
+// there yet. UNCERTAIN means a wrapper option the guard doesn't know hides it.
 function commandWordIndex(words) {
   let start = 0;
-  let wrapped = false;
+  let wrapper = '';
   for (; start < words.length; start += 1) {
     const word = words[start];
-    wrapped ||= PREFIXES.has(word);
-    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
-    if (option !== undefined) {
+    if (isRedirect(word)) {
+      start += 1;
+      continue;
+    }
+    if (PREFIXES.has(word) || word === 'builtin') {
+      wrapper = word;
+      continue;
+    }
+    if (word.startsWith('-') && wrapper === 'xargs') {
+      if (XARGS_FLAGS.has(word)) {
+        continue;
+      }
+      if (!XARGS_VALUE_FLAGS.test(word)) {
+        return UNCERTAIN;
+      }
+      start += word.length === 2 ? 1 : 0;
+      continue;
+    }
+    if (word.startsWith('-')) {
+      const option = wrapper === '' ? undefined : wrapperOption(word, words[start + 1]);
+      if (option === undefined) {
+        return UNCERTAIN;
+      }
       start += option.consumesNext ? 1 : 0;
       continue;
     }
-    if (!word.includes('=') && !PREFIXES.has(word) && word !== 'builtin' && !word.startsWith('-')) {
+    if (!word.includes('=')) {
       break;
     }
   }
@@ -242,7 +268,11 @@ function commandWordIndex(words) {
     return start;
   }
   const inner = unwrap(words[start].replace(/^\\/, '').split('/').pop(), words.slice(start + 1));
-  return inner === undefined ? start : words.length - inner.length + commandWordIndex(inner);
+  if (inner === undefined) {
+    return start;
+  }
+  const index = commandWordIndex(inner);
+  return index === UNCERTAIN ? UNCERTAIN : words.length - inner.length + index;
 }
 
 // A $(...) or `...` runs its output unless it is data: an assignment value, or a word
@@ -259,6 +289,9 @@ function substitutionRuns(before) {
   const inWord = !/[ \t]/.test(last);
   const at = inWord ? words.length - 1 : words.length;
   const command = commandWordIndex(words.slice(0, Math.max(at, 0)));
+  if (command === UNCERTAIN) {
+    return true;
+  }
   if (command < at) {
     return false;
   }

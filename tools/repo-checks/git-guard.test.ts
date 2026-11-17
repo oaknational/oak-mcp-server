@@ -830,6 +830,10 @@ describe('git-guard heredocs that a shell runs', () => {
     'timeout 5 $(cat <<EOF\ncat .env\nEOF\n)',
     'FOO=bar $(cat <<EOF\ncat .env\nEOF\n)',
     'case x in x) $(cat <<EOF\ncat .env\nEOF\n) ;; esac',
+    "A=1 B=2 </dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "</dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "xargs -I XX $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "env --frobnicate x $(cat <<'EOF'\ncat .env\nEOF\n)",
     '"$(cat <<EOF\ncat .env\nEOF\n)"',
   ])('refuses %s, whose substitution runs as a command', (command) => {
     expect(bash(clean, command).status).toBe(2);
@@ -841,6 +845,8 @@ describe('git-guard heredocs that a shell runs', () => {
     "X=`cat <<'EOF'\nnever read .env\nEOF\n`",
     "X=$(\ncat <<'EOF'\nnever read .env\nEOF\n)",
     "echo $(cat <<'EOF'\nnever read .env\nEOF\n)",
+    '</dev/null gh pr comment 1 --body "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    "xargs -n 1 echo $(cat <<'EOF'\nnever read .env\nEOF\n)",
     "FOO=$(cat <<'EOF'\nnever read .env\nEOF\n) true",
     'timeout 5 git commit -m "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
     'gh pr comment 1 --body "$(\ncat <<\'EOF\'\nnever read .env\nEOF\n)"',
