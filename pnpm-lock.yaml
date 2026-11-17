@@ -831,6 +831,9 @@ importers:
         specifier: 11.11.0
         version: 11.11.0(rollup@4.67.5)
     devDependencies:
+      '@opentelemetry/api':
+        specifier: 1.9.1
+        version: 1.9.1
       '@types/node':
         specifier: ^24.13.3
         version: 24.19.2

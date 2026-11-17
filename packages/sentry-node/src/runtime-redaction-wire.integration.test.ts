@@ -1,3 +1,5 @@
+import { getActiveSpanContextSnapshot } from '@oaknational/observability';
+import { trace } from '@opentelemetry/api';
 import * as Sentry from '@sentry/node';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSentryInitOptions } from './runtime-sdk.js';
@@ -106,5 +108,34 @@ describe('Sentry redaction on the wire', () => {
       expect(envelope).not.toContain(TOKEN);
       expect(envelope).not.toContain(OAUTH_CODE);
     }
+  });
+
+  it('captures and redacts spans created through the OpenTelemetry API', async () => {
+    const { envelopes } = initWithCapturingTransport();
+    const tracer = trace.getTracer('wire-probe', '0.0.0');
+
+    const activeTraceId = tracer.startActiveSpan('POST /mcp', (root) => {
+      const traceId = getActiveSpanContextSnapshot()?.traceId;
+      tracer.startActiveSpan('oak.upstream.fetch', (child) => {
+        child.setAttributes({ authorization: `Bearer ${TOKEN}`, 'http.url': CALLBACK_URL });
+        child.end();
+      });
+      root.end();
+      return traceId;
+    });
+    await Sentry.flush(2_000);
+
+    for (const envelope of envelopes) {
+      expect(envelope).not.toContain(TOKEN);
+      expect(envelope).not.toContain(OAUTH_CODE);
+    }
+
+    const transaction = envelopes
+      .flatMap(envelopeItems)
+      .find((item) => item.type === 'transaction');
+    expect(transaction?.payload).toContain('"description":"oak.upstream.fetch"');
+    expect(transaction?.payload).toContain('"authorization":"[REDACTED]"');
+    expect(activeTraceId).toMatch(/^[0-9a-f]{32}$/);
+    expect(transaction?.payload).toContain(`"trace_id":"${activeTraceId ?? 'none'}"`);
   });
 });

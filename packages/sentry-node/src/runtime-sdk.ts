@@ -163,6 +163,9 @@ export function createSentryInitOptions(
     environment: config.environment,
     release: config.release,
     tracesSampleRate: config.tracesSampleRate,
+    // v11 defaults this to false, which drops spans created through `@opentelemetry/api`.
+    enableOpenTelemetrySetup: true,
+    // v11 removed `enableLogs`; `runtime-sinks.ts` gates log forwarding on `config.enableLogs`.
     // v11 defaults to `traceLifecycle: 'stream'`, under which `beforeSendTransaction`
     // is never invoked — this would silently drop `redactSentryTransaction` and
     // apps/server's MCP-route sanitisation (both wired through this hook). Stay on
