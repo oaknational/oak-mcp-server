@@ -96,7 +96,12 @@ function mountGraphAndHealthRoutes(app: Express, options: CoreEndpointOptions, l
         });
       },
     });
-  addHealthEndpoints(app, log, readGraphHealth);
+  addHealthEndpoints(
+    app,
+    log,
+    readGraphHealth,
+    options.runtimeConfig.dangerouslyDisableAuth ? 'disabled' : 'required-for-post',
+  );
   if (env.CRON_SECRET) {
     registerRefreshGraphRoute({
       app,

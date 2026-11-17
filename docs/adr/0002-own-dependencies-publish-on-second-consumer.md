@@ -7,7 +7,7 @@
 
 OOCE ADR-227 planned for the Oak MCP product to be built in its own repository from packages published to the public `@oaknational` npm scope. OOCE would publish its shared toolkit first, and the new repository would depend on the published versions.
 
-[ADR 0001](0001-repository-topology.md) changes the ground for that plan. No second consumer of those packages exists today. Oak's other web application uses vendor SDKs directly and has no Oak logger or environment wrapper to share.
+[ADR 0001](0001-repository-topology.md) changes the ground for that plan. No second consumer of those packages exists today. Oak's other web application, [`Oak-Web-Application`](https://github.com/oaknational/Oak-Web-Application/tree/0c444adda44484a85c482419357a525a6082c95d), has no shareable Oak logger or environment package. Its `package.json` carries no `@oaknational/logger` or `@oaknational/env` dependency. Its environment handling is internal to the app: `src/node-lib/getServerConfig.ts` and `src/browser-lib/getBrowserConfig.ts` form a typed registry of its own variables, not a package another repository could use.
 
 ## Decision
 

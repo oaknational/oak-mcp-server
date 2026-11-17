@@ -64,35 +64,50 @@ For the architectural rationale behind this primitive mapping, see [ADR-123](htt
 
 ## Quick start (local)
 
-1. Set env vars (minimal — auth disabled for local dev):
+1. Set env vars. This is the local no-auth path. `dev:observe:noauth` sets
+   `DANGEROUSLY_DISABLE_AUTH=true`, `SENTRY_MODE=off` and the local
+   `ALLOWED_HOSTS` itself, so you don't export them:
 
 ```bash
 export OAK_API_KEY=your_api_key
 export ELASTICSEARCH_URL=https://your-es-url
 export ELASTICSEARCH_API_KEY=your_es_api_key
-export DANGEROUSLY_DISABLE_AUTH=true
-export SENTRY_MODE=off
 ```
 
 `ALLOWED_HOSTS` is not needed locally: `localhost`, `127.0.0.1` and `::1` are
 always allowed. Set it only to name an _extra_ host.
 
-2. Run dev server:
+2. Install dependencies (Node 24):
 
 ```bash
-pnpm -C apps/oak-curriculum-mcp-streamable-http dev
+pnpm install --frozen-lockfile
 ```
+
+3. Build the workspace:
+
+```bash
+pnpm build
+```
+
+4. Run the dev server with auth disabled:
+
+```bash
+pnpm --filter @oaknational/mcp-server dev:observe:noauth
+```
+
+To run a copy with sign-in, see the docs site's Self-hosting page.
 
 `pnpm dev`, `pnpm dev:observe`, and `pnpm dev:observe:noauth` now perform the
 initial widget build automatically and regenerate the committed
 `src/generated/widget-html-content.ts` constant. Manual `pnpm build:widget` is
 only required when widget sources change outside the dev watcher.
 
-3. List tools (auth disabled path shown above):
+5. List tools (auth disabled path shown above):
 
 ```bash
 curl -sS \
   -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
   -X POST http://localhost:3333/mcp \
   -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'
 ```
@@ -100,7 +115,7 @@ curl -sS \
 If you enable auth locally, repeat the same request with a valid Clerk-issued
 Bearer token instead of relying on the disabled-auth path above.
 
-Note: The server automatically adds the required `Accept: application/json, text/event-stream` header if missing, improving UX for simple curl commands and UI integrations.
+The `Accept` header is required. `/mcp` answers 406 unless it lists `text/event-stream`, and a POST must list `application/json` as well.
 
 ## Widget development
 
@@ -118,7 +133,7 @@ imports).
 ### Widget-only iteration (one terminal)
 
 For layout, styling, and token work that does not need MCP host context
-(run from this workspace, or use `pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http dev:widget` from repo root):
+(run from this workspace, or use `pnpm --filter @oaknational/mcp-server dev:widget` from repo root):
 
 ```bash
 pnpm dev:widget
@@ -367,9 +382,8 @@ this workspace.
 
 The server uses **Clerk OAuth** for production authentication. All requests to `/mcp` must include a valid Bearer token in the `Authorization` header.
 
-> **Current status**: Authentication is provided by a Clerk test
-> instance. Only internal Oak team members are supported as users
-> at this time. External access is not available.
+> **Current status**: Anyone can sign in. When a client prompts you, it opens
+> Oak's sign-in page in your browser, where you sign in or create an account.
 
 ### OAuth Flow
 
@@ -382,7 +396,7 @@ The server uses **Clerk OAuth** for production authentication. All requests to `
 
 A local-development valve only:
 
-- Set `DANGEROUSLY_DISABLE_AUTH=true` to bypass authentication on a local run
+- `pnpm --filter @oaknational/mcp-server dev:observe:noauth` bypasses authentication on a local run. It sets `DANGEROUSLY_DISABLE_AUTH=true` itself. The other dev scripts force it to `false`.
 - **Every deployed environment rejects it.** This is enforced, not advised: when
   `VERCEL_ENV` names any deployed environment (including one that does not exist
   yet), `DANGEROUSLY_DISABLE_AUTH=true` fails startup rather than serving
@@ -408,7 +422,7 @@ See `docs/dev-server-management.md` for local development and OAuth server setup
     `dist/index.js`, but that is not the deployed artefact.
   - Verify the host is either Vercel-derived (`VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL` — all allowed automatically) or named in `ALLOWED_HOSTS`.
   - If auth is enabled, verify `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are set and that Clerk metadata discovery succeeds at startup.
-- 401 without `Authorization`: the client must either follow the OAuth discovery flow or send a valid Clerk-issued Bearer token. For local smoke tests, either use a real Clerk token or set `DANGEROUSLY_DISABLE_AUTH=true` and retry without the `Authorization` header.
+- 401 without `Authorization`: the client must either follow the OAuth discovery flow or send a valid Clerk-issued Bearer token. For local smoke tests, either use a real Clerk token or restart with `pnpm --filter @oaknational/mcp-server dev:observe:noauth` and retry without the `Authorization` header.
 - Host blocked: add host to `ALLOWED_HOSTS`
 
 ## Search tools
@@ -484,31 +498,31 @@ suite that ran on port 3333 covered the landing page and went with it on
 
 ```bash
 # Widget visual/structural tests (both themes)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:ui
 
 # Widget WCAG 2.2 AA accessibility tests (both themes, axe-core)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 ```
 
 ### Running All Tests
 
 ```bash
 # Unit and integration tests (Vitest)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test
+pnpm --filter @oaknational/mcp-server test
 
 # Widget unit tests (Vitest, React Testing Library)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget
+pnpm --filter @oaknational/mcp-server test:widget
 
 # E2E tests (Vitest, requires built artefacts)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:e2e
+pnpm --filter @oaknational/mcp-server test:e2e
 
 # Widget browser tests (Playwright)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 
 # Widget Playwright tests (separate from server tests)
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:ui
-pnpm --filter @oaknational/oak-curriculum-mcp-streamable-http test:widget:a11y
+pnpm --filter @oaknational/mcp-server test:widget:ui
+pnpm --filter @oaknational/mcp-server test:widget:a11y
 ```
 
 ## Detailed Documentation

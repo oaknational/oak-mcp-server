@@ -4,11 +4,48 @@ import { expect, test, type Page } from '@playwright/test';
 import { loadReference } from '../reference/load.ts';
 
 const PAGES = [
-  { name: 'home', path: '/' },
-  { name: 'not found', path: '/page-that-does-not-exist/' },
-  { name: 'tools', path: '/tools/' },
-  { name: 'resources', path: '/resources/' },
-  { name: 'prompts', path: '/prompts/' },
+  { name: 'home', path: '/', showsStatus: true },
+  { name: 'not found', path: '/page-that-does-not-exist/', showsStatus: false },
+  { name: 'connect', path: '/connect/', showsStatus: false },
+  { name: 'authentication', path: '/authentication/', showsStatus: false },
+  { name: 'examples', path: '/examples/', showsStatus: false },
+  { name: 'data and licensing', path: '/data-and-licensing/', showsStatus: false },
+  { name: 'responsible use', path: '/responsible-use/', showsStatus: false },
+  { name: 'status and limits', path: '/status-and-limits/', showsStatus: true },
+  { name: 'self-hosting', path: '/self-hosting/', showsStatus: false },
+  { name: 'accessibility statement', path: '/accessibility/', showsStatus: false },
+  { name: 'support', path: '/support/', showsStatus: false },
+  { name: 'tools', path: '/tools/', showsStatus: false },
+  { name: 'resources', path: '/resources/', showsStatus: false },
+  { name: 'prompts', path: '/prompts/', showsStatus: false },
+] as const;
+
+const MCP_URL = 'https://mcp.thenational.academy/mcp';
+const HEALTHY = JSON.stringify({ status: 'ok', mode: 'streamable-http' });
+
+async function serveHealth(page: Page, status: number, body = HEALTHY): Promise<void> {
+  await page.route('**/mcp/healthz', (route) =>
+    route.fulfill({ status, contentType: 'application/json', body }),
+  );
+}
+
+const CLIENT_TABS = ['Claude', 'ChatGPT', 'Cursor', 'VS Code', 'Claude Code'] as const;
+
+/** Every status the server-status widget can settle on, with a fixed `/mcp/healthz`
+ * response for each, so a page scan never depends on fetch timing. */
+const HEALTH_STATES = [
+  {
+    name: 'ok',
+    status: 200,
+    body: HEALTHY,
+    message: 'The server is up. It answered its health check just now.',
+  },
+  {
+    name: 'unknown',
+    status: 503,
+    body: HEALTHY,
+    message: "We can't check the server from this page.",
+  },
 ] as const;
 
 const THEMES = ['light', 'dark'] as const;
@@ -73,22 +110,46 @@ const VIEWS = [
 
 test.describe('docs shell accessibility', () => {
   for (const pageDef of PAGES) {
-    for (const theme of THEMES) {
-      for (const view of VIEWS) {
-        test(`@a11y ${pageDef.name}, ${theme}, ${view.label} passes WCAG 2.2 AA`, async ({
-          browser,
-        }) => {
-          const context = await browser.newContext({
-            viewport: view.viewport,
-            deviceScaleFactor: view.scale,
+    // Pages without the status widget only need one fixed health response; pages that show
+    // it get scanned deliberately in both the "ok" and the "unknown" state.
+    const healthStates = pageDef.showsStatus ? HEALTH_STATES : [HEALTH_STATES[0]];
+    for (const health of healthStates) {
+      for (const theme of THEMES) {
+        for (const view of VIEWS) {
+          const title = pageDef.showsStatus
+            ? `@a11y ${pageDef.name}, ${health.name} status, ${theme}, ${view.label} passes WCAG 2.2 AA`
+            : `@a11y ${pageDef.name}, ${theme}, ${view.label} passes WCAG 2.2 AA`;
+          test(title, async ({ browser }) => {
+            const context = await browser.newContext({
+              viewport: view.viewport,
+              deviceScaleFactor: view.scale,
+            });
+            const page = await context.newPage();
+            await serveHealth(page, health.status, health.body);
+            await page.goto(pageDef.path);
+            if (pageDef.showsStatus) {
+              // Wait past the transient "checking" state so axe always sees the state this
+              // test names, not whichever one the fetch happened to settle on by now.
+              await expect(page.getByRole('status').filter({ hasText: 'server' })).toContainText(
+                health.message,
+              );
+            }
+            await applyTheme(page, theme);
+            await expectNoHorizontalScroll(page);
+            if (pageDef.name === 'connect') {
+              for (const name of CLIENT_TABS) {
+                await page.getByRole('tab', { name, exact: true }).click();
+                // Each panel has its own code blocks and commands, so reflow and axe both
+                // need to run again after the switch, not just for the default panel.
+                await expectNoHorizontalScroll(page);
+                await expectNoAxeFindings(page);
+              }
+            } else {
+              await expectNoAxeFindings(page);
+            }
+            await context.close();
           });
-          const page = await context.newPage();
-          await page.goto(pageDef.path);
-          await applyTheme(page, theme);
-          await expectNoHorizontalScroll(page);
-          await expectNoAxeFindings(page);
-          await context.close();
-        });
+        }
       }
     }
   }
@@ -116,9 +177,12 @@ test.describe('docs shell accessibility', () => {
       if (message.type() === 'error') problems.push(message.text());
     });
     page.on('pageerror', (error) => problems.push(error.message));
-    await page.goto('/');
-    await applyTheme(page, 'dark');
-    await applyTheme(page, 'light');
+    await serveHealth(page, 200);
+    for (const pageDef of PAGES.filter((entry) => entry.name !== 'not found')) {
+      await page.goto(pageDef.path);
+      await applyTheme(page, 'dark');
+      await applyTheme(page, 'light');
+    }
     expect(problems).toEqual([]);
   });
 
@@ -134,7 +198,9 @@ test.describe('docs shell accessibility', () => {
         'Skip to main content',
         'Oak MCP server docs',
         'Home',
-        'Quick start',
+        'Connect',
+        'Authentication',
+        'Examples',
         'Tools',
         'Resources',
         'Prompts',
@@ -184,7 +250,7 @@ test.describe('docs shell accessibility', () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.goto('/');
-    const block = page.getByRole('region', { name: 'Example MCP client configuration' });
+    const block = page.getByRole('region', { name: 'MCP server URL' });
     await expect(block).toHaveAttribute('tabindex', '0');
     await block.focus();
     await expect(block).toBeFocused();
@@ -233,5 +299,105 @@ test.describe('docs shell accessibility', () => {
       const outline = await target.evaluate((element) => getComputedStyle(element).outlineStyle);
       expect(outline).not.toBe('none');
     }
+  });
+
+  test('@a11y home shows a healthy server as text, not colour alone', async ({ page }) => {
+    await serveHealth(page, 200);
+    await page.goto('/');
+    await expect(page.getByRole('status').filter({ hasText: 'server' })).toHaveText(
+      'The server is up. It answered its health check just now.',
+    );
+  });
+
+  for (const [label, status, body] of [
+    ['an error status', 503, HEALTHY],
+    ['an unexpected body', 200, '{"status":"down"}'],
+  ] as const) {
+    test(`@a11y home falls back to a health-check link on ${label}`, async ({ page }) => {
+      await serveHealth(page, status, body);
+      await page.goto('/');
+      const region = page.getByRole('status').filter({ hasText: 'server' });
+      await expect(region).toContainText("We can't check the server from this page.");
+      await expect(region.getByRole('link', { name: 'Open the health check' })).toHaveAttribute(
+        'href',
+        `${MCP_URL}/healthz`,
+      );
+    });
+  }
+
+  for (const theme of THEMES) {
+    test(`@a11y Connect tabs switch with arrow keys, Home and End, with a visible focus ring, ${theme}`, async ({
+      page,
+    }) => {
+      await page.goto('/connect/');
+      await applyTheme(page, theme);
+      const tabs = page.getByRole('tab');
+      await expect(tabs).toHaveText([...CLIENT_TABS]);
+      const first = tabs.first();
+      for (let presses = 0; presses < 50; presses += 1) {
+        if (await first.evaluate((element) => element === document.activeElement)) break;
+        await page.keyboard.press('Tab');
+      }
+      await expect(first).toBeFocused();
+      await expect(first).toHaveAttribute('aria-selected', 'true');
+      expect(await first.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
+        'none',
+      );
+      const expectSelected = async (name: string) => {
+        const tab = page.getByRole('tab', { name, exact: true });
+        await expect(tab).toBeFocused();
+        await expect(tab).toHaveAttribute('aria-selected', 'true');
+        await expect(tab).toHaveAttribute('tabindex', '0');
+        await expect(page.getByRole('tabpanel', { name, exact: true })).toBeVisible();
+        await expect(page.getByRole('tabpanel')).toHaveCount(1);
+      };
+      await page.keyboard.press('ArrowRight');
+      await expectSelected('ChatGPT');
+      await page.keyboard.press('End');
+      await expectSelected('Claude Code');
+      await page.keyboard.press('ArrowRight');
+      await expectSelected('Claude');
+      await page.keyboard.press('ArrowLeft');
+      await expectSelected('Claude Code');
+      await page.keyboard.press('Home');
+      await expectSelected('Claude');
+      await expect(page.locator('[role="tab"][tabindex="0"]')).toHaveCount(1);
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('tabpanel', { name: 'Claude', exact: true })).toBeFocused();
+    });
+  }
+
+  test("@a11y every Connect tab ends by listing Oak's tools and has a sign-in step", async ({
+    page,
+  }) => {
+    await page.goto('/connect/');
+    for (const name of CLIENT_TABS) {
+      await page.getByRole('tab', { name, exact: true }).click();
+      const steps = page.getByRole('tabpanel', { name, exact: true }).locator('ol > li');
+      await expect(steps.filter({ hasText: "Oak's sign-in page" })).toHaveCount(1);
+      await expect(steps.last()).toContainText("Oak's tools");
+    }
+  });
+
+  test('@a11y the copy button copies the URL by keyboard and announces it politely', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/');
+    const button = page.getByRole('button', { name: 'Copy URL' });
+    for (let presses = 0; presses < 50; presses += 1) {
+      if (await button.evaluate((element) => element === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(button).toBeFocused();
+    expect(await button.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe(
+      'none',
+    );
+    const announcer = page.getByRole('status').filter({ hasText: 'Copied' });
+    await page.keyboard.press('Enter');
+    await expect(announcer).toHaveText('Copied to your clipboard.');
+    await expect(announcer).toHaveAttribute('aria-live', 'polite');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(MCP_URL);
   });
 });

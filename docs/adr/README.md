@@ -7,3 +7,4 @@ An architecture decision record (ADR) states one lasting decision, why it was ta
 - [0001. Use a standalone oak-mcp-server repository](0001-repository-topology.md)
 - [0002. Own the dependencies and publish on a second consumer](0002-own-dependencies-publish-on-second-consumer.md)
 - [0003. Serve docs at the root and the server at /mcp](0003-docs-at-root-server-at-mcp.md)
+- [0004. Complete the list of paths the server owns](0004-complete-the-list-of-server-owned-paths.md)

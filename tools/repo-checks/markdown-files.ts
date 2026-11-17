@@ -50,16 +50,34 @@ function linkTargets(text: string): string[] {
   return targets;
 }
 
+/** Decodes a link's path component, tolerating one that was never encoded. */
+function decodePathTarget(rawPath: string): string {
+  try {
+    return decodeURIComponent(rawPath);
+  } catch {
+    return rawPath;
+  }
+}
+
 export function brokenLinks(file: string): string[] {
   const broken: string[] = [];
   for (const target of linkTargets(readFileSync(file, 'utf8'))) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
-    const [path = '', fragment] = target.split('#');
+    const [rawPath = '', fragment] = target.split('#');
+    const path = decodePathTarget(rawPath);
     const resolved = path === '' ? file : resolve(dirname(file), path);
     let destination: string;
     try {
       destination = readFileSync(resolved, 'utf8');
-    } catch {
+    } catch (error) {
+      // A directory has no markdown content to read a heading from, so a
+      // fragment on a directory link can never resolve. Read the directory
+      // in the same call that detects it, rather than stat-then-read, so a
+      // path that changes between the two can't be read as something else.
+      if ((error as NodeJS.ErrnoException).code === 'EISDIR') {
+        if (fragment) broken.push(`${relative(root, file)} -> ${target}`);
+        continue;
+      }
       broken.push(`${relative(root, file)} -> ${target}`);
       continue;
     }

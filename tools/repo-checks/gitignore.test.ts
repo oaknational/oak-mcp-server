@@ -28,4 +28,19 @@ describe('.gitignore', () => {
     });
     expect(status).toBe(0);
   });
+
+  const generatedVocabData = [
+    'packages/codegen/src/generated/vocab/graph-corpus/data.json',
+    'packages/codegen/src/generated/vocab/nc-coverage-graph/data.json',
+    'packages/codegen/src/generated/vocab/vocabulary-graph/data.json',
+  ];
+
+  it.each(generatedVocabData)('ignores %s', (path) => {
+    const { status, stdout } = spawnSync('git', ['check-ignore', '--no-index', path], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    expect(status).toBe(0);
+    expect(stdout.trim()).toBe(path);
+  });
 });

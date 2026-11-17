@@ -9,6 +9,7 @@ interface Manifest {
 
 const SOURCE = '.agents/skills';
 const MIRROR = '.claude/skills';
+const CLAUDE_ONLY = new Set(['verify']);
 const ROOTS = [SOURCE, MIRROR];
 
 function listFiles(dir: string, symlinks: string[]): string[] {
@@ -83,6 +84,38 @@ for (const entry of existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTyp
   for (const link of symlinks) {
     const path = relative(root, link).split('\\').join('/');
     problems.push(`${path}: symlink, local skills hold regular files only, remove it`);
+  }
+}
+
+const sourceSkills = new Set(
+  (existsSync(sourceDir) ? readdirSync(sourceDir, { withFileTypes: true }) : [])
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('oak-'))
+    .map((entry) => entry.name),
+);
+const mirrorDir = join(root, MIRROR);
+for (const entry of existsSync(mirrorDir) ? readdirSync(mirrorDir, { withFileTypes: true }) : []) {
+  if (entry.name.startsWith('oak-') || CLAUDE_ONLY.has(entry.name)) {
+    continue;
+  }
+  const path = `${MIRROR}/${entry.name}`;
+  if (entry.isSymbolicLink()) {
+    problems.push(`${path}: symlink, local skills hold regular files only, remove it`);
+  } else if (!entry.isDirectory() || !sourceSkills.has(entry.name)) {
+    problems.push(`${path}: no counterpart under ${SOURCE}, remove it or add the skill there`);
+  } else {
+    const links: string[] = [];
+    for (const file of listFiles(join(mirrorDir, entry.name), links)) {
+      const rel = relative(mirrorDir, file).split('\\').join('/');
+      if (!existsSync(join(sourceDir, rel))) {
+        problems.push(
+          `${MIRROR}/${rel}: no counterpart under ${SOURCE}, remove it or add it there`,
+        );
+      }
+    }
+    for (const link of links) {
+      const rel = relative(root, link).split('\\').join('/');
+      problems.push(`${rel}: symlink, local skills hold regular files only, remove it`);
+    }
   }
 }
 

@@ -680,3 +680,46 @@ describe('git-guard tripwire forms agents emit', () => {
     expect(bash(dirty, 'git commit -m "-am fix" file.txt').status).toBe(0);
   });
 });
+
+describe('git-guard with shell redirections', () => {
+  it.each(['cp src.txt .husky/pre-push > /dev/null', 'cp src.txt .husky/pre-push 2>&1'])(
+    'refuses copying into a protected path even with a trailing redirect: %s',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('refuses redirecting output into a protected path', () => {
+    expect(bash(clean, 'echo foo > .husky/pre-push').status).toBe(2);
+  });
+
+  it.each(['rm -rf node_modules/.cache 2>&1', 'rm -rf node_modules/.cache > /dev/null'])(
+    'allows removing a scratch path with a trailing redirect: %s',
+    (command) => {
+      expect(bash(clean, command).status).toBe(0);
+    },
+  );
+
+  it('still refuses removing a non-scratch path with a trailing redirect', () => {
+    expect(bash(clean, 'rm -rf src 2>&1').status).toBe(2);
+  });
+
+  it.each(["rm -rf '>' src", 'rm -rf "2>&" src', "cp src.txt '>' .husky/pre-push"])(
+    'treats a quoted redirect lookalike as a literal operand: %s',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('refuses a redirect into a protected path after a quoted fd number', () => {
+    expect(bash(clean, "echo x '2'>.husky/pre-push").status).toBe(2);
+  });
+
+  it('allows a quoted redirect lookalike as a plain argument', () => {
+    expect(bash(clean, "grep -c '>' README.md").status).toBe(0);
+  });
+
+  it('allows copying to an unprotected path with a trailing redirect', () => {
+    expect(bash(clean, 'cp src.txt dest.txt > /dev/null').status).toBe(0);
+  });
+});

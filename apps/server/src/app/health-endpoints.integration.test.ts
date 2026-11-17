@@ -7,6 +7,7 @@ import { getScratchStaticRoot } from '../test-helpers/static-root-fixture.js';
 import { createFakeHttpObservability } from '../test-helpers/observability-fakes.js';
 import { createMockRuntimeConfig } from '../test-helpers/auth-error-test-helpers.js';
 import { createFakeLogger } from '../test-helpers/fakes.js';
+import { TEST_UPSTREAM_METADATA } from '../test-helpers/upstream-metadata-fixture.js';
 import { addHealthEndpoints } from './health-endpoints.js';
 import { GRAPH_STALE_AFTER_MS, createGraphHealthReader } from './graph-health.js';
 
@@ -60,7 +61,7 @@ describe('health endpoint inside the routed surface (MCP-580)', () => {
   const HEALTH_BODY = {
     status: 'ok',
     mode: 'streamable-http',
-    auth: 'required-for-post',
+    auth: 'disabled',
     graph: { generatedAt: GRAPH_GENERATED_AT, stale: false },
   };
 
@@ -169,6 +170,7 @@ describe('graph field on /healthz', () => {
         now: () => options.now,
         onBecameStale,
       }),
+      'required-for-post',
     );
     return { app, onBecameStale };
   }
@@ -253,11 +255,46 @@ describe('graph field on /healthz', () => {
           throw new Error('sentry unavailable');
         },
       }),
+      'required-for-post',
     );
 
     const res = await request(app).get('/healthz');
 
     expect(res.status).toBe(200);
     expect(res.body.graph).toEqual({ generatedAt: null, stale: true });
+  });
+});
+
+describe('health endpoint auth field through the app wiring', () => {
+  it('reports required-for-post when the app runs with auth on', async () => {
+    const app = await createApp({
+      staticRoot: await getScratchStaticRoot(),
+      runtimeConfig: createMockRuntimeConfig({
+        dangerouslyDisableAuth: false,
+        env: { ALLOWED_HOSTS: 'localhost,127.0.0.1,::1' },
+      }),
+      observability: createFakeHttpObservability(),
+      getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
+      readGraphHealth: () => Promise.resolve({ generatedAt: GRAPH_GENERATED_AT, stale: false }),
+      upstreamMetadata: TEST_UPSTREAM_METADATA,
+    });
+
+    const res = await request(app).get('/mcp/healthz').set('Accept', '*/*');
+
+    expect(res.status).toBe(200);
+    expect(res.body.auth).toBe('required-for-post');
+  });
+});
+
+describe('health endpoint auth field', () => {
+  const readGraphHealth = () => Promise.resolve({ generatedAt: null, stale: true });
+
+  it.each(['required-for-post', 'disabled'] as const)('reports %s as given', async (authMode) => {
+    const app = express();
+    addHealthEndpoints(app, createFakeLogger(), readGraphHealth, authMode);
+
+    const res = await request(app).get('/healthz');
+
+    expect(res.body.auth).toBe(authMode);
   });
 });

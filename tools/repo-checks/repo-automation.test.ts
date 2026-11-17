@@ -59,6 +59,7 @@ describe('CODEOWNERS and Dependabot', () => {
     expect(npm?.ignore?.map((i) => i['dependency-name']).sort()).toEqual([
       '@mcpjam/cli',
       '@modelcontextprotocol/ext-apps',
+      '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
       'typescript',
@@ -66,6 +67,7 @@ describe('CODEOWNERS and Dependabot', () => {
     const versionsOf = (name: string) =>
       npm?.ignore?.find((i) => i['dependency-name'] === name)?.versions;
     expect(versionsOf('typescript')).toEqual(['>=6.1']);
+    expect(versionsOf('@posthog/mcp')).toEqual(['>=0.11.5']);
     expect(versionsOf('@mcpjam/cli')).toEqual(['>=5.0.0']);
     expect(versionsOf('@modelcontextprotocol/ext-apps')).toEqual(['>=2.0.0']);
   });
@@ -242,10 +244,14 @@ describe('lockfile-rebuild', () => {
     expect(holds.map((h) => h.name).sort()).toEqual([
       '@mcpjam/cli',
       '@modelcontextprotocol/ext-apps',
+      '@posthog/mcp',
       '@types/node',
       'markdownlint-cli2',
       'typescript',
     ]);
+    expect(holds.find((h) => h.name === '@posthog/mcp')?.below).toBe('0.11.5');
+    expect(holds.find((h) => h.name === '@mcpjam/cli')?.below).toBe('5.0.0');
+    expect(holds.find((h) => h.name === '@modelcontextprotocol/ext-apps')?.below).toBe('2.0.0');
   });
 
   it('refuses a hold that declares no bound, naming the package', () => {

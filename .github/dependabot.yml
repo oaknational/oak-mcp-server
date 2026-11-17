@@ -48,3 +48,8 @@ updates:
       # migration (MCP-886) lands.
       - dependency-name: '@modelcontextprotocol/ext-apps'
         versions: ['>=2.0.0']
+      # Every release after 0.11.4 needs @posthog/core above 1.47.0, where
+      # pnpm-workspace.yaml's overrides hold it. Lift when that override can
+      # move to the core version the target release needs.
+      - dependency-name: '@posthog/mcp'
+        versions: ['>=0.11.5']
