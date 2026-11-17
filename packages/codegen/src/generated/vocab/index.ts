@@ -18,16 +18,4 @@ export type {
   GraphCorpusStats,
   GraphCorpusDroppedEdge,
 } from './graph-corpus/index.js';
-export { vocabularyGraph } from './vocabulary-graph/index.js';
-export type {
-  VocabularyGraph,
-  VocabularyGraphStats,
-  VocabularyNode,
-} from './vocabulary-graph/index.js';
-export { ncCoverageGraph } from './nc-coverage-graph/index.js';
-export type {
-  NCCoverageGraph,
-  NCCoverageGraphStats,
-  NCStatementNode,
-} from './nc-coverage-graph/index.js';
 export { minedDefinitionSynonyms } from './synonyms/definition-synonyms.js';
