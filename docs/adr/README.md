@@ -9,3 +9,4 @@ An architecture decision record (ADR) states one lasting decision, why it was ta
 - [0003. Serve docs at the root and the server at /mcp](0003-docs-at-root-server-at-mcp.md)
 - [0004. Complete the list of paths the server owns](0004-complete-the-list-of-server-owned-paths.md)
 - [0005. Route the shared host with rewrites from the docs project](0005-route-the-shared-host-with-vercel-rewrites.md)
+- [0006. Route each environment with Vercel microfrontends](0006-route-each-environment-with-vercel-microfrontends.md)

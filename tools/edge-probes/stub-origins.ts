@@ -7,7 +7,7 @@ export interface StubOrigin {
   close(): Promise<void>;
 }
 
-type Handler = (request: IncomingMessage, response: ServerResponse) => void;
+export type Handler = (request: IncomingMessage, response: ServerResponse) => void;
 
 const DOCS_CSP = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'"/>`;
 const STATIC_TREE = /^(?:\/mcp)?\/(?:carousel|favicons|oak-ds|oak-assets)\/.+\.(png|css|ico)$/;
@@ -83,7 +83,7 @@ function docsHandler(pages: ReadonlySet<string>): Handler {
   };
 }
 
-async function listen(handler: Handler): Promise<StubOrigin> {
+export async function listen(handler: Handler): Promise<StubOrigin> {
   const requests: string[] = [];
   const server: Server = createServer((request, response) => {
     requests.push(new URL(request.url ?? '/', 'http://stub').pathname);
