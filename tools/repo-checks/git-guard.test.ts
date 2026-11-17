@@ -773,4 +773,45 @@ describe('git-guard heredoc bodies', () => {
     // not heredoc body, and must still be refused.
     expect(bash(clean, 'printf x \\<<EOF\ncat .env\nEOF').status).toBe(2);
   });
+
+  it('does not let an escaped quote end a string early and expose a << inside it', () => {
+    expect(bash(clean, 'echo "a \\" <<EOF b"\necho done').status).toBe(0);
+  });
+});
+
+describe('git-guard heredocs that a shell runs', () => {
+  it.each([
+    'bash <<EOF\ngit push --force\nEOF',
+    'cat <<EOF | sh\ngit push --force\nEOF',
+    'bash <<EOF\ncat .env\nEOF',
+    'sh <<EOF\ncat .env\nEOF',
+    'zsh -s <<EOF\ncat .env\nEOF',
+    'source /dev/stdin <<EOF\ncat .env\nEOF',
+    '. /dev/stdin <<EOF\ncat .env\nEOF',
+    "bash <<'EOF'\ncat .env\nEOF",
+    'bash <<EOF\nrm -rf /\nEOF',
+    'bash <<EOF\nrm .husky/pre-push\nEOF',
+    'bash <<EOF\ngit commit --no-verify -m x\nEOF',
+    'bash <<EOF\ngit add -A\nEOF',
+    'bash <<EOF\nHUSKY=0 git commit -m x\nEOF',
+    'eval "$(cat <<EOF\ncat .env\nEOF\n)"',
+    'bash -c "$(cat <<EOF\ncat .env\nEOF\n)"',
+  ])('refuses %s, whose body a shell runs as commands', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it('refuses a git stash run by a heredoc in a dirty repo', () => {
+    expect(bash(dirty, 'bash <<EOF\ngit stash\nEOF').status).toBe(2);
+  });
+
+  it.each(['cat <<< "$(cat .env)"', 'xargs cat <<< .env'])(
+    'refuses %s, a here-string that reads the env file',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('allows a here-string that only mentions .env in prose', () => {
+    expect(bash(clean, 'cat <<< "never read .env"').status).toBe(0);
+  });
 });

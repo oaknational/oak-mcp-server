@@ -200,21 +200,28 @@ function readHeredocDelimiter(text, at) {
   return word === '' ? null : { word, next: index, quoted };
 }
 
-// Heredoc bodies are prose or data, not command text: drop them before scanning for
-// operands so a line inside one that merely mentions .env is never read as a file read.
-// An unquoted delimiter still lets the shell expand $(...) in the body, so that content
-// is collected separately and checked like any other command substitution.
-function stripHeredocs(text) {
+const HEREDOC_RUNNERS = new Set([...SHELLS, 'ksh', 'source', '.', 'eval']);
+const runsHeredoc = (line) =>
+  tokenize(line).some((segment) =>
+    segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
+  );
+
+// Removes heredoc bodies so the env-file check skips prose that mentions .env. A body
+// that runs (its line names a shell, source, . or eval, or `bodiesRun` is set) is
+// returned in `commands`, as is any $(...) or `...` the shell expands in an unquoted body.
+function stripHeredocs(text, bodiesRun) {
   let result = '';
   let quote = '';
   let inComment = false;
   let arith = 0;
   let at = 0;
+  let lineStart = 0;
   const pending = [];
-  const substitutions = [];
+  const commands = [];
   while (at < text.length) {
     const char = text[at];
     if (char === '\n') {
+      const runs = pending.length > 0 && (bodiesRun || runsHeredoc(text.slice(lineStart, at)));
       inComment = false;
       result += char;
       at += 1;
@@ -242,15 +249,18 @@ function stripHeredocs(text) {
             `a heredoc opened with <<${stripTabs ? '-' : ''}${word} never reaches a closing ${word} line, so the guard cannot tell what the rest of the command does. Close every heredoc you open.`,
           );
         }
-        if (!quoted) {
+        if (runs) {
+          commands.push(body);
+        } else if (!quoted) {
           for (const [, inner] of body.matchAll(/\$\(([^()]*)\)/g)) {
-            substitutions.push(inner ?? '');
+            commands.push(inner ?? '');
           }
           for (const [, inner] of body.matchAll(/`([^`]*)`/g)) {
-            substitutions.push(inner ?? '');
+            commands.push(inner ?? '');
           }
         }
       }
+      lineStart = at;
       continue;
     }
     if (inComment) {
@@ -310,7 +320,13 @@ function stripHeredocs(text) {
       at += 2;
       continue;
     }
-    if (arith === 0 && char === '<' && text[at + 1] === '<' && text[at + 2] !== '<') {
+    if (text.startsWith('<<<', at)) {
+      // A here-string feeds its operand to the command, so it stays in the text.
+      result += '<<<';
+      at += 3;
+      continue;
+    }
+    if (arith === 0 && char === '<' && text[at + 1] === '<') {
       let scan = at + 2;
       let stripTabs = false;
       if (text[scan] === '-') {
@@ -334,7 +350,7 @@ function stripHeredocs(text) {
     result += char;
     at += 1;
   }
-  return { text: result, substitutions };
+  return { text: result, commands };
 }
 
 const ENV_TEMPLATE = /^\.env\.(?:example|sample|template)$/;
@@ -716,7 +732,7 @@ function wrapperOption(word, next) {
   return undefined;
 }
 
-function checkSegment(words, startDir, depth) {
+function checkSegment(words, startDir, depth, checkEnv) {
   if (depth > 4) {
     return;
   }
@@ -754,7 +770,7 @@ function checkSegment(words, startDir, depth) {
   const args = words.slice(start + 1);
   const inner = unwrap(command, args);
   if (inner !== undefined) {
-    checkSegment(inner, callDir, depth + 1);
+    checkSegment(inner, callDir, depth + 1, checkEnv);
   }
   if (command === 'git') {
     checkGit(args, callDir);
@@ -763,12 +779,12 @@ function checkSegment(words, startDir, depth) {
   } else if (SHELLS.has(command)) {
     const flag = args.findIndex((word) => /^-[a-z]*c$/.test(word));
     if (flag !== -1) {
-      checkCommand(args[flag + 1] ?? '', callDir, depth + 1);
+      checkCommand(args[flag + 1] ?? '', callDir, depth + 1, true, true);
     }
   } else if (command === 'eval') {
-    checkCommand(args.join(' '), callDir, depth + 1);
+    checkCommand(args.join(' '), callDir, depth + 1, true, true);
   }
-  if (!['git', 'echo', 'printf'].includes(command)) {
+  if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
     const secret = args.find((word) => namesEnvFile(word.replace(/^\d*[<>]+/, '')));
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
@@ -827,26 +843,36 @@ function touchesHooks(command, args, hookFile) {
   return GIT_HOOK_EDITS.has(sub);
 }
 
-function checkCommand(text, callDir, depth = 0) {
+// Every rule but the env-file check reads the command as written, heredoc bodies
+// included. The env-file check reads it with heredoc bodies removed, and separately
+// reads each body or substitution that the shell runs.
+function checkCommand(text, callDir, depth = 0, checkEnv = true, bodiesRun = false) {
   if (depth > 4) {
     return;
   }
-  const { text: cleaned, substitutions } = stripHeredocs(text);
+  if (checkEnv) {
+    const { text: cleaned, commands } = stripHeredocs(text, bodiesRun);
+    for (const inner of commands) {
+      checkCommand(inner, callDir, depth + 1);
+    }
+    scanSegments(cleaned, callDir, depth, true, bodiesRun);
+  }
+  scanSegments(text, callDir, depth, false, false);
+}
+
+function scanSegments(text, callDir, depth, checkEnv, bodiesRun) {
   const dirs = [callDir];
-  for (const inner of substitutions) {
-    checkCommand(inner, callDir, depth + 1);
+  for (const [, inner] of text.matchAll(/\$\(([^()]*)\)/g)) {
+    checkCommand(inner ?? '', callDir, depth + 1, checkEnv, bodiesRun);
   }
-  for (const [, inner] of cleaned.matchAll(/\$\(([^()]*)\)/g)) {
-    checkCommand(inner ?? '', callDir, depth + 1);
-  }
-  for (const segment of tokenize(cleaned.replace(/\\\r?\n/g, ''))) {
+  for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
     const words = segment.filter((word, at) => at > 0 || !['builtin', 'command'].includes(word));
     if (words[0] === 'cd' || words[0] === 'pushd') {
       const target = words.slice(1).find((word) => !CD_FLAGS.has(word));
       dirs.push(cdTarget(dirs.at(-1), target));
     }
     for (const dir of dirs) {
-      checkSegment(segment, dir, depth);
+      checkSegment(segment, dir, depth, checkEnv);
     }
   }
 }
