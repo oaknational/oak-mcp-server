@@ -27,6 +27,12 @@ describe('progress-reviews SessionStart hook', () => {
     expect(run.stdout).toMatch(/not :00 or :30/);
   });
 
+  it('makes the 60-minute review name one learning and act on it', () => {
+    expect(run.stdout).toMatch(
+      /every 60 minutes: name one learning from the hour .*and act on it, by encoding it as a check, skill or doc, or by raising it/,
+    );
+  });
+
   it('points to the AGENTS.md rule, which exists', () => {
     expect(run.stdout).toContain('`progress-reviews` rule in AGENTS.md');
     expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toContain('(`progress-reviews`)');
