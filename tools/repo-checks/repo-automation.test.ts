@@ -65,6 +65,9 @@ describe('CODEOWNERS and Dependabot', () => {
     expect(npm?.ignore?.find((i) => i['dependency-name'] === 'typescript')?.versions).toEqual([
       '>=6.1',
     ]);
+    expect(npm?.ignore?.find((i) => i['dependency-name'] === '@posthog/mcp')?.versions).toEqual([
+      '>=0.11.5',
+    ]);
   });
 });
 
@@ -242,6 +245,7 @@ describe('lockfile-rebuild', () => {
       'markdownlint-cli2',
       'typescript',
     ]);
+    expect(holds.find((h) => h.name === '@posthog/mcp')?.below).toBe('0.11.5');
   });
 
   it('refuses a hold that declares no bound, naming the package', () => {
