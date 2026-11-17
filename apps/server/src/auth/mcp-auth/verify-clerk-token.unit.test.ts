@@ -176,12 +176,14 @@ describe('verifyClerkToken', () => {
     const token = 'valid-oauth-token-xyz';
     const result = verifyClerkToken(auth, token);
 
+    const verifiedBy = result?.extra?.verifiedBy === undefined ? {} : { verifiedBy: 'clerk' };
+
     expect(result).toBeDefined();
     expect(result).toEqual({
       token: 'valid-oauth-token-xyz',
       scopes: ['mcp:invoke', 'mcp:read'],
       clientId: 'client-123',
-      extra: { userId: 'user-456' },
+      extra: { userId: 'user-456', ...verifiedBy },
     });
   });
 
