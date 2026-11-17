@@ -11,6 +11,9 @@ minimumReleaseAge: 10080
 # GHSA-mrhx-c7xc-m3w5. Lift it to the patched zod the workspace already uses.
 overrides:
   '@posthog/core': 1.47.0
+  # @mcpjam/cli and @mcpjam/sdk take posthog-node ^5.24.10, and every release
+  # after 5.48.1 needs a newer @posthog/core. Lift with MCP-907.
+  posthog-node: 5.48.1
   # openapi-zod-client 1.18.3 pins zod ^3, and every zod 3 release is open to
   # GHSA-mrhx-c7xc-m3w5 (fixed in 4.6.6). Codegen output is unchanged under zod 4.
   'openapi-zod-client>zod': 4.6.7
