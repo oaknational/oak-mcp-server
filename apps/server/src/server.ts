@@ -140,7 +140,7 @@ async function loadConfiguredApp(): Promise<NodeRequestHandler> {
     getWidgetHtml: () => WIDGET_HTML_CONTENT,
     setupSentryErrorHandler:
       runtimeConfig.env.SENTRY_MODE === 'sentry'
-        ? // eslint-disable-next-line @typescript-eslint/no-deprecated -- v11's expressIntegration() auto-captures now; replacing this is a follow-up that needs its own review of error-capture ordering, not this dependency bump
+        ? // eslint-disable-next-line @typescript-eslint/no-deprecated -- v11's expressIntegration() auto-captures now; replacing this is MCP-887, which needs its own review of error-capture ordering
           setupExpressErrorHandler
         : undefined,
   });
