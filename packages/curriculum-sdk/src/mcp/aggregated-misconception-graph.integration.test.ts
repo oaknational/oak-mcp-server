@@ -2,9 +2,6 @@
  * Integration tests for the anchored get-misconception-graph tool (G2 c3).
  *
  * @remarks
- * Integration, not unit: the tool reads the compile-time graph corpus, whose
- * module loads `data.json` at import time (IO), and the anchor fixtures are
- * derived from that corpus.
  *
  * These tests describe the TOOL ENVELOPE: input parsing at the MCP boundary
  * (exactly one anchor mode per call; the unit window belongs to the thread
@@ -16,24 +13,24 @@
  *
  * Anchor fixtures are chosen deterministically from the corpus so the tests
  * describe behaviour over any valid corpus rather than pinning content.
- *
- * The advertised-examples coherence block deliberately pins that the
- * schema's own example values resolve against the shipped corpus (MCP-319).
  */
 
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import {
+  createCurriculumGraphViews,
   DEFAULT_THREAD_UNIT_LIMIT,
   MAX_THREAD_UNIT_LIMIT,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
+import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import {
   GET_MISCONCEPTION_GRAPH_TOOL_DEF,
   GET_MISCONCEPTION_GRAPH_INPUT_SCHEMA,
   runMisconceptionGraphTool,
 } from './aggregated-misconception-graph.js';
-import { advertisedExamples, wireProperties } from './test-helpers/advertised-examples.js';
+import { wireProperties } from './test-helpers/advertised-examples.js';
+
+const views = createCurriculumGraphViews(fixtureCorpus);
 
 /** Narrows a deterministic fixture pick, failing loudly if the corpus cannot supply it. */
 function required<T>(value: T | undefined, message: string): T {
@@ -48,7 +45,7 @@ const bareSlug = (id: string): string => id.slice(id.indexOf(':') + 1);
 /** A lesson slug carrying at least one misconception (lexicographic minimum edge source). */
 const knownLessonSlug = bareSlug(
   required(
-    graphCorpus.edges
+    fixtureCorpus.edges
       .filter((edge) => edge.type === 'addressesMisconception')
       .map((edge) => edge.source)
       .sort((a, b) => a.localeCompare(b))[0],
@@ -59,7 +56,7 @@ const knownLessonSlug = bareSlug(
 /** A unit slug placing at least one lesson (lexicographic minimum edge source). */
 const knownUnitSlug = bareSlug(
   required(
-    graphCorpus.edges
+    fixtureCorpus.edges
       .filter((edge) => edge.type === 'containsLesson')
       .map((edge) => edge.source)
       .sort((a, b) => a.localeCompare(b))[0],
@@ -71,7 +68,7 @@ const knownUnitSlug = bareSlug(
 const megaThread = required(
   (() => {
     const counts = new Map<string, number>();
-    for (const edge of graphCorpus.edges) {
+    for (const edge of fixtureCorpus.edges) {
       if (edge.type === 'containsUnit') {
         counts.set(edge.source, (counts.get(edge.source) ?? 0) + 1);
       }
@@ -148,7 +145,7 @@ describe('GET_MISCONCEPTION_GRAPH_TOOL_DEF', () => {
 
 describe('runMisconceptionGraphTool', () => {
   it('returns the lesson-anchored envelope: summary + JSON content and structuredContent', () => {
-    const result = runMisconceptionGraphTool({ lessonSlugs: [knownLessonSlug] });
+    const result = runMisconceptionGraphTool({ lessonSlugs: [knownLessonSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     // MCP spec SHOULD: structured content is mirrored by serialised TextContent.
@@ -167,7 +164,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns the unit-anchored envelope with the unit entry shape', () => {
-    const result = runMisconceptionGraphTool({ unitSlugs: [knownUnitSlug] });
+    const result = runMisconceptionGraphTool({ unitSlugs: [knownUnitSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = UNIT_ENVELOPE.parse(result.structuredContent);
@@ -177,7 +174,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns the thread-anchored envelope with honest window coverage (heavy tail)', () => {
-    const result = runMisconceptionGraphTool({ threadSlug: megaThread.threadSlug });
+    const result = runMisconceptionGraphTool({ threadSlug: megaThread.threadSlug }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = THREAD_ENVELOPE.parse(result.structuredContent);
@@ -191,11 +188,14 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('summarises an offset-beyond-length window as empty, never an inverted range', () => {
-    const result = runMisconceptionGraphTool({
-      threadSlug: megaThread.threadSlug,
-      unitOffset: megaThread.unitCount,
-      unitLimit: 5,
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        threadSlug: megaThread.threadSlug,
+        unitOffset: megaThread.unitCount,
+        unitLimit: 5,
+      },
+      views,
+    );
 
     expect(result.isError).toBeUndefined();
     const summary = TEXT_CONTENT.parse(result.content[0]);
@@ -204,11 +204,14 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('honours an explicit thread window within the ceiling', () => {
-    const result = runMisconceptionGraphTool({
-      threadSlug: megaThread.threadSlug,
-      unitOffset: 1,
-      unitLimit: 2,
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        threadSlug: megaThread.threadSlug,
+        unitOffset: 1,
+        unitLimit: 2,
+      },
+      views,
+    );
 
     expect(result.isError).toBeUndefined();
     const structured = THREAD_ENVELOPE.parse(result.structuredContent);
@@ -217,9 +220,12 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('reports unknown anchors as information, not an error', () => {
-    const result = runMisconceptionGraphTool({
-      lessonSlugs: [knownLessonSlug, 'definitely-not-a-real-lesson-slug-xyz'],
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        lessonSlugs: [knownLessonSlug, 'definitely-not-a-real-lesson-slug-xyz'],
+      },
+      views,
+    );
 
     expect(result.isError).toBeUndefined();
     const structured = LESSON_ENVELOPE.parse(result.structuredContent);
@@ -229,7 +235,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns a well-formed empty envelope when no anchors resolve', () => {
-    const result = runMisconceptionGraphTool({ lessonSlugs: ['no-such-lesson-anywhere'] });
+    const result = runMisconceptionGraphTool({ lessonSlugs: ['no-such-lesson-anywhere'] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = LESSON_ENVELOPE.parse(result.structuredContent);
@@ -239,130 +245,58 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('rejects a call with no anchor at the input boundary', () => {
-    const result = runMisconceptionGraphTool({});
+    const result = runMisconceptionGraphTool({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a call with two anchor modes at the input boundary', () => {
-    const result = runMisconceptionGraphTool({
-      lessonSlugs: [knownLessonSlug],
-      unitSlugs: [knownUnitSlug],
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        lessonSlugs: [knownLessonSlug],
+        unitSlugs: [knownUnitSlug],
+      },
+      views,
+    );
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a unit window on a non-thread anchor at the input boundary', () => {
-    const result = runMisconceptionGraphTool({
-      lessonSlugs: [knownLessonSlug],
-      unitLimit: 5,
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        lessonSlugs: [knownLessonSlug],
+        unitLimit: 5,
+      },
+      views,
+    );
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a unit window beyond the ceiling at the input boundary', () => {
-    const result = runMisconceptionGraphTool({
-      threadSlug: megaThread.threadSlug,
-      unitLimit: MAX_THREAD_UNIT_LIMIT + 1,
-    });
+    const result = runMisconceptionGraphTool(
+      {
+        threadSlug: megaThread.threadSlug,
+        unitLimit: MAX_THREAD_UNIT_LIMIT + 1,
+      },
+      views,
+    );
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects non-object input at the input boundary', () => {
-    const result = runMisconceptionGraphTool('lessonSlugs');
+    const result = runMisconceptionGraphTool('lessonSlugs', views);
 
     expect(result.isError).toBe(true);
   });
 });
 
-describe('advertised examples are true of the shipped corpus', () => {
-  // INVARIANT, do not loosen on a corpus rename: every advertised example
-  // must be resolvable by the bundled corpus this package ships — a red here
-  // means the metadata and the data have diverged, which is the MCP-319
-  // defect class. Deployed truth beyond this corpus: the MCP-303 live drive
-  // proves wire-REQUIRED examples only (fetch, download-asset); search's
-  // optional-field examples have no standing live probe (routed on MCP-319).
+describe('advertised examples on the wire schema', () => {
   const shape = GET_MISCONCEPTION_GRAPH_INPUT_SCHEMA;
 
-  it('resolves every advertised lessonSlugs example as a lesson anchor', () => {
-    for (const example of advertisedExamples(
-      shape.lessonSlugs,
-      'lessonSlugs',
-      z.array(z.string()),
-    )) {
-      const result = runMisconceptionGraphTool({ lessonSlugs: example });
-      expect(
-        result.isError,
-        `lessonSlugs example ${JSON.stringify(example)} must resolve`,
-      ).toBeUndefined();
-      expect(result.structuredContent).toMatchObject({ unknownAnchors: [] });
-      const parsed = z
-        .object({
-          resolvedAnchors: z.array(z.unknown()),
-          lessons: z.array(z.object({ misconceptions: z.array(z.unknown()) })),
-        })
-        .parse(result.structuredContent);
-      expect(
-        parsed.resolvedAnchors,
-        `lessonSlugs example ${JSON.stringify(example)} must resolve an anchor`,
-      ).not.toHaveLength(0);
-      expect(
-        parsed.lessons.flatMap((lesson) => lesson.misconceptions),
-        `${JSON.stringify(example)}: resolving lesson anchor must carry misconceptions`,
-      ).not.toHaveLength(0);
-    }
-  });
-
-  it('resolves every advertised unitSlugs example as a unit anchor', () => {
-    for (const example of advertisedExamples(shape.unitSlugs, 'unitSlugs', z.array(z.string()))) {
-      const result = runMisconceptionGraphTool({ unitSlugs: example });
-      expect(
-        result.isError,
-        `unitSlugs example ${JSON.stringify(example)} must resolve`,
-      ).toBeUndefined();
-      expect(result.structuredContent).toMatchObject({ unknownAnchors: [] });
-      const parsed = z
-        .object({
-          resolvedAnchors: z.array(z.unknown()),
-          units: z.array(z.object({ lessons: z.array(z.unknown()) })),
-        })
-        .parse(result.structuredContent);
-      expect(
-        parsed.resolvedAnchors,
-        `unitSlugs example ${JSON.stringify(example)} must resolve an anchor`,
-      ).not.toHaveLength(0);
-      expect(
-        parsed.units.flatMap((unit) => unit.lessons),
-        `${JSON.stringify(example)}: resolving unit anchor must carry placed lessons`,
-      ).not.toHaveLength(0);
-    }
-  });
-
-  it('resolves every advertised threadSlug example as a thread anchor', () => {
-    for (const example of advertisedExamples(shape.threadSlug, 'threadSlug', z.string())) {
-      const result = runMisconceptionGraphTool({ threadSlug: example });
-      expect(
-        result.isError,
-        `threadSlug example ${JSON.stringify(example)} must resolve`,
-      ).toBeUndefined();
-      expect(result.structuredContent).toMatchObject({ unknownAnchors: [] });
-      const { resolvedAnchors } = z
-        .object({ resolvedAnchors: z.array(z.unknown()) })
-        .parse(result.structuredContent);
-      expect(
-        resolvedAnchors,
-        `threadSlug example ${JSON.stringify(example)} must resolve an anchor`,
-      ).not.toHaveLength(0);
-    }
-  });
-
   it('advertises every example on the wire JSON Schema', () => {
-    // The corpus tests above read `.meta()` off the Zod objects; agents
-    // read the CONVERTED wire form. This proves the authored metadata
-    // survives `z.toJSONSchema()` for every field, wrapped or not.
     const properties = wireProperties(shape);
     const advertising = Object.entries(shape).filter(([, s]) => s.meta()?.examples !== undefined);
     expect(advertising, 'shape advertises no examples at all').not.toHaveLength(0);

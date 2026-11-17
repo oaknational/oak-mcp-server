@@ -152,7 +152,13 @@ describe('graph field on /healthz', () => {
       schemaVersion: 1,
       downloadedAt: '2026-11-08T00:00:00.000Z',
       generatedAt,
-      corpus: { nodes: [], edges: [], stats: { totalNodes: 0, totalEdges: 0 } },
+      corpus: {
+        nodes: [],
+        edges: [],
+        sequences: [],
+        unitLessonRuns: [],
+        stats: { totalNodes: 0, totalEdges: 0 },
+      },
     });
   }
 

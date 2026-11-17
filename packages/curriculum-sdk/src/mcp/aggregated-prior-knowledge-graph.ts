@@ -33,9 +33,9 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
-import {
-  priorKnowledgeStatements,
-  type PriorKnowledgeStatements,
+import type {
+  CurriculumGraphViews,
+  PriorKnowledgeStatements,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import { SCOPES_SUPPORTED } from './scopes-supported.js';
 import { formatError, formatToolResponse } from './universal-tool-shared.js';
@@ -126,15 +126,19 @@ function summariseStatements(result: PriorKnowledgeStatements): string {
  * results).
  *
  * @param input - Raw MCP tool-call arguments.
+ * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the stated prior knowledge in structuredContent.
  */
-export function runPriorKnowledgeGraphTool(input: unknown): CallToolResult {
+export function runPriorKnowledgeGraphTool(
+  input: unknown,
+  views: CurriculumGraphViews,
+): CallToolResult {
   const parsed = PRIOR_KNOWLEDGE_INPUT.safeParse(input);
   if (!parsed.success) {
     return formatError(`Invalid get-prior-knowledge-graph input: ${parsed.error.message}`);
   }
 
-  const result = priorKnowledgeStatements(parsed.data.unitSlugs);
+  const result = views.priorKnowledgeStatements(parsed.data.unitSlugs);
 
   return formatToolResponse({
     summary: summariseStatements(result),

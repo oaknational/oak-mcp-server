@@ -17,6 +17,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerHandlers } from '../handlers.js';
 import type { ServedSurfaceDefinition } from '../served-surface/served-surface.js';
 import {
+  createFakeCurriculumGraphLoader,
   createFakeSearchRetrieval,
   createFakeLogger,
   createFakeHttpObservability,
@@ -54,6 +55,7 @@ export function walkCanonicalRegistration(
     logger: createFakeLogger(),
     observability: createFakeHttpObservability(),
     searchRetrieval: createFakeSearchRetrieval(),
+    loadCurriculumGraph: createFakeCurriculumGraphLoader(),
     resourceUrl: 'https://probe.test/mcp',
     getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
     ...(servedSurface ? { servedSurface } : {}),

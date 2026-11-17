@@ -29,6 +29,7 @@ import type { HttpObservability } from '../observability/http-observability.js';
 import type { McpServerFactory } from '../mcp-request-context.js';
 import { OAK_SERVER_BRANDING } from '../server-branding.js';
 import { addHealthEndpoints } from './health-endpoints.js';
+import { createCurriculumGraph, createGraphCorpusLoader } from '@oaknational/graph-corpus-sdk/load';
 import {
   createGraphHealthReader,
   createGraphSnapshotStoreFromEnv,
@@ -135,6 +136,9 @@ export function initializeCoreEndpoints(
   const searchRetrieval = runtimeConfig.useStubTools
     ? createStubSearchRetrieval()
     : createSearchRetrieval(runtimeConfig.env, log);
+  const loadCurriculumGraph = createCurriculumGraph(
+    createGraphCorpusLoader({ store: createGraphSnapshotStoreFromEnv(runtimeConfig.env) }),
+  );
   const { resourceUrl } = options;
   // Signed asset download URLs are a served surface, so they name the same
   // origin as every other self-description (MCP-351) — the resource URL the
@@ -156,6 +160,7 @@ export function initializeCoreEndpoints(
     observability,
     resourceUrl,
     searchRetrieval,
+    loadCurriculumGraph,
     createAssetDownloadUrl,
     getWidgetHtml: options.getWidgetHtml,
     ...(options.servedSurface ? { servedSurface: options.servedSurface } : {}),

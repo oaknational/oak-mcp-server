@@ -8,6 +8,7 @@
  */
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
 import type { Logger } from '@oaknational/logger';
 import type {
   UniversalToolName,
@@ -31,6 +32,7 @@ interface RequestExecutorConfig<TClient> {
   readonly logger?: Logger;
   /** Search retrieval service (shared across requests). */
   readonly searchRetrieval: SearchRetrievalService;
+  readonly loadCurriculumGraph: () => Promise<CurriculumGraphResult>;
   /** Factory for signed asset download URLs (HTTP transport only). */
   readonly createAssetDownloadUrl?: (lesson: string, type: string) => string;
 
@@ -48,6 +50,7 @@ interface RequestExecutorConfig<TClient> {
   readonly createExecutor: (deps: {
     readonly executeMcpTool: (name: ToolName, args: unknown) => Promise<ToolExecutionResult>;
     readonly searchRetrieval: SearchRetrievalService;
+    readonly loadCurriculumGraph: () => Promise<CurriculumGraphResult>;
     readonly generatedTools: typeof generatedToolRegistry;
     readonly logger?: Logger;
     readonly createAssetDownloadUrl?: (lesson: string, type: string) => string;
@@ -111,6 +114,7 @@ export function createDefaultRequestExecutor<TClient>(
       return execution;
     },
     searchRetrieval: config.searchRetrieval,
+    loadCurriculumGraph: config.loadCurriculumGraph,
     generatedTools: generatedToolRegistry,
     logger: config.logger,
     createAssetDownloadUrl: config.createAssetDownloadUrl,
@@ -119,9 +123,9 @@ export function createDefaultRequestExecutor<TClient>(
   return executor;
 }
 
-/** Internal factory config including searchRetrieval (closed over at build time). */
 interface InternalFactoryConfig extends ToolExecutorFactoryConfig {
   readonly searchRetrieval: SearchRetrievalService;
+  readonly loadCurriculumGraph: () => Promise<CurriculumGraphResult>;
 }
 
 /** Stub-mode configuration for {@link createStubRequestExecutor}. */
@@ -156,6 +160,7 @@ export function createStubRequestExecutor(
       });
     },
     searchRetrieval: factoryConfig.searchRetrieval,
+    loadCurriculumGraph: factoryConfig.loadCurriculumGraph,
     generatedTools: generatedToolRegistry,
     logger: factoryConfig.logger,
     createAssetDownloadUrl: factoryConfig.createAssetDownloadUrl,

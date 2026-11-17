@@ -17,6 +17,7 @@ import {
   readFirstTextContent,
   readJsonRpcOrResultErrorText,
 } from './helpers/sse.js';
+import { createFakeCurriculumGraphLoader } from '../src/test-helpers/fakes.js';
 import { stubSearchRetrieval } from './helpers/stub-search-retrieval.js';
 import { getScratchStaticRoot } from '../src/test-helpers/static-root-fixture.js';
 
@@ -63,6 +64,7 @@ describe('HTTP boundary argument validation', () => {
             return Promise.resolve(result);
           },
           searchRetrieval: stubSearchRetrieval,
+          loadCurriculumGraph: createFakeCurriculumGraphLoader(),
           generatedTools: generatedToolRegistry,
           createAssetDownloadUrl: config.createAssetDownloadUrl,
         }),

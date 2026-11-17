@@ -9,6 +9,7 @@ import type { HttpObservability } from '../../src/observability/http-observabili
 import { createFakeHttpObservability } from '../../src/test-helpers/observability-fakes.js';
 import { createFakeMachineAuthObject } from '../../src/test-helpers/fakes-clerk.js';
 import type { CreateMcpAuthClerkDeps } from '../../src/auth/mcp-auth/index.js';
+import { E2E_GRAPH_CORPUS_PATH } from './graph-corpus-store.js';
 
 /**
  * Creates a no-op Clerk middleware factory for E2E tests.
@@ -83,6 +84,7 @@ export function createMockRuntimeConfig(
         ELASTICSEARCH_API_KEY: 'fake-api-key-for-mock-config',
         SENTRY_MODE: 'off' as const,
         LOG_LEVEL: 'error' as const,
+        GRAPH_CORPUS_LOCAL_PATH: E2E_GRAPH_CORPUS_PATH,
         DANGEROUSLY_DISABLE_AUTH: 'true' as const,
         ...envOverrides,
       },
@@ -100,6 +102,7 @@ export function createMockRuntimeConfig(
       ELASTICSEARCH_API_KEY: 'fake-api-key-for-mock-config',
       SENTRY_MODE: 'off' as const,
       LOG_LEVEL: 'error' as const,
+      GRAPH_CORPUS_LOCAL_PATH: E2E_GRAPH_CORPUS_PATH,
       ...envOverrides,
     },
   } satisfies AuthEnabledRuntimeConfig;

@@ -26,9 +26,7 @@ import { z } from 'zod';
 import {
   DEFAULT_THREAD_UNIT_LIMIT,
   MAX_THREAD_UNIT_LIMIT,
-  misconceptionsForLessons,
-  misconceptionsForThread,
-  misconceptionsForUnits,
+  type CurriculumGraphViews,
   type LessonMisconceptionsSubgraph,
   type ThreadMisconceptionsSubgraph,
   type UnitMisconceptionsSubgraph,
@@ -170,19 +168,20 @@ type MisconceptionEnvelopeData =
 /** Dispatches the validated single-anchor input to the owning view function. */
 function dispatchAnchor(
   input: z.infer<typeof MISCONCEPTION_INPUT>,
+  views: CurriculumGraphViews,
 ):
   | { readonly summary: string; readonly data: MisconceptionEnvelopeData }
   | { readonly errorText: string } {
   if (input.lessonSlugs !== undefined) {
-    const subgraph = misconceptionsForLessons(input.lessonSlugs);
+    const subgraph = views.misconceptionsForLessons(input.lessonSlugs);
     return { summary: summariseLessons(subgraph), data: { anchorKind: 'lesson', ...subgraph } };
   }
   if (input.unitSlugs !== undefined) {
-    const subgraph = misconceptionsForUnits(input.unitSlugs);
+    const subgraph = views.misconceptionsForUnits(input.unitSlugs);
     return { summary: summariseUnits(subgraph), data: { anchorKind: 'unit', ...subgraph } };
   }
   if (input.threadSlug !== undefined) {
-    const result = misconceptionsForThread(input.threadSlug, {
+    const result = views.misconceptionsForThread(input.threadSlug, {
       unitOffset: input.unitOffset,
       unitLimit: input.unitLimit,
     });
@@ -212,15 +211,19 @@ function dispatchAnchor(
  * TextContent (MCP spec SHOULD for structured results).
  *
  * @param input - Raw MCP tool-call arguments.
+ * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored result in structuredContent.
  */
-export function runMisconceptionGraphTool(input: unknown): CallToolResult {
+export function runMisconceptionGraphTool(
+  input: unknown,
+  views: CurriculumGraphViews,
+): CallToolResult {
   const parsed = MISCONCEPTION_INPUT_VALIDATED.safeParse(input);
   if (!parsed.success) {
     return formatError(`Invalid get-misconception-graph input: ${parsed.error.message}`);
   }
 
-  const dispatched = dispatchAnchor(parsed.data);
+  const dispatched = dispatchAnchor(parsed.data, views);
   if ('errorText' in dispatched) {
     return formatError(dispatched.errorText);
   }

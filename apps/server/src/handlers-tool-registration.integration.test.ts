@@ -19,6 +19,7 @@ import {
 } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
 import { registerHandlers } from './handlers.js';
 import {
+  createFakeCurriculumGraphLoader,
   createFakeSearchRetrieval,
   createFakeLogger,
   createFakeHttpObservability,
@@ -82,6 +83,7 @@ function registerAndCapture(
     logger: createFakeLogger(),
     observability: createFakeHttpObservability(),
     searchRetrieval: createFakeSearchRetrieval(),
+    loadCurriculumGraph: createFakeCurriculumGraphLoader(),
     resourceUrl: 'https://probe.test/mcp',
     getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
   });

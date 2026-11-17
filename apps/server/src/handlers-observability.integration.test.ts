@@ -14,6 +14,7 @@ import { registerHandlers } from './handlers.js';
 import {
   createFakeHttpObservability,
   createFakeLogger,
+  createFakeCurriculumGraphLoader,
   createFakeSearchRetrieval,
 } from './test-helpers/fakes.js';
 import type { AuthDisabledRuntimeConfig } from './runtime-config.js';
@@ -62,6 +63,7 @@ describe('registerHandlers — registration completeness', () => {
       logger: createFakeLogger(),
       observability: createFakeHttpObservability(),
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       resourceUrl: 'https://probe.test/mcp',
       getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
     });
@@ -77,6 +79,7 @@ describe('registerHandlers — registration completeness', () => {
       logger: createFakeLogger(),
       observability: createFakeHttpObservability(),
       searchRetrieval: createFakeSearchRetrieval(),
+      loadCurriculumGraph: createFakeCurriculumGraphLoader(),
       resourceUrl: 'https://probe.test/mcp',
       getWidgetHtml: () => '<!doctype html><html><body>test-widget</body></html>',
     });

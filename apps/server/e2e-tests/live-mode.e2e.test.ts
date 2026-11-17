@@ -20,6 +20,7 @@ import {
   type ToolExecutionResult,
 } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
 import { err, ok } from '@oaknational/result';
+import { createFakeCurriculumGraphLoader } from '../src/test-helpers/fakes.js';
 import { stubSearchRetrieval } from './helpers/stub-search-retrieval.js';
 
 const ACCEPT = 'application/json, text/event-stream';
@@ -57,6 +58,7 @@ function createOverrides(captured: CapturedCall[]): CreateLiveHttpAppOptions {
             return Promise.resolve(result);
           },
           searchRetrieval: stubSearchRetrieval,
+          loadCurriculumGraph: createFakeCurriculumGraphLoader(),
           generatedTools: generatedToolRegistry,
           createAssetDownloadUrl: config.createAssetDownloadUrl,
         });
@@ -79,6 +81,7 @@ function createErrorOverrides(message: string): CreateLiveHttpAppOptions {
             return Promise.resolve(result);
           },
           searchRetrieval: stubSearchRetrieval,
+          loadCurriculumGraph: createFakeCurriculumGraphLoader(),
           generatedTools: generatedToolRegistry,
           createAssetDownloadUrl: config.createAssetDownloadUrl,
         });

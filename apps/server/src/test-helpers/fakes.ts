@@ -16,7 +16,9 @@ import {
   createResponse as createNodeMockResponse,
 } from 'node-mocks-http';
 import type { Request, Response } from 'express';
+import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
 import type { Logger } from '@oaknational/logger';
+import { err } from '@oaknational/result';
 import type { SearchRetrievalService } from '@oaknational/curriculum-sdk/public/mcp-tools.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { McpHandlerRequest, McpHandlerResponse } from '../handlers.js';
@@ -50,6 +52,11 @@ export function createFakeSearchRetrieval(): SearchRetrievalService {
     suggest: vi.fn<SearchRetrievalService['suggest']>(),
     fetchSequenceFacets: vi.fn<SearchRetrievalService['fetchSequenceFacets']>(),
   };
+}
+
+export function createFakeCurriculumGraphLoader(): () => Promise<CurriculumGraphResult> {
+  return () =>
+    Promise.resolve(err({ kind: 'not-found', message: 'no graph corpus snapshot in this test' }));
 }
 
 /**

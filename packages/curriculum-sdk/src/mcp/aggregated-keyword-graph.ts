@@ -29,7 +29,7 @@ import {
   DEFAULT_KEYWORD_LIMIT,
   KEYWORD_LESSON_DECORATION_LIMIT,
   MAX_KEYWORD_LIMIT,
-  keywordsForSubjectKeyStage,
+  type CurriculumGraphViews,
   type KeywordSubgraph,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import { SCOPES_SUPPORTED } from './scopes-supported.js';
@@ -160,16 +160,17 @@ function summariseKeywords(
  * results).
  *
  * @param input - Raw MCP tool-call arguments.
+ * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored ranked result in structuredContent.
  */
-export function runKeywordGraphTool(input: unknown): CallToolResult {
+export function runKeywordGraphTool(input: unknown, views: CurriculumGraphViews): CallToolResult {
   const parsed = KEYWORD_GRAPH_INPUT.safeParse(input);
   if (!parsed.success) {
     return formatError(`Invalid get-keyword-graph input: ${parsed.error.message}`);
   }
 
   const { subject, keyStage, unitSlugs, lessonSlugs, limit } = parsed.data;
-  const result = keywordsForSubjectKeyStage(subject, keyStage, {
+  const result = views.keywordsForSubjectKeyStage(subject, keyStage, {
     unitSlugs,
     lessonSlugs,
     limit,

@@ -1,4 +1,5 @@
 import type { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
 import type { Logger } from '@oaknational/logger';
 import { typeSafeEntries, typeSafeKeys } from '../types/helpers/type-helpers.js';
 import type { ToolName } from '@oaknational/sdk-codegen/mcp-tools';
@@ -61,6 +62,13 @@ export interface UniversalToolExecutorDependencies {
    * stub service (`createStubSearchRetrieval`) in stub mode.
    */
   readonly searchRetrieval: SearchRetrievalService;
+
+  /**
+   * Resolves the curriculum graph views that get-thread-progressions,
+   * get-prior-knowledge-graph, get-misconception-graph and get-keyword-graph
+   * answer from, or why they cannot be read.
+   */
+  readonly loadCurriculumGraph: () => Promise<CurriculumGraphResult>;
 
   /**
    * Logger for structured tool-execution emission.

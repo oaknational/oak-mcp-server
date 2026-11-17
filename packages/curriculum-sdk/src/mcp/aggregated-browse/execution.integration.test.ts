@@ -61,6 +61,8 @@ function createDeps(retrieval: SearchRetrievalService): UniversalToolExecutorDep
     executeMcpTool: () => Promise.reject(new Error('Should not call executeMcpTool')),
     searchRetrieval: retrieval,
     generatedTools: createNullGeneratedToolRegistry(),
+    loadCurriculumGraph: () =>
+      Promise.resolve(err({ kind: 'not-found', message: 'no graph in this test' })),
   };
 }
 
