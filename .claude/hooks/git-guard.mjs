@@ -511,7 +511,8 @@ function queryFilterIndex(command, args) {
     }
     const end = args.includes('--') ? args.indexOf('--') : args.length;
     const flag = args.slice(0, end).findIndex((word) => word === '--jq' || word === '-q');
-    return flag === -1 ? -1 : flag + 1;
+    const throughValue = args.slice(0, flag + 2);
+    return flag === -1 || throughValue.some((word) => /[<>]/.test(word)) ? -1 : flag + 1;
   }
   if (command !== 'jq') {
     return -1;
