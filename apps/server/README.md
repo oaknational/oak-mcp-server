@@ -168,7 +168,7 @@ sources automatically before booting the server.
 
 **Production runtime serves the same constant, not a file from `dist/`.**
 The pipeline is: `pnpm build:widget` invokes Vite (which writes the
-single-file widget to `.widget-build/`), then `scripts/embed-widget-html.js`
+single-file widget to `.widget-build/`), then `scripts/embed-widget-html.ts`
 generates the committed `src/generated/widget-html-content.ts` constant.
 At runtime, `src/index.ts` wraps `createApp` with
 `getWidgetHtml: () => WIDGET_HTML_CONTENT` — no filesystem read happens.
