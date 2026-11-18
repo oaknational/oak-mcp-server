@@ -23,7 +23,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
+import { fixtureCorpus } from '@oaknational/graph-corpus-sdk/testing';
 import {
   GET_THREAD_PROGRESSIONS_TOOL_DEF,
   GET_THREAD_PROGRESSIONS_INPUT_SCHEMA,

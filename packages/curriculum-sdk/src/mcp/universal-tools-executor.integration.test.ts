@@ -18,7 +18,7 @@ import {
   type CurriculumGraphViews,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
-import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
+import { fixtureCorpus } from '@oaknational/graph-corpus-sdk/testing';
 import { createUniversalToolExecutor } from './universal-tools/executor.js';
 import type {
   GeneratedToolRegistry,
