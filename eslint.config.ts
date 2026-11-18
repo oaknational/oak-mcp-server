@@ -72,6 +72,22 @@ const serverRuleGaps = [
 
 const searchBoundary =
   'Outside packages/search, import only @oaknational/oak-search-sdk/contract. Only the server composition root, apps/server/src/composition/search.ts, builds the search service.';
+const searchOwners = ['packages/search/**', 'apps/server/src/composition/search.ts'];
+const searchImports = {
+  paths: [{ name: '@oaknational/oak-search-sdk', message: searchBoundary }],
+  patterns: [{ regex: '^@oaknational/oak-search-sdk/(?!contract$)', message: searchBoundary }],
+};
+
+const graphCorpusSdkSource = {
+  regex: '(^|/)graph-corpus-sdk/src(/|$)',
+  message:
+    'Import @oaknational/graph-corpus-sdk through a subpath its package.json exports, such as /store or /testing, never through its src/ folder.',
+};
+const graphRefreshCliInCodegen = [
+  'packages/codegen/vocab-gen/scripts/graph-refresh.ts',
+  'packages/codegen/vocab-gen/scripts/graph-refresh.integration.test.ts',
+  'packages/codegen/vocab-gen/scripts/run-graph-refresh.ts',
+];
 
 export default defineConfig(
   {
@@ -140,19 +156,19 @@ export default defineConfig(
   })),
   {
     files: ['**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
-    ignores: ['packages/search/**', 'apps/server/src/composition/search.ts'],
+    ignores: [...searchOwners, ...graphRefreshCliInCodegen],
     rules: {
       'no-restricted-imports': [
         'error',
-        {
-          paths: [{ name: '@oaknational/oak-search-sdk', message: searchBoundary }],
-          patterns: [
-            { regex: '^@oaknational/oak-search-sdk/(?!contract$)', message: searchBoundary },
-          ],
-        },
+        { ...searchImports, patterns: [...searchImports.patterns, graphCorpusSdkSource] },
       ],
     },
   },
+  {
+    files: searchOwners,
+    rules: { 'no-restricted-imports': ['error', { patterns: [graphCorpusSdkSource] }] },
+  },
+  { files: graphRefreshCliInCodegen, rules: { 'no-restricted-imports': ['error', searchImports] } },
   { files: ['**/*.mjs'], extends: [tseslint.configs.disableTypeChecked] },
   prettier,
 );
