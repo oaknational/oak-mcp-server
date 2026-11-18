@@ -31,6 +31,7 @@ const config: KnipConfig = {
         'src/curriculum/index.ts',
         'src/load.ts',
         'src/store/index.ts',
+        'src/testing.ts',
       ],
       project: ['src/**/*.ts'],
     },

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { fixtureCorpus } from '../../../packages/graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
+import { fixtureCorpus } from '@oaknational/graph-corpus-sdk/testing';
 import { request, type Response } from '../src/test-helpers/loopback-request.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';

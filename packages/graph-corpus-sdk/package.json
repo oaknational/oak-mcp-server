@@ -33,6 +33,10 @@
     "./store": {
       "types": "./dist/store/index.d.ts",
       "default": "./dist/store/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     }
   },
   "scripts": {

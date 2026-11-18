@@ -30,12 +30,6 @@ import { z } from 'zod';
  * JSON, URL instances become plain objects and `instanceof` will fail.
  * This is acceptable because `authInfo` is always passed in-process via
  * `req.auth`, never serialised.
- *
- * `@clerk/mcp-tools@0.6.0` `verifyClerkToken` never sets `resource`
- * (returns only token, clientId, scopes, extra) — re-verified against the
- * shipped build at the 0.5.0 to 0.6.0 bump, where the only `resource`
- * references belong to `generateProtectedResourceMetadata`. The field is
- * included for completeness and forward compatibility.
  */
 export const authInfoSchema = z
   .object({
