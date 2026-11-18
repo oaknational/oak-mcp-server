@@ -39,6 +39,7 @@ import {
   assertNoReactModuleImport,
 } from './build-scripts/build-output-contract.js';
 import { copyOakDs } from './build-scripts/copy-oak-ds.js';
+import { assertDeploymentEnvValid } from './build-scripts/deployment-env-gate.js';
 import {
   MCP_DEPLOY_ENTRY_POINTS,
   MCP_SUPPORT_ENTRY_POINTS,
@@ -51,6 +52,14 @@ import {
   type SentryBuildEnvironment,
   type SentryBuildPluginInputs,
 } from './build-scripts/sentry-build-plugin.js';
+
+// Gate FIRST, before any other build work: on a real Vercel build
+// (`VERCEL=1`), validate the full deployment environment against the same
+// `HttpEnvSchema` + PostHog-bootstrap parse the runtime boundary enforces
+// (MCP-691). A no-op everywhere else — local and CI `pnpm build` runs are
+// unaffected. See `build-scripts/deployment-env-gate.ts` for why this is a
+// complete gate rather than a window-narrowing one.
+assertDeploymentEnvValid({ processEnv: process.env, startDir: import.meta.dirname });
 
 // Snapshot the build-time env at the boundary. `createSentryBuildEnvironment`
 // keeps the app build identity as the canonical version fact, then projects it
