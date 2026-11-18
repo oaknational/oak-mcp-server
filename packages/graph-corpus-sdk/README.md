@@ -64,13 +64,16 @@ only.
 `graph-corpus/v<schemaVersion>/latest.json` plus a dated copy, keeping the
 newest eight. It refuses to write, and prints the guard's name, when
 `OAK_API_KEY` is missing, the download fails, a bulk file does not parse, the
-corpus is empty, or the node or edge count falls below
-`GRAPH_MIN_RETENTION_RATIO` (default 0.5) of the stored corpus.
+corpus is empty, the node or edge count falls below
+`GRAPH_MIN_RETENTION_RATIO` (default 0.5) of the stored corpus, or the bulk
+data was downloaded before the stored snapshot's (`older-download`). Pass
+`--allow-rollback` to write an older download on purpose.
 
 ```bash
 pnpm graph:refresh --store local                   # fetch with OAK_API_KEY
 pnpm graph:refresh --store local --bulk-dir <dir>  # build from a downloaded bulk directory
 pnpm graph:refresh --store blob                    # write to Vercel Blob
+pnpm graph:refresh --store local --bulk-dir <dir> --allow-rollback  # write an older download
 ```
 
 | Variable                    | Purpose                                                                                                                                                  |

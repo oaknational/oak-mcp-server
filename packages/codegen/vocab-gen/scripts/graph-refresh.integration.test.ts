@@ -227,16 +227,38 @@ describe('refreshGraphCorpus', () => {
     expect(await store.readLatest()).toBe(before);
   });
 
-  it('refreshes when the data files change, even if the fetch is stamped earlier', async () => {
+  it('refuses with older-download a download older than the stored one and leaves latest.json unchanged', async () => {
     const store = await localStore();
-    await refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile(2) }));
+    const older = await bulkDir({ 'maths-primary.json': bulkFile(2) }, '2026-08-01T00:00:00.000Z');
+    const newer = await bulkDir({ 'maths-primary.json': bulkFile(3) }, '2026-09-01T00:00:00.000Z');
+    await refreshFromDir(store, newer);
+    const before = await store.readLatest();
 
-    const result = await refreshFromDir(
+    const result = await refreshFromDir(store, older);
+
+    expect(result).toMatchObject({ ok: false, error: { guard: 'older-download' } });
+    expect(await store.readLatest()).toBe(before);
+  });
+
+  it('writes an older download over a newer one when rollback is requested', async () => {
+    const store = await localStore();
+    await refreshFromDir(
       store,
-      await bulkDir({ 'maths-primary.json': bulkFile(3) }, '2026-01-01T00:00:00.000Z'),
+      await bulkDir({ 'maths-primary.json': bulkFile(3) }, '2026-09-01T00:00:00.000Z'),
     );
 
+    const result = await refreshGraphCorpus({
+      bulk: await resolveBulkFiles({
+        bulkDir: await bulkDir({ 'maths-primary.json': bulkFile(2) }, '2026-08-01T00:00:00.000Z'),
+      }),
+      store,
+      allowRollback: true,
+    });
+
     expect(result).toMatchObject({ ok: true, value: { status: 'refreshed' } });
+    expect(parseGraphCorpusSnapshot((await store.readLatest()) ?? '')).toMatchObject({
+      value: { downloadedAt: '2026-08-01T00:00:00.000Z' },
+    });
   });
 
   it('refreshes over a stored snapshot that records no source digest', async () => {
