@@ -1,11 +1,9 @@
 import type { BlobClient } from '../object-store.js';
 
+const PAGE_SIZE = 2;
+
 type PutOptions = Parameters<BlobClient['put']>[2];
 
-/**
- * In-memory stand-in for `@vercel/blob` that pages `list` two blobs at a time
- * and honours `allowOverwrite` and `ifMatch` the way the Blob API does.
- */
 export function createFakeBlobClient(): BlobClient & {
   readonly blobs: Map<string, string>;
   readonly puts: { readonly pathname: string; readonly options: PutOptions }[];
@@ -42,12 +40,12 @@ export function createFakeBlobClient(): BlobClient & {
     list({ prefix, cursor }) {
       const all = [...blobs.keys()].filter((key) => key.startsWith(prefix)).sort();
       const start = cursor === undefined ? 0 : Number(cursor);
-      const page = all.slice(start, start + 2).map((pathname) => ({ pathname }));
-      const hasMore = start + 2 < all.length;
+      const page = all.slice(start, start + PAGE_SIZE).map((pathname) => ({ pathname }));
+      const hasMore = start + PAGE_SIZE < all.length;
       return Promise.resolve({
         blobs: page,
         hasMore,
-        ...(hasMore ? { cursor: String(start + 2) } : {}),
+        ...(hasMore ? { cursor: String(start + PAGE_SIZE) } : {}),
       });
     },
     del(pathnames) {

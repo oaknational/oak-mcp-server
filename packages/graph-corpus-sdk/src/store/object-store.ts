@@ -3,7 +3,7 @@ import { mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/p
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-/** A stored body and a token that changes whenever the body is replaced. */
+/** A stored body and a token that changes whenever the body changes. */
 export interface VersionedObject {
   readonly body: string;
   readonly version: string;
@@ -16,7 +16,7 @@ export interface ObjectStore {
   put(key: string, body: string): Promise<void>;
   /**
    * Writes `body` only while `key` is still at `version`, or still absent when
-   * `version` is `null`. Resolves `false`, writing nothing, when it is not.
+   * `version` is `null`. Resolves `false` when it is not.
    */
   putIfVersion(key: string, body: string, version: string | null): Promise<boolean>;
   /** Keys directly under `prefix`, which ends with `/`. */
@@ -33,7 +33,6 @@ const versionOf = (body: string): string => createHash('sha256').update(body).di
 const LOCK_WAIT_MS = 5_000;
 const LOCK_POLL_MS = 20;
 
-/** Runs `write` while holding `<file>.lock`, created exclusively so other processes wait. */
 async function whileLocked<T>(file: string, write: () => Promise<T>): Promise<T> {
   const lock = `${file}.lock`;
   const deadline = Date.now() + LOCK_WAIT_MS;
@@ -149,15 +148,13 @@ export interface BlobClient {
   del(pathnames: string[], options?: { token?: string }): Promise<void>;
 }
 
-const JSON_TYPE = 'application/json; charset=utf-8';
-
 /** Stores each key as a private Vercel Blob. */
 export function createBlobObjectStore(client: BlobClient, token?: string): ObjectStore {
   const auth = token === undefined ? {} : { token };
   const write = {
     access: 'private',
     addRandomSuffix: false,
-    contentType: JSON_TYPE,
+    contentType: 'application/json; charset=utf-8',
     ...auth,
   } as const;
   const getVersioned = async (key: string): Promise<VersionedObject | null> => {
@@ -186,7 +183,7 @@ export function createBlobObjectStore(client: BlobClient, token?: string): Objec
         );
         return true;
       } catch (error) {
-        // The SDK names an ETag mismatch but not an existing blob, so read the version to tell a lost race from a failure.
+        // The SDK has no error class for an existing blob, so the version tells a lost race from a failure.
         if (((await getVersioned(key))?.version ?? null) !== version) {
           return false;
         }

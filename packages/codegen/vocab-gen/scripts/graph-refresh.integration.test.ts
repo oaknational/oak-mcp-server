@@ -295,7 +295,6 @@ describe('refreshGraphCorpus', () => {
   });
 });
 
-/** Wraps `objects` so the refresh using it signals once it has read `latest.json` and holds its write until released. */
 function holdLatestWrite(objects: ObjectStore): {
   readonly objects: ObjectStore;
   readonly hasRead: Promise<void>;

@@ -43,11 +43,9 @@ interface StoredSummary {
 
 interface StoredLatest {
   readonly version: string;
-  /** `null` when the stored snapshot does not parse. */
-  readonly summary: StoredSummary | null;
+  readonly summary: StoredSummary | 'unparseable';
 }
 
-/** Lost compare-and-swap races before a refresh gives up. */
 const MAX_WRITE_ATTEMPTS = 5;
 
 async function readStored(
@@ -61,7 +59,7 @@ async function readStored(
   const parsed = parseGraphCorpusSnapshot(latest.body);
   if (!isOk(parsed)) {
     log(`stored snapshot is unreadable, treating it as absent: ${parsed.error}`);
-    return { version: latest.version, summary: null };
+    return { version: latest.version, summary: 'unparseable' };
   }
   return {
     version: latest.version,
@@ -99,7 +97,7 @@ export async function refreshGraphCorpus(options: {
   let corpus: GraphCorpus | undefined;
   for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt += 1) {
     const latest = await readStored(options.store, log);
-    const stored = latest?.summary ?? null;
+    const stored = latest === null || latest.summary === 'unparseable' ? null : latest.summary;
     if (stored !== null && stored.sourceDigest === sourceDigest) {
       return ok({ status: 'skipped', sourceDigest });
     }
@@ -119,12 +117,12 @@ export async function refreshGraphCorpus(options: {
         return built;
       }
       corpus = built.value;
+      if (corpus.stats.totalNodes === 0) {
+        return err({ guard: 'empty-corpus', message: 'the new corpus has no nodes' });
+      }
     }
     const nodes = corpus.stats.totalNodes;
     const edges = corpus.stats.totalEdges;
-    if (nodes === 0) {
-      return err({ guard: 'empty-corpus', message: 'the new corpus has no nodes' });
-    }
     if (stored !== null && (nodes < stored.nodes * ratio || edges < stored.edges * ratio)) {
       return err({
         guard: 'retention',
