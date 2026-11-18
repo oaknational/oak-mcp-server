@@ -57,6 +57,8 @@ only.
   over a local directory or Vercel Blob.
 - `@oaknational/graph-corpus-sdk/load` — the lazy, TTL-cached corpus loader,
   which returns a typed error when the corpus cannot load.
+- `@oaknational/graph-corpus-sdk/testing` — `fixtureCorpus`, a small
+  invented curriculum corpus for tests. Only test code imports it.
 
 ## Refreshing the corpus
 

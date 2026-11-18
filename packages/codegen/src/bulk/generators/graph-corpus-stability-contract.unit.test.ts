@@ -1,10 +1,7 @@
 /**
  * G2 stability-contract tests for the graph-corpus generator: the
  * order-independence, churn-semantics, and dedup/provenance halves of the
- * five-part contract (mint golden vectors live in
- * `misconception-mint.unit.test.ts`; edge-end integrity and the real-corpus
- * count guards live in `graph-corpus-generator.unit.test.ts` and
- * `graph-corpus-emitted.integration.test.ts`).
+ * five-part contract.
  *
  * @remarks
  * The contract is the stability-across-regenerations promise of the settled

@@ -5,7 +5,7 @@ import {
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
 } from '@oaknational/graph-corpus-sdk/store';
-import { fixtureCorpus } from '../../../../packages/graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
+import { fixtureCorpus } from '@oaknational/graph-corpus-sdk/testing';
 
 export const E2E_GRAPH_CORPUS_PATH = fileURLToPath(
   new URL('../../.cache/e2e-graph-corpus', import.meta.url),
