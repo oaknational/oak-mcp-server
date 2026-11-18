@@ -833,6 +833,7 @@ describe('git-guard heredocs that a shell runs', () => {
     "A=1 B=2 </dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
     "</dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
     "xargs -I XX $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "sudo -np prompt $(cat <<'EOF'\ncat .env\nEOF\n)",
     "env --frobnicate x $(cat <<'EOF'\ncat .env\nEOF\n)",
     '"$(cat <<EOF\ncat .env\nEOF\n)"',
   ])('refuses %s, whose substitution runs as a command', (command) => {

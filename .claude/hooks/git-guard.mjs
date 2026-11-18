@@ -253,7 +253,7 @@ function commandWordIndex(words) {
       continue;
     }
     if (word.startsWith('-')) {
-      const option = wrapper === '' ? undefined : wrapperOption(word, words[start + 1]);
+      const option = wrapper === '' ? undefined : wrapperOption(word, words[start + 1], wrapper);
       if (option === undefined) {
         return UNCERTAIN;
       }
@@ -829,9 +829,10 @@ function unwrap(command, args) {
 }
 
 const WRAPPER_VALUE_LETTERS = 'uCngUS';
+const WRAPPER_VALUE_LETTERS_BY_PREFIX = { sudo: 'uUgCp' };
 const WRAPPER_LONG_OPTIONS = new Set(['--unset', '--chdir']);
 
-function wrapperOption(word, next) {
+function wrapperOption(word, next, wrapper) {
   const [name, attached] = word.split(/=(.*)/s);
   if (WRAPPER_LONG_OPTIONS.has(name)) {
     return {
@@ -843,8 +844,9 @@ function wrapperOption(word, next) {
   if (!/^-[a-zA-Z]/.test(word)) {
     return undefined;
   }
+  const valueLetters = WRAPPER_VALUE_LETTERS_BY_PREFIX[wrapper] ?? WRAPPER_VALUE_LETTERS;
   for (let at = 1; at < word.length && /[a-zA-Z]/.test(word[at]); at += 1) {
-    if (WRAPPER_VALUE_LETTERS.includes(word[at])) {
+    if (valueLetters.includes(word[at])) {
       const rest = word.slice(at + 1);
       return {
         value: rest === '' ? next : rest,
@@ -861,15 +863,17 @@ function checkSegment(words, startDir, depth, checkEnv) {
     return;
   }
   let callDir = startDir;
-  let wrapped = false;
+  let wrapper = '';
   let start = 0;
   for (; start < words.length; start += 1) {
     const word = words[start];
     if (/^GIT_(?:DIR|WORK_TREE)=/.test(word)) {
       callDir = UNKNOWN_DIR;
     }
-    wrapped ||= PREFIXES.has(word);
-    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
+    if (PREFIXES.has(word)) {
+      wrapper = word;
+    }
+    const option = wrapper !== '' ? wrapperOption(word, words[start + 1], wrapper) : undefined;
     if (option !== undefined) {
       if (option.chdir) {
         callDir = cdTarget(callDir, option.value);
