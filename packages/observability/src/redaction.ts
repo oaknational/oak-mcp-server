@@ -84,7 +84,8 @@ function shouldFullyRedactKey(key: string): boolean {
     FULLY_REDACTED_KEYS.has(normalisedKey) ||
     normalisedKey.includes('token') ||
     normalisedKey.includes('secret') ||
-    normalisedKey.includes('password')
+    normalisedKey.includes('password') ||
+    normalisedKey.includes('email')
   );
 }
 
@@ -110,6 +111,18 @@ function redactEmbeddedCredentials(value: string): string {
 }
 
 function redactString(value: string): string {
+  if (!/\s/u.test(value)) {
+    return redactWord(value);
+  }
+
+  const redactedWords = value
+    .split(/(\s+)/u)
+    .map((part) => (/\s/u.test(part) ? part : redactWord(part)))
+    .join('');
+  return redactEmbeddedCredentials(redactedWords);
+}
+
+function redactWord(value: string): string {
   const redactedUrl = redactUrlString(value, {
     normaliseKey,
     redactedQueryKeys: REDACTED_QUERY_KEYS,

@@ -52,6 +52,20 @@ describe('redactTelemetryValue', () => {
     );
   });
 
+  it('redacts a Bearer token and a URL query in the same free text', () => {
+    expect(
+      redactTelemetryValue('boom Bearer abc123 https://example.test/callback?code=secret-code'),
+    ).toBe('boom Bearer [REDACTED] https://example.test/callback?code=%5BREDACTED%5D');
+  });
+
+  it('redacts email addresses by key name', () => {
+    const email = ['teacher', 'example.test'].join('@');
+    expect(redactTelemetryObject({ 'user.email': email, contactEmail: email })).toStrictEqual({
+      'user.email': REDACTED_VALUE,
+      contactEmail: REDACTED_VALUE,
+    });
+  });
+
   it('redacts arrays recursively', () => {
     expect(
       redactTelemetryValue([

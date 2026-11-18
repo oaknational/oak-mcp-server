@@ -7,6 +7,7 @@ import type { SentryLiveConfig } from './types.js';
 
 const TOKEN = 'wire-probe-bearer-token-7f3a';
 const OAUTH_CODE = 'wire-probe-oauth-code-9c1e';
+const EMAIL = ['wire-probe-teacher', 'example.invalid'].join('@');
 const CALLBACK_URL = `https://mcp.example.invalid/oauth/callback?code=${OAUTH_CODE}&state=s1`;
 
 const liveConfig: SentryLiveConfig = {
@@ -107,6 +108,28 @@ describe('Sentry redaction on the wire', () => {
     for (const envelope of envelopes) {
       expect(envelope).not.toContain(TOKEN);
       expect(envelope).not.toContain(OAUTH_CODE);
+    }
+  });
+
+  it('keeps mixed-text tokens, DSC transaction names and span emails out of the whole envelope', async () => {
+    const { envelopes } = initWithCapturingTransport();
+
+    Sentry.startSpan({ name: `GET ${CALLBACK_URL}`, op: 'http.server' }, () => {
+      Sentry.startSpan({ name: 'lookup user', op: 'db' }, (span) => {
+        span.setAttribute('user.email', EMAIL);
+      });
+      Sentry.captureException(new Error(`boom Bearer ${TOKEN} ${CALLBACK_URL}`));
+    });
+    await Sentry.flush(2_000);
+
+    const items = envelopes.flatMap(envelopeItems);
+    expect(items.map((item) => item.type)).toEqual(
+      expect.arrayContaining(['event', 'transaction']),
+    );
+    for (const envelope of envelopes) {
+      expect(envelope).not.toContain(TOKEN);
+      expect(envelope).not.toContain(OAUTH_CODE);
+      expect(envelope).not.toContain(EMAIL);
     }
   });
 

@@ -20,6 +20,7 @@ import type {
 } from './types.js';
 import {
   redactSentryBreadcrumb,
+  redactSentryEnvelopeTrace,
   redactSentryEvent,
   redactSentryLog,
   redactSentryStaticSpan,
@@ -154,6 +155,17 @@ function createSentryHooks(postRedactionHooks?: SentryPostRedactionHooks): Sentr
   };
 }
 
+type SentryIntegration = Extract<NonNullable<NodeOptions['integrations']>, unknown[]>[number];
+
+const envelopeHeaderRedaction: SentryIntegration = {
+  name: 'OakEnvelopeHeaderRedaction',
+  setup(client) {
+    client.on('beforeEnvelope', (envelope) => {
+      redactSentryEnvelopeTrace(envelope[0].trace);
+    });
+  },
+};
+
 export function createSentryInitOptions(
   config: SentryLiveConfig,
   options: { readonly serviceName: string; readonly postRedactionHooks?: SentryPostRedactionHooks },
@@ -191,6 +203,7 @@ export function createSentryInitOptions(
         ...(config.gitSha ? { 'git.commit.sha': config.gitSha } : {}),
       },
     },
+    integrations: (defaults) => [...defaults, envelopeHeaderRedaction],
     ...createSentryHooks(options.postRedactionHooks),
   };
 }
