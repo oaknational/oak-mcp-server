@@ -522,6 +522,40 @@ describe('git-guard review fixes', () => {
     expect(bash(clean, command).status).toBe(0);
   });
 
+  it.each([
+    'gh api x --jq .x --input=.env',
+    'gh api x --input=apps/server/.env.local',
+    'gh api x -F @.env',
+    'gh api x -F k=@.env',
+    'gh api x -Fk=@.env',
+    'gh api x -F@.env',
+    'gh api x --field k=@.env.local',
+    'gh api x --field=k=@.env',
+    'gh api x --raw-field k=@.env',
+    'gh api x --jq .env.PATH -F k=@.env',
+    'gh api x -F -q .env',
+    'gh api x -H -F -q .env',
+    'gh api x -F --jq=@.env',
+    'gh api x --jq= .env',
+    'jq --run-tests=.env',
+    'node --env-file=.env app.js',
+    'jq >| out.json . .env',
+  ])('refuses the env file inside an option value in %s', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    'jq >| out.json .env settings.json',
+    'gh api x --jq=.env.PATH',
+    'gh api x --paginate --jq .env.PATH',
+    'gh api x -F k=v -q .env.PATH',
+    'gh api x -F k=@body.json --jq .env.PATH',
+    'gh api x --input=body.json',
+    'gh api x --input=.env.example',
+  ])('allows %s, which reads no env file', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
   it('counts untracked files when status.showUntrackedFiles is no', () => {
     const repo = makeRepo();
     try {

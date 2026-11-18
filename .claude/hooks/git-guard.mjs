@@ -501,6 +501,14 @@ const GH_JQ_COMMANDS = new Set([
   'repo view',
   'release view',
 ]);
+const GH_BOOLEAN_FLAGS = new Set([
+  '--paginate',
+  '--slurp',
+  '--include',
+  '-i',
+  '--silent',
+  '--verbose',
+]);
 const JQ_FLAGS =
   /^-(?:[nRscrjaSCMehV]+|-(?:null-input|raw-input|slurp|compact-output|raw-output0?|join-output|ascii-output|sort-keys|color-output|monochrome-output|tab|exit-status|seq|stream|stream-errors|unbuffered|args|jsonargs))$/;
 const REDIRECT = /^\d*[<>]/;
@@ -510,9 +518,16 @@ function queryFilterIndex(command, args) {
       return -1;
     }
     const end = args.includes('--') ? args.indexOf('--') : args.length;
-    const flag = args.slice(0, end).findIndex((word) => word === '--jq' || word === '-q');
-    const throughValue = args.slice(0, flag + 2);
-    return flag === -1 || throughValue.some((word) => /[<>]/.test(word)) ? -1 : flag + 1;
+    const flag = args
+      .slice(0, end)
+      .findIndex((word) => word === '--jq' || word === '-q' || word.startsWith('--jq='));
+    const filter = args[flag]?.startsWith('--jq=') ? flag : flag + 1;
+    const before = args[flag - 1] ?? '';
+    const flagStandsAlone = !before.startsWith('-') || GH_BOOLEAN_FLAGS.has(before);
+    const throughValue = args.slice(0, filter + 1);
+    return flag === -1 || !flagStandsAlone || throughValue.some((word) => /[<>]/.test(word))
+      ? -1
+      : filter;
   }
   if (command !== 'jq') {
     return -1;
@@ -522,7 +537,7 @@ function queryFilterIndex(command, args) {
     const word = args[index];
     const arity = JQ_OPTION_ARITY.get(word);
     if (REDIRECT.test(word)) {
-      index += /^\d*[<>]+&?$/.test(word) ? 1 : 0;
+      index += /^\d*[<>]+[&|]?$/.test(word) ? 1 : 0;
     } else if (arity !== undefined) {
       if (args.slice(index + 1, index + 1 + arity).some((value) => REDIRECT.test(value))) {
         return -1;
@@ -972,8 +987,10 @@ function checkSegment(words, startDir, depth, checkEnv) {
   }
   if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
     const filter = queryFilterIndex(command, args);
+    // gh reads a file from `@path` and `--input=path`, so the check reads each part of a word.
+    const parts = (word) => [word, ...word.split(/[=@]/)];
     const secret = args.find(
-      (word, index) => index !== filter && namesEnvFile(word.replace(/^\d*[<>]+/, '')),
+      (word, index) => index !== filter && parts(word.replace(/^\d*[<>]+/, '')).some(namesEnvFile),
     );
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
