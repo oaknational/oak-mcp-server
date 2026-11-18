@@ -480,6 +480,64 @@ const isEnvPath = (path) => {
 };
 const ENV_FILE_NAME = /^\.env(?:rc)?(?![a-z])/i;
 const namesEnvFile = (word) => isEnvPath(word) && ENV_FILE_NAME.test(word.split('/').pop() ?? '');
+// yq is left out because it reads its first operand as a file when that path exists.
+const JQ_OPTION_ARITY = new Map([
+  ['--arg', 2],
+  ['--argjson', 2],
+  ['--slurpfile', 2],
+  ['--rawfile', 2],
+  ['--indent', 1],
+  ['-L', 1],
+]);
+const GH_JQ_COMMANDS = new Set([
+  'api',
+  'pr view',
+  'pr list',
+  'pr checks',
+  'issue view',
+  'issue list',
+  'run view',
+  'run list',
+  'repo view',
+  'release view',
+]);
+const JQ_FLAGS =
+  /^-(?:[nRscrjaSCMehV]+|-(?:null-input|raw-input|slurp|compact-output|raw-output0?|join-output|ascii-output|sort-keys|color-output|monochrome-output|tab|exit-status|seq|stream|stream-errors|unbuffered|args|jsonargs))$/;
+const REDIRECT = /^\d*[<>]/;
+function queryFilterIndex(command, args) {
+  if (command === 'gh') {
+    if (!GH_JQ_COMMANDS.has(args[0]) && !GH_JQ_COMMANDS.has(args.slice(0, 2).join(' '))) {
+      return -1;
+    }
+    const end = args.includes('--') ? args.indexOf('--') : args.length;
+    const flag = args.slice(0, end).findIndex((word) => word === '--jq' || word === '-q');
+    const throughValue = args.slice(0, flag + 2);
+    return flag === -1 || throughValue.some((word) => /[<>]/.test(word)) ? -1 : flag + 1;
+  }
+  if (command !== 'jq') {
+    return -1;
+  }
+  let filter = -1;
+  for (let index = 0; index < args.length; index += 1) {
+    const word = args[index];
+    const arity = JQ_OPTION_ARITY.get(word);
+    if (REDIRECT.test(word)) {
+      index += /^\d*[<>]+&?$/.test(word) ? 1 : 0;
+    } else if (arity !== undefined) {
+      if (args.slice(index + 1, index + 1 + arity).some((value) => REDIRECT.test(value))) {
+        return -1;
+      }
+      index += arity;
+    } else if (word.startsWith('-')) {
+      if (!JQ_FLAGS.test(word)) {
+        return -1;
+      }
+    } else if (filter === -1) {
+      filter = index;
+    }
+  }
+  return filter;
+}
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
 const HOOK_FILES = /(?:^|\/)(?:\.husky(?:\/|$)|\.git\/config(?:\.worktree)?$)/;
@@ -913,7 +971,10 @@ function checkSegment(words, startDir, depth, checkEnv) {
     checkCommand(args.join(' '), callDir, depth + 1, true, true);
   }
   if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
-    const secret = args.find((word) => namesEnvFile(word.replace(/^\d*[<>]+/, '')));
+    const filter = queryFilterIndex(command, args);
+    const secret = args.find(
+      (word, index) => index !== filter && namesEnvFile(word.replace(/^\d*[<>]+/, '')),
+    );
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
     }
