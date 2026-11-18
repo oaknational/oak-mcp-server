@@ -5,13 +5,16 @@ import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { createFakeBlobClient } from '../../../graph-corpus-sdk/src/store/__tests__/fake-blob-client.js';
 import {
   LATEST_KEY,
+  createBlobObjectStore,
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
   parseGraphCorpusSnapshot,
   refreshGraphCorpus,
   type GraphCorpusSnapshotStore,
+  type ObjectStore,
 } from '../../../graph-corpus-sdk/src/store/index.js';
 import { createLessonInput, createUnitInput } from '../../src/bulk/test-fixtures.js';
 import {
@@ -290,6 +293,88 @@ describe('refreshGraphCorpus', () => {
     expect(result.ok).toBe(true);
     expect(lines.join('\n')).toContain('treating it as absent');
   });
+});
+
+/** Wraps `objects` so the refresh using it signals once it has read `latest.json` and holds its write until released. */
+function holdLatestWrite(objects: ObjectStore): {
+  readonly objects: ObjectStore;
+  readonly hasRead: Promise<void>;
+  readonly release: () => void;
+} {
+  let release = (): void => undefined;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let markRead = (): void => undefined;
+  const hasRead = new Promise<void>((resolve) => (markRead = resolve));
+  return {
+    objects: {
+      ...objects,
+      async getVersioned(key) {
+        const latest = await objects.getVersioned(key);
+        markRead();
+        return latest;
+      },
+      async putIfVersion(key, body, version) {
+        await released;
+        return objects.putIfVersion(key, body, version);
+      },
+    },
+    hasRead,
+    release,
+  };
+}
+
+const racingStores: readonly (readonly [
+  string,
+  () => Promise<{ objects: ObjectStore; client?: ReturnType<typeof createFakeBlobClient> }>,
+])[] = [
+  ['local-file', async () => ({ objects: createLocalFileObjectStore(await tempDir()) })],
+  [
+    'fake Blob',
+    () => {
+      const client = createFakeBlobClient();
+      return Promise.resolve({ objects: createBlobObjectStore(client), client });
+    },
+  ],
+];
+
+describe.each(racingStores)('refreshGraphCorpus racing over the %s store', (_name, makeStore) => {
+  it.each([
+    ['an empty store', false],
+    ['a stored snapshot', true],
+  ])(
+    'keeps the newer snapshot when an older refresh started alongside it finishes last, from %s',
+    async (_case, seeded) => {
+      const { objects, client } = await makeStore();
+      if (seeded) {
+        await refreshFromDir(
+          createGraphCorpusSnapshotStore(objects),
+          await bulkDir({ 'maths-primary.json': bulkFile(2) }, '2026-07-01T00:00:00.000Z'),
+        );
+      }
+      const held = holdLatestWrite(objects);
+
+      const olderRun = refreshFromDir(
+        createGraphCorpusSnapshotStore(held.objects),
+        await bulkDir({ 'maths-primary.json': bulkFile(3) }, '2026-08-01T00:00:00.000Z'),
+      );
+      await held.hasRead;
+      const newer = await refreshFromDir(
+        createGraphCorpusSnapshotStore(objects),
+        await bulkDir({ 'maths-primary.json': bulkFile(4) }, '2026-09-01T00:00:00.000Z'),
+      );
+      held.release();
+      const older = await olderRun;
+
+      expect(newer).toMatchObject({ ok: true, value: { status: 'refreshed' } });
+      expect(older).toMatchObject({ ok: false, error: { guard: 'older-download' } });
+      expect(parseGraphCorpusSnapshot((await objects.get(LATEST_KEY)) ?? '')).toMatchObject({
+        value: { downloadedAt: '2026-09-01T00:00:00.000Z' },
+      });
+      for (const put of client?.puts.filter(({ pathname }) => pathname === LATEST_KEY) ?? []) {
+        expect(put.options.ifMatch !== undefined || !put.options.allowOverwrite).toBe(true);
+      }
+    },
+  );
 });
 
 describe('digestBulkFiles', () => {
