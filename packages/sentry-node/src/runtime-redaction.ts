@@ -338,3 +338,19 @@ export function redactSentryLog(log: SentryLogPayload): SentryLogPayload {
     ...(attributes ? { attributes } : {}),
   };
 }
+
+/**
+ * Redacts the dynamic sampling context's `transaction` in an envelope header.
+ * The SDK copies the root span's raw name there, and no `beforeSend*` hook
+ * sees envelope headers, so this runs on the client's `beforeEnvelope` hook.
+ */
+export function redactSentryEnvelopeTrace(trace: unknown): void {
+  if (
+    typeof trace === 'object' &&
+    trace !== null &&
+    'transaction' in trace &&
+    typeof trace.transaction === 'string'
+  ) {
+    trace.transaction = redactText(trace.transaction);
+  }
+}

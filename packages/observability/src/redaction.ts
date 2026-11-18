@@ -9,7 +9,7 @@
 
 import { typeSafeEntries } from './type-safe.js';
 import { redactFormEncodedString } from './redaction-form.js';
-import { redactUrlString } from './redaction-url.js';
+import { RELATIVE_URL_BASE, redactUrlString } from './redaction-url.js';
 import type { JsonObject, JsonValue } from './types.js';
 
 /**
@@ -84,7 +84,8 @@ function shouldFullyRedactKey(key: string): boolean {
     FULLY_REDACTED_KEYS.has(normalisedKey) ||
     normalisedKey.includes('token') ||
     normalisedKey.includes('secret') ||
-    normalisedKey.includes('password')
+    normalisedKey.includes('password') ||
+    normalisedKey.includes('email')
   );
 }
 
@@ -109,7 +110,37 @@ function redactEmbeddedCredentials(value: string): string {
     );
 }
 
+const FIRST_URL_WORD = /(?<=^|\s)\S*(?:\?|:\/\/)/u;
+
+/**
+ * Redacting a log message as one relative URL percent-encodes the prose before
+ * its first URL word, which hides a Bearer token from the credential patterns.
+ * Running those patterns on the whole message first doesn't fix that: a token
+ * match can swallow a URL's `?` and change what the URL parse redacts.
+ */
 function redactString(value: string): string {
+  const urlStart = value.search(FIRST_URL_WORD);
+  const prefix = value.slice(0, urlStart);
+  const rest = redactEmbeddedCredentials(value.slice(urlStart));
+  if (urlStart <= 0 || !isPlainTextBeforeUrl(value, prefix, rest)) {
+    return redactSingleValue(value);
+  }
+
+  return redactEmbeddedCredentials(prefix) + redactSingleValue(rest);
+}
+
+function isPlainTextBeforeUrl(value: string, prefix: string, rest: string): boolean {
+  const whole = URL.parse(value, RELATIVE_URL_BASE);
+  return (
+    whole?.origin === RELATIVE_URL_BASE &&
+    whole.username === '' &&
+    whole.password === '' &&
+    URL.canParse(rest, RELATIVE_URL_BASE) &&
+    !/\b(?:Bearer|Basic)\s+$/iu.test(prefix)
+  );
+}
+
+function redactSingleValue(value: string): string {
   const redactedUrl = redactUrlString(value, {
     normaliseKey,
     redactedQueryKeys: REDACTED_QUERY_KEYS,
