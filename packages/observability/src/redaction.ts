@@ -189,20 +189,20 @@ function isPlainTextBeforeUrl(value: string, prefix: string, rest: string): bool
 }
 
 function redactSingleValue(value: string): string {
-  const redactedUrl = redactUrlString(value, {
-    normaliseKey,
-    redactedQueryKeys: REDACTED_QUERY_KEYS,
-    redactedValue: REDACTED_VALUE,
-  });
-  const redactedFormPayload = redactFormEncodedString(redactedUrl, {
+  const redactedFormPayload = redactFormEncodedString(value, {
     normaliseKey,
     redactedQueryKeys: REDACTED_QUERY_KEYS,
     redactedValue: REDACTED_VALUE,
     shouldFullyRedactKey,
   });
+  const redactedUrl = redactUrlString(redactedFormPayload, {
+    normaliseKey,
+    redactedQueryKeys: REDACTED_QUERY_KEYS,
+    redactedValue: REDACTED_VALUE,
+  });
 
-  if (redactedFormPayload !== redactedUrl) {
-    return redactedFormPayload;
+  if (redactedFormPayload !== value) {
+    return redactedUrl;
   }
 
   return redactEmbeddedCredentials(redactedUrl);

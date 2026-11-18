@@ -173,6 +173,16 @@ describe('redactTelemetryValue', () => {
     );
   });
 
+  it.each([
+    'Is x=1 the answer? Maybe y=2 is better.',
+    '{"grant_type":"authorization_code","n":1}',
+    'grant_type=authorization_code&client_id=abc&scope=read',
+    'client_id=abc&redirect_uri=https://client.example/cb?x=1',
+    'next=/cb?page=2&sort=asc',
+  ])('returns the clean input %j unchanged', (input) => {
+    expect(redactTelemetryValue(input)).toBe(input);
+  });
+
   it('redacts nonce in URL query strings', () => {
     expect(
       redactTelemetryValue(
