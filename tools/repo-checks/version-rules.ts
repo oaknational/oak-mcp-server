@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import ts from 'typescript';
 import {
   diffSurfaces,
   parseBaseline,
@@ -15,7 +16,8 @@ const NON_RELEASING = new Set(['chore', 'docs', 'ci', 'test']);
 const RELEASING = new Set(['feat', 'fix']);
 const BREAKING_SECTION = /^##\s+Breaking change\s*$/im;
 const SERVED_SURFACE = 'apps/server/served-surface.json';
-const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)__tests__\//;
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)(?:__tests__|e2e-tests)\//;
+const SCRIPT_FILE = /\.[cm]?[jt]sx?$/;
 
 export function isRuntimeFile(path: string): boolean {
   return (
@@ -25,6 +27,23 @@ export function isRuntimeFile(path: string): boolean {
     !path.endsWith('/package.json') &&
     path !== SERVED_SURFACE
   );
+}
+
+const printer = ts.createPrinter({ removeComments: true });
+
+function printWithoutComments(path: string, text: string): string {
+  return printer.printFile(ts.createSourceFile(path, text, ts.ScriptTarget.Latest));
+}
+
+export function changesCode(
+  path: string,
+  before: string | undefined,
+  after: string | undefined,
+): boolean {
+  if (before === undefined || after === undefined || !SCRIPT_FILE.test(path)) {
+    return before !== after;
+  }
+  return printWithoutComments(path, before) !== printWithoutComments(path, after);
 }
 
 export interface SurfaceChange {
@@ -128,14 +147,22 @@ export function checkVersion(input: {
   return errors;
 }
 
+function showAt(sha: string, path: string): string | undefined {
+  const result = spawnSync('git', ['show', `${sha}:${path}`], {
+    encoding: 'utf8',
+    maxBuffer: 256 * 1024 * 1024,
+  });
+  return result.status === 0 ? result.stdout : undefined;
+}
+
 function readServedSurfaceAt(sha: string): SurfaceSnapshot {
-  const result = spawnSync('git', ['show', `${sha}:${SERVED_SURFACE}`], { encoding: 'utf8' });
-  if (result.status !== 0) {
+  const text = showAt(sha, SERVED_SURFACE);
+  if (text === undefined) {
     throw new Error(
       `cannot read ${SERVED_SURFACE} at the merge base ${sha}. Rebase onto main so the base has it.`,
     );
   }
-  return parseBaseline(result.stdout);
+  return parseBaseline(text);
 }
 
 if (import.meta.main) {
@@ -145,7 +172,16 @@ if (import.meta.main) {
     before: readServedSurfaceAt(mergeBase),
     after: parseBaseline(readFileSync(SERVED_SURFACE, 'utf8')),
   };
-  const errors = checkVersion({ title, body: process.env['PR_BODY'] ?? '', changed, surface });
+  const codeChanged = changed.filter(
+    (path) =>
+      !isRuntimeFile(path) || changesCode(path, showAt(mergeBase, path), showAt('HEAD', path)),
+  );
+  const errors = checkVersion({
+    title,
+    body: process.env['PR_BODY'] ?? '',
+    changed: codeChanged,
+    surface,
+  });
   if (errors.length > 0) {
     process.stderr.write(
       [
