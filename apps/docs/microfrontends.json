@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "oak-mcp-server-docs": {
+      "packageName": "@oaknational/mcp-docs",
+      "development": {
+        "fallback": "oak-mcp-server-docs.vercel.app"
+      }
+    },
+    "oak-mcp-server-function": {
+      "packageName": "@oaknational/mcp-server",
+      "routing": [
+        {
+          "paths": [
+            "/mcp",
+            "/mcp/:path*",
+            "/oauth/:path*",
+            "/.well-known/oauth-protected-resource",
+            "/.well-known/oauth-protected-resource/mcp",
+            "/.well-known/oauth-authorization-server",
+            "/.well-known/openai-apps-challenge",
+            "/robots.txt",
+            "/assets/download/:lesson/:type",
+            "/api/cron/refresh-graph",
+            "/healthz",
+            "/favicons/:path*",
+            "/carousel/:path*",
+            "/oak-ds/:path*",
+            "/oak-assets/:path*"
+          ]
+        }
+      ]
+    }
+  }
+}
