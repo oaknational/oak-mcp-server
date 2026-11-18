@@ -4,8 +4,10 @@ import type { Express, Request, Response } from 'express';
 import type { Logger } from '@oaknational/logger';
 import { isOk, type Result } from '@oaknational/result';
 import {
+  GraphRefreshError,
   refreshGraphCorpus,
   type GraphCorpusSnapshotStore,
+  type RefreshFailure,
   type RefreshOutcome,
   type RefreshRefusal,
 } from '@oaknational/graph-corpus-sdk/store';
@@ -36,7 +38,7 @@ interface RegisterRefreshGraphRouteDeps {
   readonly app: Express;
   readonly secret: string;
   readonly refresher: GraphRefresher;
-  readonly observability: Pick<HttpObservability, 'captureHandledError'>;
+  readonly observability: Pick<HttpObservability, 'captureHandledError' | 'setTag'>;
   readonly log: Logger;
 }
 
@@ -51,8 +53,19 @@ async function runRefresh(
   res: Response,
   deps: Pick<RegisterRefreshGraphRouteDeps, 'observability' | 'log'>,
 ): Promise<void> {
-  const result = await refresher();
+  let result: Awaited<ReturnType<GraphRefresher>>;
+  try {
+    result = await refresher();
+  } catch (error) {
+    const failure: RefreshFailure | 'unexpected' =
+      error instanceof GraphRefreshError ? error.failure : 'unexpected';
+    deps.observability.setTag('graph_refresh.failure', failure);
+    deps.observability.captureHandledError(error, { boundary: 'cron_refresh_graph', failure });
+    res.status(500).json({ status: 'failed', failure });
+    return;
+  }
   if (!isOk(result)) {
+    deps.observability.setTag('graph_refresh.guard', result.error.guard);
     deps.observability.captureHandledError(
       new Error(`graph refresh refused (${result.error.guard}): ${result.error.message}`),
       { boundary: 'cron_refresh_graph', guard: result.error.guard },

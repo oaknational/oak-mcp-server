@@ -1,5 +1,6 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { execFile, spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { hostname, tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { strToU8, zipSync } from 'fflate';
@@ -373,6 +374,112 @@ describe.each(racingStores)('refreshGraphCorpus racing over the %s store', (_nam
         expect(put.options.ifMatch !== undefined || !put.options.allowOverwrite).toBe(true);
       }
     },
+  );
+});
+
+describe('refreshGraphCorpus failures that throw', () => {
+  const bulk = () => bulkDir({ 'maths-primary.json': bulkFile(2) });
+
+  it('names five lost races in a row write-contention', async () => {
+    const objects = createLocalFileObjectStore(await tempDir());
+    const alwaysLoses: ObjectStore = { ...objects, putIfVersion: () => Promise.resolve(false) };
+
+    await expect(
+      refreshFromDir(createGraphCorpusSnapshotStore(alwaysLoses), await bulk()),
+    ).rejects.toMatchObject({ name: 'GraphRefreshError', failure: 'write-contention' });
+  });
+
+  it('names a latest.json read that throws latest-read-failed, keeping the read error as its cause', async () => {
+    const readFailure = new Error('blob service unavailable');
+    const objects = createLocalFileObjectStore(await tempDir());
+    const unreadable: ObjectStore = { ...objects, getVersioned: () => Promise.reject(readFailure) };
+
+    const rejection = await refreshFromDir(
+      createGraphCorpusSnapshotStore(unreadable),
+      await bulk(),
+    ).catch((error: unknown) => error);
+
+    expect(rejection).toMatchObject({ name: 'GraphRefreshError', failure: 'latest-read-failed' });
+    expect((rejection as Error).cause).toBe(readFailure);
+  });
+
+  it('names a Blob read without an ETag missing-etag and leaves latest.json unchanged', async () => {
+    const client = createFakeBlobClient({ omitEtag: true });
+    const objects = createBlobObjectStore(client);
+    const store = createGraphCorpusSnapshotStore(objects);
+    await refreshFromDir(
+      store,
+      await bulkDir({ 'maths-primary.json': bulkFile(2) }, '2026-07-01T00:00:00.000Z'),
+    );
+    const before = await objects.get(LATEST_KEY);
+
+    await expect(
+      refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile(3) })),
+    ).rejects.toMatchObject({
+      name: 'GraphRefreshError',
+      failure: 'missing-etag',
+    });
+    expect(await objects.get(LATEST_KEY)).toBe(before);
+  });
+});
+
+describe('graph:refresh --break-stale-lock', () => {
+  const repoRoot = path.resolve(import.meta.dirname, '../../../..');
+  const script = path.join(import.meta.dirname, 'run-graph-refresh.ts');
+
+  function runBreak(root: string): Promise<{ code: number; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+      execFile(
+        process.execPath,
+        ['--import', 'tsx', script, '--store', 'local', '--break-stale-lock'],
+        { cwd: repoRoot, env: { ...process.env, GRAPH_CORPUS_LOCAL_PATH: root } },
+        (error, stdout, stderr) => {
+          resolve({ code: typeof error?.code === 'number' ? error.code : 0, stdout, stderr });
+        },
+      );
+    });
+  }
+
+  async function storeWithLock(pid: number, host: string) {
+    const root = await tempDir();
+    const lock = path.join(root, ...LATEST_KEY.split('/')) + '.lock';
+    await mkdir(path.dirname(lock), { recursive: true });
+    const record = JSON.stringify({
+      pid,
+      host,
+      startedAt: '2026-11-18T00:00:00.000Z',
+      id: 'planted',
+    });
+    await writeFile(lock, record);
+    return { root, lock, record };
+  }
+
+  const exitedPid = (): number => spawnSync(process.execPath, ['-e', '']).pid ?? 0;
+
+  it('removes a lock whose holder on this host has exited, and refreshes nothing', async () => {
+    const { root, lock } = await storeWithLock(exitedPid(), hostname());
+
+    const run = await runBreak(root);
+
+    expect(run).toMatchObject({ code: 0, stdout: expect.stringContaining('removed') as unknown });
+    await expect(readFile(lock, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await createLocalFileObjectStore(root).get(LATEST_KEY)).toBeNull();
+  }, 30_000);
+
+  it.each([
+    ['a holder process that is still running', () => process.pid, hostname(), 'is running'],
+    ['a holder on another host', exitedPid, 'another-host.invalid', 'another host'],
+  ])(
+    'refuses %s and leaves the lock',
+    async (_name, pid, host, reason) => {
+      const { root, lock, record } = await storeWithLock(pid(), host);
+
+      const run = await runBreak(root);
+
+      expect(run).toMatchObject({ code: 1, stderr: expect.stringContaining(reason) as unknown });
+      expect(await readFile(lock, 'utf8')).toBe(record);
+    },
+    30_000,
   );
 });
 

@@ -4,6 +4,8 @@ import { parseArgs } from 'node:util';
 import { isOk } from '@oaknational/result';
 
 import {
+  LATEST_KEY,
+  breakStaleLocalLock,
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
   createVercelBlobObjectStore,
@@ -19,6 +21,7 @@ const { values } = parseArgs({
     store: { type: 'string', default: 'local' },
     'bulk-dir': { type: 'string' },
     'allow-rollback': { type: 'boolean', default: false },
+    'break-stale-lock': { type: 'boolean', default: false },
   },
 });
 
@@ -29,6 +32,21 @@ if (values.store !== 'local' && values.store !== 'blob') {
 
 const env = resolveGraphRefreshEnv(process.env, import.meta.dirname);
 const localRoot = env.GRAPH_CORPUS_LOCAL_PATH || path.join(repoRoot, '.cache', 'graph-corpus');
+
+if (values['break-stale-lock']) {
+  if (values.store !== 'local') {
+    process.stderr.write('--break-stale-lock works only with --store local\n');
+    process.exit(2);
+  }
+  const broken = await breakStaleLocalLock(localRoot, LATEST_KEY);
+  if (!isOk(broken)) {
+    process.stderr.write(`graph:refresh left the lock in place: ${broken.error}\n`);
+    process.exit(1);
+  }
+  process.stdout.write(`graph:refresh ${broken.value}\n`);
+  process.exit(0);
+}
+
 const objects =
   values.store === 'local'
     ? createLocalFileObjectStore(localRoot)

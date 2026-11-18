@@ -77,6 +77,28 @@ refreshes overlap and the other one writes first, this one checks its guards
 again against the new snapshot, so an older download refuses instead of
 replacing a newer one.
 
+The lock file records the pid, host and start time of the refresh holding it,
+and a refresh removes the lock only while it still holds its own record. A
+refresh never removes another refresh's lock. After waiting 5 s it fails with
+`lock-held`, naming the holder and saying whether that process has exited. When
+a crash has left a lock and no refresh is running, remove it with:
+
+```bash
+pnpm graph:refresh --store local --break-stale-lock
+```
+
+This removes the lock only when its record names a process on this host that
+has exited, then exits without refreshing. It refuses a running holder, a holder
+on another host and a lock without a record. While it runs it holds
+`latest.json.lock.break`, so two breaks cannot run at once.
+
+A refresh that cannot finish throws a `GraphRefreshError` naming why:
+`write-contention` when `latest.json` changed under it five times in a row,
+`latest-read-failed` when reading `latest.json` threw, `missing-etag` when Blob
+returned `latest.json` without an ETag, so it cannot write only if unchanged,
+and `lock-held` when the local lock stayed held. The cron route answers 500 with `{ "status": "failed", "failure":
+<name> }`, and uses `unexpected` for any other error.
+
 ```bash
 pnpm graph:refresh --store local                   # fetch with OAK_API_KEY
 pnpm graph:refresh --store local --bulk-dir <dir>  # build from a downloaded bulk directory

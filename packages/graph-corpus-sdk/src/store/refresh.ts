@@ -7,6 +7,7 @@ import {
 } from '@oaknational/sdk-codegen/graph-refresh';
 import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 
+import { GraphRefreshError } from './refresh-error.js';
 import {
   GRAPH_CORPUS_SCHEMA_VERSION,
   parseGraphCorpusSnapshot,
@@ -52,7 +53,16 @@ async function readStored(
   store: GraphCorpusSnapshotStore,
   log: (line: string) => void,
 ): Promise<StoredLatest | null> {
-  const latest = await store.readLatestVersioned();
+  let latest;
+  try {
+    latest = await store.readLatestVersioned();
+  } catch (error) {
+    throw new GraphRefreshError(
+      'latest-read-failed',
+      `reading latest.json failed: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
   if (latest === null) {
     return null;
   }
@@ -150,7 +160,8 @@ export async function refreshGraphCorpus(options: {
       });
     }
   }
-  throw new Error(
+  throw new GraphRefreshError(
+    'write-contention',
     `latest.json changed ${String(MAX_WRITE_ATTEMPTS)} times while the refresh was writing it`,
   );
 }

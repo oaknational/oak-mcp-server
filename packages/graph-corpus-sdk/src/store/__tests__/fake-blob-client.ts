@@ -4,7 +4,12 @@ const PAGE_SIZE = 2;
 
 type PutOptions = Parameters<BlobClient['put']>[2];
 
-export function createFakeBlobClient(): BlobClient & {
+/**
+ * `omitEtag` models a `get` response without an `etag` header, which
+ * `@vercel/blob` reports as `etag: ""`. Like the SDK, `put` ignores an empty
+ * `ifMatch` and writes unconditionally.
+ */
+export function createFakeBlobClient(options: { readonly omitEtag?: boolean } = {}): BlobClient & {
   readonly blobs: Map<string, string>;
   readonly puts: { readonly pathname: string; readonly options: PutOptions }[];
 } {
@@ -20,16 +25,19 @@ export function createFakeBlobClient(): BlobClient & {
       return Promise.resolve(
         body === undefined
           ? null
-          : { stream: new Blob([body]).stream(), blob: { etag: etags.get(pathname) ?? '' } },
+          : {
+              stream: new Blob([body]).stream(),
+              blob: { etag: options.omitEtag === true ? '' : (etags.get(pathname) ?? '') },
+            },
       );
     },
-    put(pathname, body, options) {
-      puts.push({ pathname, options });
+    put(pathname, body, putOptions) {
+      puts.push({ pathname, options: putOptions });
       const exists = blobs.has(pathname);
-      if (!options.allowOverwrite && exists) {
+      if (!putOptions.allowOverwrite && exists) {
         return Promise.reject(new Error('This blob already exists'));
       }
-      if (options.ifMatch !== undefined && options.ifMatch !== etags.get(pathname)) {
+      if (putOptions.ifMatch && putOptions.ifMatch !== etags.get(pathname)) {
         return Promise.reject(new Error('Precondition failed: ETag mismatch.'));
       }
       writes += 1;
