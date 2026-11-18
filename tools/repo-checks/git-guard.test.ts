@@ -1004,6 +1004,15 @@ describe('git-guard wrapper options', () => {
   ])('allows %s', (command) => {
     expect(bash(clean, command).status).toBe(0);
   });
+
+  it.each(['xargs --max-args=1 ls', 'nice -10 ls'])(
+    'refuses %s and names the short form as the fix',
+    (command) => {
+      const { status, stderr } = bash(clean, command);
+      expect(status).toBe(2);
+      expect(stderr).toContain('Use the short form of the option');
+    },
+  );
 });
 
 describe('git-guard with shell redirections', () => {

@@ -985,7 +985,7 @@ const WRAPPER_OPTIONS = new Map([
 
 const refuseOption = (word, wrapper) =>
   refuse(
-    `${wrapper} ${word} is not an option the guard knows, so it cannot tell which command runs. Write the options separately, or run the command without ${wrapper}.`,
+    `${wrapper} ${word} is not an option the guard knows, so it cannot tell which command runs. Use the short form of the option (for example \`-n 10\`, not \`--max-args=10\` or \`-10\`), or run the command without ${wrapper}.`,
   );
 
 function wrapperOption(word, next, wrapper) {
