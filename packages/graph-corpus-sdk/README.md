@@ -71,6 +71,12 @@ corpus is empty, the node or edge count falls below
 data was downloaded before the stored snapshot's (`older-download`). Pass
 `--allow-rollback` to write an older download on purpose.
 
+The refresh writes `latest.json` only if it is unchanged since the refresh read
+it, with an ETag match on Blob and a lock file on the local store. When two
+refreshes overlap and the other one writes first, this one checks its guards
+again against the new snapshot, so an older download refuses instead of
+replacing a newer one.
+
 ```bash
 pnpm graph:refresh --store local                   # fetch with OAK_API_KEY
 pnpm graph:refresh --store local --bulk-dir <dir>  # build from a downloaded bulk directory

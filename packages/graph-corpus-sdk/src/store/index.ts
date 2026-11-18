@@ -11,6 +11,7 @@ export {
   createLocalFileObjectStore,
   type BlobClient,
   type ObjectStore,
+  type VersionedObject,
 } from './object-store.js';
 export {
   GRAPH_CORPUS_SCHEMA_VERSION,

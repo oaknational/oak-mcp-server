@@ -7,6 +7,7 @@ import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { fixtureCorpus } from '../curriculum/__tests__/fixture-corpus.js';
+import { createFakeBlobClient } from './__tests__/fake-blob-client.js';
 import {
   GRAPH_CORPUS_SCHEMA_VERSION,
   LATEST_KEY,
@@ -15,45 +16,9 @@ import {
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
   parseGraphCorpusSnapshot,
-  type BlobClient,
   type GraphCorpusSnapshot,
   type ObjectStore,
 } from './index.js';
-
-/** In-memory stand-in for `@vercel/blob`, paging `list` two blobs at a time. */
-function createFakeBlobClient(): BlobClient & { readonly blobs: Map<string, string> } {
-  const blobs = new Map<string, string>();
-  return {
-    blobs,
-    get(pathname, options) {
-      expect(options).toMatchObject({ access: 'private', useCache: false });
-      const body = blobs.get(pathname);
-      return Promise.resolve(body === undefined ? null : { stream: new Blob([body]).stream() });
-    },
-    put(pathname, body, options) {
-      expect(options).toMatchObject({ access: 'private', addRandomSuffix: false });
-      blobs.set(pathname, body);
-      return Promise.resolve({ pathname });
-    },
-    list({ prefix, cursor }) {
-      const all = [...blobs.keys()].filter((key) => key.startsWith(prefix)).sort();
-      const start = cursor === undefined ? 0 : Number(cursor);
-      const page = all.slice(start, start + 2).map((pathname) => ({ pathname }));
-      const hasMore = start + 2 < all.length;
-      return Promise.resolve({
-        blobs: page,
-        hasMore,
-        ...(hasMore ? { cursor: String(start + 2) } : {}),
-      });
-    },
-    del(pathnames) {
-      for (const pathname of pathnames) {
-        blobs.delete(pathname);
-      }
-      return Promise.resolve();
-    },
-  };
-}
 
 function snapshotAt(downloadedAt: string, totalNodes = 3): GraphCorpusSnapshot {
   const corpus = {
@@ -134,6 +99,44 @@ describe.each(stores)('graph corpus snapshot store over the %s store', (_name, m
     );
   });
 
+  it('writes when latest.json is still at the version it was read at', async () => {
+    const store = createGraphCorpusSnapshotStore(await makeStore());
+    await store.write(snapshotAt(day(1)));
+    const read = await store.readLatestVersioned();
+
+    const written = await store.writeIfLatestIs(read?.version ?? null, snapshotAt(day(2)));
+
+    expect(written?.datedKey).toBe('graph-corpus/v1/2026-10-02T03-00-00-000Z.json');
+    expect(unwrap(parseGraphCorpusSnapshot((await store.readLatest()) ?? '')).downloadedAt).toBe(
+      day(2),
+    );
+  });
+
+  it('writes nothing when latest.json changed since it was read', async () => {
+    const objects = await makeStore();
+    const store = createGraphCorpusSnapshotStore(objects);
+    await store.write(snapshotAt(day(1)));
+    const read = await store.readLatestVersioned();
+    await store.write(snapshotAt(day(3)));
+    const keysBefore = await objects.list('graph-corpus/v1/');
+
+    expect(await store.writeIfLatestIs(read?.version ?? null, snapshotAt(day(2)))).toBeNull();
+    expect(unwrap(parseGraphCorpusSnapshot((await store.readLatest()) ?? '')).downloadedAt).toBe(
+      day(3),
+    );
+    expect(await objects.list('graph-corpus/v1/')).toEqual(keysBefore);
+  });
+
+  it('writes nothing when latest.json appeared after it was read as absent', async () => {
+    const store = createGraphCorpusSnapshotStore(await makeStore());
+    await store.write(snapshotAt(day(3)));
+
+    expect(await store.writeIfLatestIs(null, snapshotAt(day(2)))).toBeNull();
+    expect(unwrap(parseGraphCorpusSnapshot((await store.readLatest()) ?? '')).downloadedAt).toBe(
+      day(3),
+    );
+  });
+
   it('leaves keys outside the dated pattern alone when pruning', async () => {
     const objects = await makeStore();
     await objects.put('graph-corpus/v1/notes.json', '{}');
@@ -147,6 +150,37 @@ describe.each(stores)('graph corpus snapshot store over the %s store', (_name, m
   });
 });
 
+describe('conditional writes over the Blob store', () => {
+  it('send ifMatch with the read ETag, or allowOverwrite false when latest.json was absent', async () => {
+    const client = createFakeBlobClient();
+    const store = createGraphCorpusSnapshotStore(createBlobObjectStore(client));
+    await store.writeIfLatestIs(null, snapshotAt(day(1)));
+    const read = await store.readLatestVersioned();
+    await store.writeIfLatestIs(read?.version ?? null, snapshotAt(day(2)));
+
+    const latestPuts = client.puts.filter((put) => put.pathname === LATEST_KEY);
+    expect(latestPuts.map((put) => put.options)).toEqual([
+      expect.objectContaining({ allowOverwrite: false }),
+      expect.objectContaining({ allowOverwrite: true, ifMatch: read?.version }),
+    ]);
+    expect(latestPuts[0]?.options).not.toHaveProperty('ifMatch');
+  });
+
+  it('rethrows a failed write when latest.json is still at the expected version', async () => {
+    const client = createFakeBlobClient();
+    const store = createGraphCorpusSnapshotStore(
+      createBlobObjectStore({
+        ...client,
+        put: () => Promise.reject(new Error('service unavailable')),
+      }),
+    );
+
+    await expect(store.writeIfLatestIs(null, snapshotAt(day(1)))).rejects.toThrow(
+      'service unavailable',
+    );
+  });
+});
+
 describe('readLatest', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -156,7 +190,9 @@ describe('readLatest', () => {
     vi.useFakeTimers();
     const hung: ObjectStore = {
       get: () => new Promise<never>(() => undefined),
+      getVersioned: () => new Promise<never>(() => undefined),
       put: () => Promise.resolve(),
+      putIfVersion: () => Promise.resolve(true),
       list: () => Promise.resolve([]),
       delete: () => Promise.resolve(),
     };

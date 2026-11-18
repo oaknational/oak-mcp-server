@@ -45,4 +45,22 @@ describe('local-file object store', () => {
     expect(await objects.get('graph-corpus/v1/latest.json')).toBe('{"version":"previous"}');
     expect(await objects.list('graph-corpus/v1/')).toEqual(['graph-corpus/v1/latest.json']);
   });
+
+  it('lets one of two concurrent conditional writes from the same version win', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'graph-store-'));
+    tempDirs.push(dir);
+    const objects = createLocalFileObjectStore(dir);
+    const key = 'graph-corpus/v1/latest.json';
+    await objects.put(key, '{"version":"previous"}');
+    const read = await objects.getVersioned(key);
+
+    const won = await Promise.all([
+      objects.putIfVersion(key, '{"version":"a"}', read?.version ?? null),
+      objects.putIfVersion(key, '{"version":"b"}', read?.version ?? null),
+    ]);
+
+    expect(won.filter(Boolean)).toHaveLength(1);
+    expect(await objects.get(key)).toBe(won[0] ? '{"version":"a"}' : '{"version":"b"}');
+    expect(await objects.list('graph-corpus/v1/')).toEqual([key]);
+  });
 });

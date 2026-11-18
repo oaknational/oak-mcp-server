@@ -2,7 +2,7 @@ import { err, isOk, ok, type Result } from '@oaknational/result';
 import type { GraphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
 
 import { isRecord, parseGraphCorpus } from './corpus-shape.js';
-import type { ObjectStore } from './object-store.js';
+import type { ObjectStore, VersionedObject } from './object-store.js';
 
 /** Version of the stored snapshot shape. */
 export const GRAPH_CORPUS_SCHEMA_VERSION = 1;
@@ -92,11 +92,22 @@ export interface GraphCorpusSnapshotStore {
    * the object store has not answered within the read timeout.
    */
   readLatest(): Promise<string | null>;
+  /** {@link readLatest} with the version {@link writeIfLatestIs} compares against. */
+  readLatestVersioned(): Promise<VersionedObject | null>;
   /**
-   * Writes the dated copy, then `latest.json`, then deletes all but the
+   * Writes `latest.json`, then the dated copy, then deletes all but the
    * newest {@link RETAINED_DATED_COPIES} dated copies.
    */
   write(snapshot: GraphCorpusSnapshot): Promise<WrittenSnapshot>;
+  /**
+   * {@link write}, but only while `latest.json` is still at `version`, or
+   * still absent when `version` is `null`. Resolves `null`, writing nothing,
+   * when another writer has replaced it since it was read.
+   */
+  writeIfLatestIs(
+    version: string | null,
+    snapshot: GraphCorpusSnapshot,
+  ): Promise<WrittenSnapshot | null>;
 }
 
 export function createGraphCorpusSnapshotStore(
@@ -104,19 +115,33 @@ export function createGraphCorpusSnapshotStore(
   options: { readonly readTimeoutMs?: number } = {},
 ): GraphCorpusSnapshotStore {
   const readTimeoutMs = options.readTimeoutMs ?? DEFAULT_READ_TIMEOUT_MS;
+  const writeDatedCopy = async (
+    snapshot: GraphCorpusSnapshot,
+    body: string,
+  ): Promise<WrittenSnapshot> => {
+    const dated = datedKey(snapshot.downloadedAt);
+    await objects.put(dated, body);
+    const datedKeys = (await objects.list(PREFIX))
+      .filter((key) => DATED_KEY.test(key.slice(PREFIX.length)))
+      .sort();
+    const prunedKeys = datedKeys.slice(0, Math.max(0, datedKeys.length - RETAINED_DATED_COPIES));
+    await objects.delete(prunedKeys);
+    return { latestKey: LATEST_KEY, datedKey: dated, prunedKeys };
+  };
   return {
     readLatest: () => withTimeout(objects.get(LATEST_KEY), readTimeoutMs),
+    readLatestVersioned: () => withTimeout(objects.getVersioned(LATEST_KEY), readTimeoutMs),
     async write(snapshot) {
       const body = JSON.stringify(snapshot);
-      const dated = datedKey(snapshot.downloadedAt);
-      await objects.put(dated, body);
       await objects.put(LATEST_KEY, body);
-      const datedKeys = (await objects.list(PREFIX))
-        .filter((key) => DATED_KEY.test(key.slice(PREFIX.length)))
-        .sort();
-      const prunedKeys = datedKeys.slice(0, Math.max(0, datedKeys.length - RETAINED_DATED_COPIES));
-      await objects.delete(prunedKeys);
-      return { latestKey: LATEST_KEY, datedKey: dated, prunedKeys };
+      return writeDatedCopy(snapshot, body);
+    },
+    async writeIfLatestIs(version, snapshot) {
+      const body = JSON.stringify(snapshot);
+      if (!(await objects.putIfVersion(LATEST_KEY, body, version))) {
+        return null;
+      }
+      return writeDatedCopy(snapshot, body);
     },
   };
 }
