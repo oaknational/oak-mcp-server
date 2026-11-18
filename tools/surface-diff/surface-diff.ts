@@ -410,14 +410,18 @@ function describeDifference(difference: Difference): string[] {
   return [headline, `    before: ${before}`, `    after:  ${after}`];
 }
 
+function headline(report: SurfaceReport): string {
+  const count = report.unexpected.length;
+  return count === 0
+    ? 'surface identical'
+    : `surface differs: ${String(count)} unexpected ${count === 1 ? 'difference' : 'differences'}`;
+}
+
 export function formatReport(report: SurfaceReport): string {
-  const lines =
-    report.unexpected.length === 0
-      ? ['surface identical']
-      : [
-          `surface differs: ${String(report.unexpected.length)} unexpected ${report.unexpected.length === 1 ? 'difference' : 'differences'}`,
-          ...report.unexpected.flatMap((d) => describeDifference(d).map((line) => `  ${line}`)),
-        ];
+  const lines = [
+    headline(report),
+    ...report.unexpected.flatMap((d) => describeDifference(d).map((line) => `  ${line}`)),
+  ];
   for (const entry of report.expectedPresent) {
     lines.push(`expected difference: ${describeLocation(entry.location)} (${entry.reason})`);
   }
@@ -426,6 +430,33 @@ export function formatReport(report: SurfaceReport): string {
       `expected difference no longer occurs: ${describeLocation(entry.location)}. Remove it from EXPECTED_DIFFERENCES.`,
     );
   }
+  return `${lines.join('\n')}\n`;
+}
+
+function countLabel(difference: Difference): string {
+  switch (difference.kind) {
+    case 'added':
+    case 'removed':
+      return `${difference.kind} ${COLLECTIONS[difference.collection]}`;
+    case 'changed':
+      return `changed ${COLLECTIONS[difference.collection]} field`;
+    case 'server-changed':
+      return 'changed server field';
+  }
+}
+
+export function formatCounts(report: SurfaceReport): string {
+  const counts = new Map<string, number>();
+  for (const difference of report.unexpected) {
+    const label = countLabel(difference);
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  const lines = [
+    headline(report),
+    ...[...counts].map(([label, count]) => `  ${label}: ${String(count)}`),
+    `expected differences: ${String(report.expectedPresent.length)} present, ${String(report.expectedAbsent.length)} no longer occur`,
+    `details withheld while ${TOKEN_VARIABLE} is set`,
+  ];
   return `${lines.join('\n')}\n`;
 }
 
@@ -453,6 +484,7 @@ export function parseBaseline(text: string): SurfaceSnapshot {
 
 const TOKEN_VARIABLE = 'SURFACE_DIFF_BEARER_TOKEN';
 const BEARER_TOKEN = /^[A-Za-z0-9\-._~+/]+=*$/;
+const MIN_TOKEN_LENGTH = 20;
 const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 export function parseBearerToken(value: string | undefined): string | undefined {
@@ -461,6 +493,9 @@ export function parseBearerToken(value: string | undefined): string | undefined 
   }
   if (!BEARER_TOKEN.test(value)) {
     throw new Error(`${TOKEN_VARIABLE} is not a valid bearer token`);
+  }
+  if (value.length < MIN_TOKEN_LENGTH) {
+    throw new Error(`${TOKEN_VARIABLE} is shorter than ${String(MIN_TOKEN_LENGTH)} characters`);
   }
   return value;
 }
@@ -624,7 +659,7 @@ async function main(argv: readonly string[]): Promise<number> {
   const report = judgeSurface(baseline, current, {
     expectIdentical: values['expect-identical'],
   });
-  const output = formatReport(report);
+  const output = token === undefined ? formatReport(report) : formatCounts(report);
   if (token !== undefined && carriesToken([...textsOf(current), output].join('\n'), token)) {
     throw new Error("the target's response contains the bearer token; report suppressed");
   }
