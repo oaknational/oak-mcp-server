@@ -104,6 +104,25 @@ const SHOWN_ON_MAIN_AT_CD8A4DE: readonly (readonly [string, readonly string[]])[
   ['password=correct horse\nnext line', ['correct', 'horse']],
 ];
 
+const COLON_SEPARATED_SHAPES: readonly ((key: string) => string)[] = [
+  (key) => `${key}: alpha bravo charlie`,
+  (key) => `${key} : alpha bravo charlie`,
+  (key) => `${key} = alpha bravo charlie`,
+  (key) => `{"${key}": "alpha bravo, charlie"}`,
+  (key) => `{"${key}":"alpha bravo, charlie"}`,
+  (key) => `{"user":"u1","${key}":"alpha bravo, charlie","n":1}`,
+  (key) => `${key}%3Aalpha%20bravo%20charlie`,
+  (key) => `log line ${key}%3A alpha bravo charlie`,
+];
+
+const SHOWN_ON_F4CB6E7: readonly (readonly [string, readonly string[]])[] = [
+  ['password: correct horse battery staple', ['correct', 'horse', 'battery', 'staple']],
+  ['{"token": "abc secret value, more"}', ['abc', 'secret', 'value', 'more']],
+  ...['password', 'secret', 'token', 'api_key', 'api-key', 'apikey'].flatMap((key) =>
+    COLON_SEPARATED_SHAPES.map((shape) => [shape(key), ['alpha', 'bravo', 'charlie']] as const),
+  ),
+];
+
 function decodeFully(text: string): string {
   let previous: string;
   let decoded = text.replaceAll('+', ' ');
@@ -128,6 +147,7 @@ describe.each([
   ['main at 82f928b hid', HIDDEN_ON_MAIN_AT_82F928B],
   ['main at cd8a4de hid', HIDDEN_ON_MAIN_AT_CD8A4DE],
   ['main at cd8a4de showed', SHOWN_ON_MAIN_AT_CD8A4DE],
+  ['f4cb6e7 showed', SHOWN_ON_F4CB6E7],
 ])('redactTelemetryValue never shows a credential word that %s', (_, rows) => {
   it.each(rows)('%j', (input, hidden) => {
     const visible = visibleWords(redactTelemetryValue(input));

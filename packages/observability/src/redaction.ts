@@ -133,21 +133,28 @@ const RESIDUAL_AUTH_SCHEME = new RegExp(
   'giu',
 );
 
-const CREDENTIAL_KEY = String.raw`(?:password|secret|token|api[_-]?key)[\w.-]{0,64}(?:=|${ENCODED_EQUALS})`;
+const CREDENTIAL_SEPARATOR = String.raw`(?:[=:]|%(?:25)*3[AD])`;
+const CREDENTIAL_KEY = String.raw`(?:password|secret|token|api[_-]?key)[\w.-]{0,64}\\?["']?[ \t]*${CREDENTIAL_SEPARATOR}[ \t]*`;
+const QUOTED_VALUE = String.raw`"((?:[^"\\\r\n]|\\.)*)"`;
 const VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END = String.raw`(?=\s[^\s=&]+(?:=|${ENCODED_EQUALS})|[\r\n&]|$)`;
 
 const RESIDUAL_KEY_VALUE = new RegExp(
-  String.raw`(${CREDENTIAL_KEY})([^\r\n&]*?)${VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END}`,
+  String.raw`(${CREDENTIAL_KEY})(?:${QUOTED_VALUE}|([^\r\n&]*?)${VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END})`,
   'giu',
 );
 
 function redactResidualCredentials(value: string): string {
   return value
     .replaceAll(RESIDUAL_AUTH_SCHEME, `$1 ${REDACTED_VALUE}`)
-    .replaceAll(RESIDUAL_KEY_VALUE, (match, key: string, secret: string) =>
-      secret === '' || secret === REDACTED_VALUE || secret === ENCODED_REDACTED_VALUE
-        ? match
-        : `${key}${REDACTED_VALUE}`,
+    .replaceAll(
+      RESIDUAL_KEY_VALUE,
+      (match, key: string, quoted: string | undefined, unquoted: string | undefined) => {
+        const secret = quoted ?? unquoted;
+        if (secret === '' || secret === REDACTED_VALUE || secret === ENCODED_REDACTED_VALUE) {
+          return match;
+        }
+        return quoted === undefined ? `${key}${REDACTED_VALUE}` : `${key}"${REDACTED_VALUE}"`;
+      },
     );
 }
 
