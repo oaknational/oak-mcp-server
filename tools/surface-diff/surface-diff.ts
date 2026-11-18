@@ -563,6 +563,36 @@ export async function renderSurfaceFile(
   return format(text, { ...options, filepath: path });
 }
 
+function tokenForms(token: string): string[] {
+  return [token, `Bearer ${token}`].flatMap((value) => [
+    value,
+    Buffer.from(value).toString('base64'),
+    Buffer.from(value).toString('base64url'),
+    encodeURIComponent(value),
+    value.replaceAll('/', '\\/'),
+  ]);
+}
+
+function* textsOf(value: Json): Generator<string> {
+  if (typeof value === 'string') {
+    yield value;
+  } else if (isArrayNode(value)) {
+    for (const item of value) {
+      yield* textsOf(item);
+    }
+  } else if (isObjectNode(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      yield key;
+      yield* textsOf(item);
+    }
+  }
+}
+
+export function carriesToken(text: string, token: string): boolean {
+  const folded = text.toLowerCase();
+  return tokenForms(token).some((form) => folded.includes(form.toLowerCase()));
+}
+
 async function main(argv: readonly string[]): Promise<number> {
   const { values } = parseArgs({
     args: [...argv],
@@ -594,7 +624,11 @@ async function main(argv: readonly string[]): Promise<number> {
   const report = judgeSurface(baseline, current, {
     expectIdentical: values['expect-identical'],
   });
-  process.stdout.write(formatReport(report));
+  const output = formatReport(report);
+  if (token !== undefined && carriesToken([...textsOf(current), output].join('\n'), token)) {
+    throw new Error("the target's response contains the bearer token; report suppressed");
+  }
+  process.stdout.write(output);
   return surfaceMatches(report) ? 0 : 1;
 }
 

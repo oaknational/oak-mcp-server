@@ -18,9 +18,32 @@ let origin: URL;
 const landings: string[] = [];
 const getRequests: string[] = [];
 
-function serveMcp(req: IncomingMessage, res: ServerResponse): void {
+const SURFACE_ECHOES = ['raw', 'lower', 'upper', 'base64', 'base64url', 'percent', 'json'] as const;
+
+function surfaceEcho(path: string, authorization: string): string | undefined {
+  switch (path) {
+    case '/surface-raw':
+      return `Look up ${TOKEN}.`;
+    case '/surface-lower':
+      return `Look up ${TOKEN.toLowerCase()}.`;
+    case '/surface-upper':
+      return `Look up ${TOKEN.toUpperCase()}.`;
+    case '/surface-base64':
+      return `Look up ${Buffer.from(authorization).toString('base64')}.`;
+    case '/surface-base64url':
+      return `Look up ${Buffer.from(authorization).toString('base64url')}.`;
+    case '/surface-percent':
+      return `Look up ${encodeURIComponent(authorization)}.`;
+    case '/surface-json':
+      return `Look up ${TOKEN.replaceAll('/', '\\/')}.`;
+    default:
+      return undefined;
+  }
+}
+
+function serveMcp(req: IncomingMessage, res: ServerResponse, description: string): void {
   const server = new McpServer({ name: 'fixture-protected', version: '1.0.0' });
-  server.registerTool('fixture-lookup', { description: 'Look up a fixture.' }, () => ({
+  server.registerTool('fixture-lookup', { description }, () => ({
     content: [],
   }));
   const transport = new StreamableHTTPServerTransport({});
@@ -90,7 +113,7 @@ beforeAll(async () => {
       res.end();
       return;
     }
-    serveMcp(req, res);
+    serveMcp(req, res, surfaceEcho(path, authorization) ?? 'Look up a fixture.');
   });
   await new Promise<void>((resolve) => stub.listen(0, '127.0.0.1', resolve));
   const { port } = stub.address() as AddressInfo;
@@ -121,11 +144,12 @@ async function runCli(args: readonly string[], token: string | undefined) {
     env['SURFACE_DIFF_BEARER_TOKEN'] = token;
   }
   const child = spawn(process.execPath, [CLI, ...args], { env });
-  let output = '';
-  child.stdout.on('data', (chunk: Buffer) => (output += chunk.toString()));
-  child.stderr.on('data', (chunk: Buffer) => (output += chunk.toString()));
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
+  child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
   const [status] = (await once(child, 'close')) as [number | null];
-  return { status, output };
+  return { status, stdout, stderr, output: `${stdout}${stderr}` };
 }
 
 describe('surface diff against a protected target', () => {
@@ -206,4 +230,22 @@ describe('surface diff against a protected target', () => {
     expect(result.output.toLowerCase()).not.toContain('canary');
     expect(readFileSync(BASELINE, 'utf8')).toBe(before);
   });
+
+  it('prints the report when the surface does not carry the token', async () => {
+    const result = await runCli(['--target', at('/mcp').href], TOKEN);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('added tool "fixture-lookup"');
+  });
+
+  it.each(SURFACE_ECHOES)(
+    'suppresses the report when a tool description carries the token (%s)',
+    async (kind) => {
+      const result = await runCli(['--target', at(`/surface-${kind}`).href], TOKEN);
+      expect(result.status).toBe(2);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toBe(
+        "surface-diff: the target's response contains the bearer token; report suppressed\n",
+      );
+    },
+  );
 });
