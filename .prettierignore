@@ -1,3 +1,7 @@
 pnpm-lock.yaml
 /docs/adr/mcp/
 /docs/engineering/
+/apps/server/.widget-build/
+/apps/server/public/oak-ds/
+/apps/server/public/oak-assets/
+/apps/server/public/.oak-*
