@@ -47,6 +47,7 @@ function isJSDocNode(node: ts.Node): boolean {
 
 interface Directive {
   readonly tokensBefore: number;
+  readonly attachment: 'trailing' | 'leading';
   readonly text: string;
 }
 
@@ -60,14 +61,16 @@ function directivesByTokenOffset(file: ts.SourceFile): Directive[] {
       children.forEach(visit);
       return;
     }
-    const ranges = [
-      ...(ts.getTrailingCommentRanges(text, node.pos) ?? []),
-      ...(ts.getLeadingCommentRanges(text, node.pos) ?? []),
-    ];
-    for (const range of ranges) {
-      const comment = text.slice(range.pos, range.end);
-      if (COMPILER_DIRECTIVE_COMMENT.test(comment)) {
-        found.push({ tokensBefore: tokens, text: comment });
+    const attached = [
+      ['trailing', ts.getTrailingCommentRanges(text, node.pos)],
+      ['leading', ts.getLeadingCommentRanges(text, node.pos)],
+    ] as const;
+    for (const [attachment, ranges] of attached) {
+      for (const range of ranges ?? []) {
+        const comment = text.slice(range.pos, range.end);
+        if (COMPILER_DIRECTIVE_COMMENT.test(comment)) {
+          found.push({ tokensBefore: tokens, attachment, text: comment });
+        }
       }
     }
     tokens += 1;

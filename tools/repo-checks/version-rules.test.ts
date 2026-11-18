@@ -144,6 +144,31 @@ describe('version-rules', () => {
         expect(changesCode(tsx, classic, head)).toBe(true);
       });
 
+      it.each([
+        [
+          '/*#__PURE__*/',
+          'a = f(); /*#__PURE__*/\nb = g();\n',
+          'a = f();\n/*#__PURE__*/ b = g();\n',
+        ],
+        ['@jsx', 'a = f(); /** @jsx h */\nb = g();\n', 'a = f();\n/** @jsx h */\nb = g();\n'],
+      ])(
+        'counts a %s comment moved from trailing one statement to leading the next',
+        (_name, base, head) => {
+          expect(changesCode(tsx, base, head)).toBe(true);
+          expect(changesCode(tsx, head, base)).toBe(true);
+        },
+      );
+
+      it('ignores an ordinary comment moved from trailing one statement to leading the next', () => {
+        const base = 'a = f(); // note\nb = g();\n';
+        expect(changesCode(tsx, base, 'a = f();\n// note\nb = g();\n')).toBe(false);
+      });
+
+      it('ignores reindenting a statement that a directive leads', () => {
+        const base = 'a = f();\n/*#__PURE__*/ b = g();\n';
+        expect(changesCode(tsx, base, 'a = f();\n\n  /*#__PURE__*/ b = g();\n')).toBe(false);
+      });
+
       it('ignores an ordinary comment change beside directives', () => {
         const head = widget.replace(
           '// Renders the badge.',
