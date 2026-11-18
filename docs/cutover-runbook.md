@@ -34,7 +34,7 @@ Production `/mcp` accepts only a Clerk OAuth access token. There is no read-only
    export SURFACE_DIFF_BEARER_TOKEN
    ```
 
-6. The operator runs the `pnpm surface:diff` command that the step names, in the same shell, and shares the output with the cutover agent.
+6. The operator runs the `pnpm surface:diff` command that the step names, in the same shell, and shares the output with the cutover agent. The command exits 0 when the surface matches, 1 when it differs and 2 when it cannot run. While `SURFACE_DIFF_BEARER_TOKEN` is set, the output gives only the number of differences of each kind, and ends with `details withheld while SURFACE_DIFF_BEARER_TOKEN is set`. See [Find the differences behind the counts](#find-the-differences-behind-the-counts).
    - If it fails with `HTTP 401` or `HTTP 403`, the token expired or was issued for a different resource. Revoke it and start again at step 1.
    - If it fails with `report suppressed`, the target's response contained the token. Treat the token as exposed. Revoke it at once, do not share the output, and treat the check as failed.
 7. The operator revokes the token and unsets the variable, even when the run failed. `printf` is a shell builtin and `token@-` makes `curl` read the token from stdin, so the token never appears in a process's arguments.
@@ -47,6 +47,25 @@ Production `/mcp` accepts only a Clerk OAuth access token. There is no read-only
    ```
 
 `surface:diff` refuses `--write-baseline` while `SURFACE_DIFF_BEARER_TOKEN` is set, and refuses any run without `--target`. Capture a baseline without a token, from a target that is not production.
+
+### Find the differences behind the counts
+
+Every production run of `surface:diff` prints counts only, because every production run sets `SURFACE_DIFF_BEARER_TOKEN`. To see which differences the counts refer to, the cutover agent reruns the same command without the token, against a target that needs none and serves the same surface as production. Run it after step 7, in the same checkout. Keep `--expect-identical` if the production run used it.
+
+- Before the switch and after a rollback, production runs OOCE's server. Use OOCE's server at the commit of the production deployment, running locally with auth disabled, as in step 8 of [Before the switch](#before-the-switch).
+
+  ```sh
+  pnpm surface:diff --expect-identical --target http://localhost:<port>/mcp
+  ```
+
+- After the switch, production runs this repository's server. Leave out `--target`, so that the command captures the server in this checkout in memory. Run `pnpm build` first. You can also start this repository's server locally at the commit production runs, with auth disabled, and pass its `/mcp` URL as `--target`.
+
+  ```sh
+  pnpm build
+  pnpm surface:diff
+  ```
+
+The rerun prints each difference. It explains the production counts only when its headline gives the same number of unexpected differences as the production run. If the numbers differ, the local target does not serve the same surface as production. Check that it runs the commit that production runs, and run it again.
 
 ## Before the switch
 
