@@ -42,6 +42,16 @@ function isJwtFormat(token: string): boolean {
   return parts.every((part) => part.length > 0 && base64urlRegex.test(part));
 }
 
+function opaqueTokenType(token: string): 'oauth_token' | 'm2m_token' | 'unknown' {
+  if (token.startsWith('oat_')) {
+    return 'oauth_token';
+  }
+  if (token.startsWith('mt_')) {
+    return 'm2m_token';
+  }
+  return 'unknown';
+}
+
 /**
  * Extract audiences from JWT payload.
  */
@@ -160,7 +170,7 @@ export function validateResourceParameter(
   // Opaque tokens (e.g., Clerk's oat_...) cannot be decoded locally
   if (!isJwtFormat(token)) {
     logger.debug('Token is opaque (not JWT), skipping RFC 8707 audience validation', {
-      tokenPrefix: token.slice(0, 4) + '...',
+      credentialType: opaqueTokenType(token),
       expectedResource,
     });
     // **Security assumption**: Opaque tokens have already been verified by

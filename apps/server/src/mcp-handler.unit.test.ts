@@ -157,6 +157,55 @@ describe('createMcpHandler enrichment', () => {
 
     expect(setUser).not.toHaveBeenCalled();
   });
+
+  it('labels an eval machine by principal type and machine id, with no user and no token characters', async () => {
+    const setUser = vi.fn();
+    const setTag = vi.fn();
+    const setContext = vi.fn();
+    const observability = { ...createFakeHttpObservability(), setUser, setTag, setContext };
+
+    const handler = createMcpHandler(createFakeMcpFactory(), observability);
+    await handler(
+      createFakeRequest({
+        auth: {
+          token: 'mt_canarycanarycanary',
+          clientId: 'mch_evalrunner',
+          scopes: [],
+          extra: { principalType: 'machine', machineId: 'mch_evalrunner' },
+        },
+      }),
+      createFakeResponse(),
+    );
+
+    expect(setTag).toHaveBeenCalledWith('auth.principal_type', 'machine');
+    expect(setTag).toHaveBeenCalledWith('auth.machine_id', 'mch_evalrunner');
+    expect(setUser).not.toHaveBeenCalled();
+    const sentToSentry = JSON.stringify([setTag.mock.calls, setContext.mock.calls]);
+    expect(sentToSentry).not.toContain('canary');
+    expect(sentToSentry).not.toContain('mt_c');
+  });
+
+  it('sets no auth tags for a teacher', async () => {
+    const setTag = vi.fn();
+    const observability = { ...createFakeHttpObservability(), setTag };
+
+    const handler = createMcpHandler(createFakeMcpFactory(), observability);
+    await handler(
+      createFakeRequest({
+        auth: {
+          token: 'oat_test',
+          clientId: 'client_test',
+          scopes: [],
+          extra: { userId: 'user_abc123', verifiedBy: 'clerk' },
+        },
+      }),
+      createFakeResponse(),
+    );
+
+    const tagKeys = setTag.mock.calls.map(([key]: unknown[]) => key);
+    expect(tagKeys).not.toContain('auth.principal_type');
+    expect(tagKeys).not.toContain('auth.machine_id');
+  });
 });
 
 /** Narrow an unknown transport response to the byte-writable surface, structurally. */

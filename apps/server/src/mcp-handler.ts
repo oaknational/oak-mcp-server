@@ -15,7 +15,7 @@ import { normalizeError } from '@oaknational/logger';
 import type { Logger } from '@oaknational/logger';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { McpServerFactory } from './mcp-request-context.js';
-import { authInfoExtraSchema } from './auth/mcp-auth/auth-info-schema.js';
+import { authInfoExtraSchema, machineAuthExtraSchema } from './auth/mcp-auth/auth-info-schema.js';
 import { createChildLogger } from './logging/index.js';
 import type { HttpObservability } from './observability/http-observability.js';
 import { extractMcpMethod, extractMcpToolName } from './observability/mcp-request-metadata.js';
@@ -167,6 +167,11 @@ function enrichObservabilityScope(
   const userId = extraResult.success ? extraResult.data.userId : undefined;
   if (userId) {
     observability.setUser({ id: userId });
+  }
+  const machine = machineAuthExtraSchema.safeParse(req.auth?.extra);
+  if (machine.success) {
+    observability.setTag('auth.principal_type', 'machine');
+    observability.setTag('auth.machine_id', machine.data.machineId);
   }
 }
 

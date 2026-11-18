@@ -68,6 +68,13 @@ const BaseEnvSchema = OakApiKeyEnvSchema.extend(ElasticsearchEnvSchema.shape)
     TEST_ERROR_SECRET: z.string().min(16).optional(),
     /** Bearer secret Vercel Cron sends to `/api/cron/refresh-graph`. */
     CRON_SECRET: z.string().min(16).optional(),
+    MCP_EVAL_MACHINE_IDS: z
+      .string()
+      .refine(
+        (value) => (parseCsv(value) ?? []).every((id) => /^mch_[A-Za-z0-9]+$/.test(id)),
+        'MCP_EVAL_MACHINE_IDS must be a comma-separated list of Clerk machine IDs (mch_...)',
+      )
+      .optional(),
     GRAPH_CORPUS_LOCAL_PATH: z.string().min(1).optional(),
     BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
     /**

@@ -8,7 +8,7 @@
 
 import type { RequestHandler, Request } from 'express';
 import type { Logger } from '@oaknational/logger';
-import type { MachineAuthObject } from '@clerk/backend';
+import type { AuthObject, MachineAuthObject } from '@clerk/backend';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { getAuth as defaultGetAuth } from '@clerk/express';
 import { verifyClerkToken as defaultVerifyClerkToken } from '@clerk/mcp-tools/server';
@@ -24,8 +24,8 @@ import { authInfoSchema } from './auth-info-schema.js';
 export interface CreateMcpAuthClerkDeps {
   readonly getAuth: (
     req: Request,
-    opts: { acceptsToken: 'oauth_token' },
-  ) => MachineAuthObject<'oauth_token'>;
+    opts: { acceptsToken: ('oauth_token' | 'm2m_token')[] },
+  ) => AuthObject;
   readonly verifyClerkToken: (
     auth: MachineAuthObject<'oauth_token'>,
     token: string,
@@ -67,37 +67,71 @@ export function createMcpAuthClerk(
     verifyClerkToken: defaultVerifyClerkToken,
   },
   canonicalOrigin?: string,
+  evalMachineIds: ReadonlySet<string> = new Set(),
 ): RequestHandler {
-  // Create authentication middleware with Clerk token verification
   return mcpAuth(
     (token, request: Request) => {
-      // Get Clerk auth context (must be called with oauth_token type)
-      const authData = deps.getAuth(request, { acceptsToken: 'oauth_token' });
-
-      // If not authenticated, return undefined (middleware will return 401)
+      const authData = deps.getAuth(request, { acceptsToken: ['oauth_token', 'm2m_token'] });
       if (!authData.isAuthenticated) {
         return Promise.resolve(undefined);
       }
-
-      // Verify and format the token for MCP SDK
-      const rawAuthInfo = deps.verifyClerkToken(authData, token);
-      if (!rawAuthInfo) {
-        return Promise.resolve(undefined);
+      switch (authData.tokenType) {
+        case 'oauth_token':
+          return Promise.resolve(teacherAuthInfo(authData, token, deps, logger));
+        case 'm2m_token':
+          return Promise.resolve(
+            evalMachineAuthInfo(authData.machineId, token, evalMachineIds, logger),
+          );
+        default:
+          return Promise.resolve(undefined);
       }
-
-      // Validate with Zod .strict() — rejects unknown fields, catches SDK drift
-      const parsed = authInfoSchema.safeParse(rawAuthInfo);
-      if (!parsed.success) {
-        logger.error('Malformed authInfo from verifyClerkToken', {
-          issues: parsed.error.issues.map((issue) => issue.message),
-        });
-        return Promise.resolve(undefined);
-      }
-
-      return Promise.resolve(parsed.data);
     },
     logger,
     allowedHosts,
     canonicalOrigin,
   );
+}
+
+function teacherAuthInfo(
+  authData: MachineAuthObject<'oauth_token'>,
+  token: string,
+  deps: CreateMcpAuthClerkDeps,
+  logger: Logger,
+): AuthInfo | undefined {
+  const rawAuthInfo = deps.verifyClerkToken(authData, token);
+  if (!rawAuthInfo) {
+    return undefined;
+  }
+  const parsed = authInfoSchema.safeParse(rawAuthInfo);
+  if (!parsed.success) {
+    logger.error('Malformed authInfo from verifyClerkToken', {
+      issues: parsed.error.issues.map((issue) => issue.message),
+    });
+    return undefined;
+  }
+  return parsed.data;
+}
+
+/**
+ * Only opaque `mt_` tokens pass: Clerk can revoke those, and it also verifies
+ * JWT-format M2M tokens as `m2m_token`, so the prefix check is what refuses
+ * them. Clerk's M2M `scopes` name machines, not OAuth scopes, so the machine
+ * carries none.
+ */
+function evalMachineAuthInfo(
+  machineId: string,
+  token: string,
+  evalMachineIds: ReadonlySet<string>,
+  logger: Logger,
+): AuthInfo | undefined {
+  if (!token.startsWith('mt_') || !evalMachineIds.has(machineId)) {
+    return undefined;
+  }
+  logger.info('Eval machine authenticated', { principalType: 'machine', machineId });
+  return {
+    token,
+    clientId: machineId,
+    scopes: [],
+    extra: { principalType: 'machine', machineId },
+  };
 }

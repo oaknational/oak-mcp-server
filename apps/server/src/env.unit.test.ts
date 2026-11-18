@@ -548,3 +548,18 @@ describe('PostHog product-analytics selection (OBSERVABILITY_SINKS)', () => {
     });
   });
 });
+
+describe('MCP_EVAL_MACHINE_IDS (MCP-901)', () => {
+  it.each(['mch_evalrunner', 'mch_evalrunner, mch_second', ''])('accepts %j', (value) => {
+    const result = HttpEnvSchema.safeParse({ ...withClerkKeys, MCP_EVAL_MACHINE_IDS: value });
+    expect(result.success).toBe(true);
+  });
+
+  it.each(['mt_pastedtoken', 'user_123', 'mch_evalrunner,ak_key', 'mch_bad-id'])(
+    'refuses %j, which is not a list of machine ids',
+    (value) => {
+      const result = HttpEnvSchema.safeParse({ ...withClerkKeys, MCP_EVAL_MACHINE_IDS: value });
+      expect(result.success).toBe(false);
+    },
+  );
+});
