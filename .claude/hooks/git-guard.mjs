@@ -480,6 +480,37 @@ const isEnvPath = (path) => {
 };
 const ENV_FILE_NAME = /^\.env(?:rc)?(?![a-z])/i;
 const namesEnvFile = (word) => isEnvPath(word) && ENV_FILE_NAME.test(word.split('/').pop() ?? '');
+// yq is left out because it reads its first operand as a file when that path exists.
+const JQ_OPTION_ARITY = new Map([
+  ['--arg', 2],
+  ['--argjson', 2],
+  ['--slurpfile', 2],
+  ['--rawfile', 2],
+  ['--indent', 1],
+  ['-L', 1],
+]);
+const READS_PROGRAM_FILE = /^(?:-[a-z]*f[a-z]*|--from-file)$/i;
+const REDIRECT = /^\d*[<>]/;
+function queryFilterIndex(command, args) {
+  if (command === 'gh') {
+    const flag = args.findIndex((word) => word === '--jq' || word === '-q');
+    return flag === -1 ? -1 : flag + 1;
+  }
+  if (command !== 'jq' || args.some((word) => READS_PROGRAM_FILE.test(word))) {
+    return -1;
+  }
+  for (let index = 0; index < args.length; index += 1) {
+    const word = args[index];
+    if (REDIRECT.test(word)) {
+      index += /^\d*[<>]+&?$/.test(word) ? 1 : 0;
+    } else if (word.startsWith('-')) {
+      index += JQ_OPTION_ARITY.get(word) ?? 0;
+    } else {
+      return index;
+    }
+  }
+  return -1;
+}
 const globNamesEnv = (glob) =>
   glob.split(/[\s,/{}]+/).some((piece) => !piece.startsWith('!') && isEnvPath(piece));
 const HOOK_FILES = /(?:^|\/)(?:\.husky(?:\/|$)|\.git\/config(?:\.worktree)?$)/;
@@ -913,7 +944,10 @@ function checkSegment(words, startDir, depth, checkEnv) {
     checkCommand(args.join(' '), callDir, depth + 1, true, true);
   }
   if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
-    const secret = args.find((word) => namesEnvFile(word.replace(/^\d*[<>]+/, '')));
+    const filter = queryFilterIndex(command, args);
+    const secret = args.find(
+      (word, index) => index !== filter && namesEnvFile(word.replace(/^\d*[<>]+/, '')),
+    );
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
     }
