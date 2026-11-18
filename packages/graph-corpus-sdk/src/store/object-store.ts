@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { link, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+
+import { err, ok, type Result } from '@oaknational/result';
 
 import { isRecord } from './corpus-shape.js';
 import { GraphRefreshError } from './refresh-error.js';
@@ -85,21 +87,59 @@ async function readOrNull(file: string): Promise<string | null> {
   }
 }
 
-async function tryTakeLockWithHolderRecord(lock: string): Promise<boolean> {
-  const holder: LockHolder = {
+type LockState =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'unrecorded' }
+  | { readonly kind: 'other-host' | 'running' | 'exited'; readonly holder: LockHolder };
+
+function judgeLock(text: string | null): LockState {
+  if (text === null) {
+    return { kind: 'absent' };
+  }
+  const holder = parseLockHolder(text);
+  if (holder === null) {
+    return { kind: 'unrecorded' };
+  }
+  if (holder.host !== hostname()) {
+    return { kind: 'other-host', holder };
+  }
+  return { kind: hasExited(holder.pid) ? 'exited' : 'running', holder };
+}
+
+function describeLock(lock: string, state: LockState): string {
+  switch (state.kind) {
+    case 'absent':
+      return `${lock} does not exist`;
+    case 'unrecorded':
+      return `${lock} has no holder record; delete it if no refresh is running`;
+    case 'other-host':
+      return `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, another host`;
+    case 'running':
+      return `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, which is running`;
+    case 'exited':
+      return (
+        `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, which has exited; ` +
+        'run `pnpm graph:refresh --store local --break-stale-lock` if no refresh is running'
+      );
+  }
+}
+
+async function recordIfLockTaken(lock: string): Promise<string | null> {
+  const id = randomUUID();
+  const record = JSON.stringify({
     pid: process.pid,
     host: hostname(),
     startedAt: new Date().toISOString(),
-    id: randomUUID(),
-  };
-  const temp = `${lock}.${holder.id}.tmp`;
-  await writeFile(temp, JSON.stringify(holder), 'utf8');
+    id,
+  } satisfies LockHolder);
+  const temp = `${lock}.${id}.tmp`;
+  await writeFile(temp, record, 'utf8');
   try {
     await link(temp, lock);
-    return true;
+    return record;
   } catch (error) {
     if (hasCode(error, 'EEXIST')) {
-      return false;
+      return null;
     }
     throw error;
   } finally {
@@ -107,54 +147,74 @@ async function tryTakeLockWithHolderRecord(lock: string): Promise<boolean> {
   }
 }
 
-async function breakStaleLock(lock: string, stale: string): Promise<void> {
-  const aside = `${lock}.${randomUUID()}.stale`;
-  try {
-    await rename(lock, aside);
-  } catch (error) {
-    if (hasCode(error, 'ENOENT')) {
-      return;
-    }
-    throw error;
+async function releaseOwnLock(lock: string, record: string): Promise<void> {
+  if ((await readOrNull(lock)) === record) {
+    await rm(lock, { force: true });
   }
-  const retakenByAnotherWaiter = (await readFile(aside, 'utf8')) !== stale;
-  if (retakenByAnotherWaiter) {
-    await link(aside, lock);
-  }
-  await rm(aside, { force: true });
 }
 
 async function whileLocked<T>(file: string, write: () => Promise<T>): Promise<T> {
   const lock = `${file}.lock`;
   const deadline = Date.now() + LOCK_WAIT_MS;
-  while (!(await tryTakeLockWithHolderRecord(lock))) {
-    const held = await readOrNull(lock);
-    const holder = held === null ? null : parseLockHolder(held);
-    if (held !== null && holder?.host === hostname() && hasExited(holder.pid)) {
-      await breakStaleLock(lock, held);
-      continue;
-    }
+  let record: string | null;
+  while ((record = await recordIfLockTaken(lock)) === null) {
     if (Date.now() >= deadline) {
-      const by =
-        holder === null
-          ? ''
-          : ` by pid ${String(holder.pid)} on ${holder.host} since ${holder.startedAt}`;
-      throw new Error(
-        `${lock} was held${by} for ${String(LOCK_WAIT_MS)} ms; delete it if no refresh is running`,
-      );
+      const state = judgeLock(await readOrNull(lock));
+      if (state.kind !== 'absent') {
+        throw new GraphRefreshError(
+          'lock-held',
+          `${describeLock(lock, state)} (waited ${String(LOCK_WAIT_MS)} ms)`,
+        );
+      }
     }
     await sleep(LOCK_POLL_MS);
   }
   try {
     return await write();
   } finally {
-    await rm(lock, { force: true });
+    await releaseOwnLock(lock, record);
+  }
+}
+
+const localFile = (root: string, key: string): string => path.join(root, ...key.split('/'));
+
+/**
+ * Removes the lock on `key` under `root` only when its record names a process
+ * on this host that has exited. Refuses while another break holds `<lock>.break`.
+ */
+export async function breakStaleLocalLock(
+  root: string,
+  key: string,
+): Promise<Result<string, string>> {
+  const lock = `${localFile(root, key)}.lock`;
+  const breaking = `${lock}.break`;
+  try {
+    await (await open(breaking, 'wx')).close();
+  } catch (error) {
+    if (hasCode(error, 'EEXIST')) {
+      return err(
+        `${breaking} exists: another break is running, or one crashed; delete it if none is running`,
+      );
+    }
+    throw error;
+  }
+  try {
+    const state = judgeLock(await readOrNull(lock));
+    if (state.kind !== 'exited') {
+      return err(describeLock(lock, state));
+    }
+    await rm(lock);
+    return ok(
+      `removed ${lock}, held by pid ${String(state.holder.pid)} on ${state.holder.host}, which had exited`,
+    );
+  } finally {
+    await rm(breaking, { force: true });
   }
 }
 
 /** Stores each key as a file under `root`. */
 export function createLocalFileObjectStore(root: string): ObjectStore {
-  const fileFor = (key: string): string => path.join(root, ...key.split('/'));
+  const fileFor = (key: string): string => localFile(root, key);
   const read = (key: string): Promise<string | null> => readOrNull(fileFor(key));
   const replace = async (file: string, body: string): Promise<void> => {
     const temp = `${file}.${randomUUID()}.tmp`;

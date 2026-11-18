@@ -1,5 +1,6 @@
 /** Why a graph refresh threw instead of writing or refusing. */
-export type RefreshFailure = 'write-contention' | 'latest-read-failed' | 'missing-etag';
+export type RefreshFailure =
+  'write-contention' | 'latest-read-failed' | 'missing-etag' | 'lock-held';
 
 export class GraphRefreshError extends Error {
   override readonly name = 'GraphRefreshError';

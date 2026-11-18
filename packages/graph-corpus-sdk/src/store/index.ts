@@ -7,6 +7,7 @@ import {
 } from './object-store.js';
 
 export {
+  breakStaleLocalLock,
   createBlobObjectStore,
   createLocalFileObjectStore,
   type BlobClient,
