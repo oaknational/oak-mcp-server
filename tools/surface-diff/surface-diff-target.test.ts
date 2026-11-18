@@ -28,16 +28,30 @@ function serveMcp(req: IncomingMessage, res: ServerResponse): void {
   void server.connect(transport).then(() => transport.handleRequest(req, res));
 }
 
-const ECHOES: ReadonlyMap<string, (authorization: string) => string> = new Map([
-  ['/echo-raw', (authorization: string) => `boom ${authorization}`],
-  ['/echo-base64', (authorization: string) => Buffer.from(authorization).toString('base64')],
-  ['/echo-percent', (authorization: string) => encodeURIComponent(authorization)],
-  [
-    '/echo-json',
-    (authorization: string) => JSON.stringify({ echo: authorization.replaceAll('/', '\\/') }),
-  ],
-  ['/echo-lower', (authorization: string) => authorization.toLowerCase()],
-]);
+const ECHO_PATHS = [
+  '/echo-raw',
+  '/echo-base64',
+  '/echo-percent',
+  '/echo-json',
+  '/echo-lower',
+] as const;
+
+function echoBody(path: string, authorization: string): string | undefined {
+  switch (path) {
+    case '/echo-raw':
+      return `boom ${authorization}`;
+    case '/echo-base64':
+      return Buffer.from(authorization).toString('base64');
+    case '/echo-percent':
+      return encodeURIComponent(authorization);
+    case '/echo-json':
+      return JSON.stringify({ echo: authorization.replaceAll('/', '\\/') });
+    case '/echo-lower':
+      return authorization.toLowerCase();
+    default:
+      return undefined;
+  }
+}
 
 beforeAll(async () => {
   stub = createServer((req, res) => {
@@ -59,10 +73,10 @@ beforeAll(async () => {
       res.end(`rejected ${authorization}`);
       return;
     }
-    const echo = ECHOES.has(path) ? ECHOES.get(path) : undefined;
+    const echo = echoBody(path, authorization);
     if (echo !== undefined) {
       res.writeHead(500, { 'content-type': 'text/plain' });
-      res.end(echo(authorization));
+      res.end(echo);
       return;
     }
     if (path === '/bad-json') {
@@ -132,7 +146,7 @@ describe('surface diff against a protected target', () => {
     expect(text).not.toContain('wrong');
   });
 
-  it.each([...ECHOES.keys()])('prints only the status for a 500 at %s', async (path) => {
+  it.each(ECHO_PATHS)('prints only the status for a 500 at %s', async (path) => {
     const text = await failureOf(captureTarget(at(path), TOKEN));
     expect(text.split('\n')[0]).toBe('HTTP 500');
     expect(text.toLowerCase()).not.toContain('canary');
