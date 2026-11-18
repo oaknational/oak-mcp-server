@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseOtelLogRecord } from './test-helpers/parse-otel-log-record';
-import type { FileSinkInterface } from './file-sink';
+import { createFileSink, type FileSinkInterface } from './file-sink';
+import { createNodeStdoutSink } from './node';
 import type { LogEvent, LogSink } from './types';
 import type { ResourceAttributes } from './resource-attributes';
 import { UnifiedLogger } from './unified-logger';
@@ -140,5 +141,47 @@ describe('Logger DI Integration', () => {
       parentKey: 'parentValue',
       childKey: 'childValue',
     });
+  });
+
+  it.each([
+    ['a key=value credential', 'login failed password=canary-pw-7f3a'],
+    ['a bearer token', 'upstream said Authorization: Bearer canary-pw-7f3a'],
+  ])('keeps %s in the message out of the stdout and file lines', (_label, message) => {
+    const stdoutWrite = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+    const fileChunks: string[] = [];
+    const fileSink = createFileSink(
+      { path: '/virtual/app.log' },
+      {
+        mkdirSync: vi.fn(),
+        createWriteStream: () => ({
+          write: (chunk: string) => fileChunks.push(chunk) > 0,
+          end: vi.fn(),
+          on: vi.fn(),
+        }),
+      },
+    );
+    expect(fileSink).not.toBeNull();
+    const logger = new UnifiedLogger({
+      minSeverity: 1,
+      resourceAttributes: httpResourceAttributes,
+      context: {},
+      sinks: [createNodeStdoutSink(), ...(fileSink ? [fileSink] : [])],
+      getActiveSpanContext: NO_ACTIVE_SPAN_CONTEXT,
+    });
+
+    let stdoutLines: string[];
+    try {
+      logger.warn(message);
+      stdoutLines = stdoutWrite.mock.calls.map(([chunk]) => String(chunk));
+    } finally {
+      stdoutWrite.mockRestore();
+    }
+
+    expect(stdoutLines).toHaveLength(1);
+    expect(fileChunks).toHaveLength(1);
+    for (const line of [...stdoutLines, ...fileChunks]) {
+      expect(line).not.toContain('canary-pw-7f3a');
+      expect(parseOtelLogRecord(line).Body).toContain('[REDACTED]');
+    }
   });
 });

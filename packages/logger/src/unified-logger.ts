@@ -138,12 +138,13 @@ export class UnifiedLogger implements Logger {
       ? mergeLogContext(this.context, additionalContext)
       : this.context;
 
+    const redactedMessage = this.redactStringValue(message);
     const redactedContext = this.redactContext(mergedContext);
     const redactedError = error ? this.redactError(error) : undefined;
 
     const otelRecord = formatOtelLogRecord({
       level,
-      message,
+      message: redactedMessage,
       error: redactedError,
       context: redactedContext,
       resourceAttributes: this.resourceAttributes,
@@ -152,7 +153,7 @@ export class UnifiedLogger implements Logger {
 
     const event: LogEvent = {
       level,
-      message,
+      message: redactedMessage,
       context: redactedContext,
       error: redactedError,
       otelRecord,
