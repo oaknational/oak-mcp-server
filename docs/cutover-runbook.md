@@ -26,7 +26,7 @@ Production `/mcp` accepts only a Clerk OAuth access token. There is no read-only
 1. The operator reads `registration_endpoint`, `authorization_endpoint`, `token_endpoint` and `revocation_endpoint` from `https://mcp.thenational.academy/.well-known/oauth-authorization-server`.
 2. The operator registers a client at `registration_endpoint` (dynamic client registration), with `token_endpoint_auth_method` set to `none` and a loopback redirect URI, and keeps the `client_id`.
 3. The operator runs the authorization code flow with PKCE (`S256`), with `scope=email` and `resource=https://mcp.thenational.academy/mcp`, and signs in with the production test account. Do not request `openid`. Sign-in refuses it.
-4. The operator exchanges the code at `token_endpoint`. The `access_token` in the response is the token.
+4. The operator exchanges the code at `token_endpoint`. The `access_token` in the response is the token. Do steps 2 to 4 in a browser or an OAuth client tool, not with shell commands, so that the authorization code, the PKCE verifier and the token never go on a command line.
 5. The operator sets the token only in the environment variable `SURFACE_DIFF_BEARER_TOKEN`. Paste it at the silent prompt of `read`, so that it never appears in a command line or in shell history. `surface:diff` has no option for the token, so never pass it as an argument.
 
    ```sh
@@ -37,11 +37,11 @@ Production `/mcp` accepts only a Clerk OAuth access token. There is no read-only
 6. The operator runs the `pnpm surface:diff` command that the step names, in the same shell, and shares the output with the cutover agent.
    - If it fails with `HTTP 401` or `HTTP 403`, the token expired or was issued for a different resource. Revoke it and start again at step 1.
    - If it fails with `report suppressed`, the target's response contained the token. Treat the token as exposed. Revoke it at once, do not share the output, and treat the check as failed.
-7. The operator revokes the token and unsets the variable, even when the run failed.
+7. The operator revokes the token and unsets the variable, even when the run failed. `printf` is a shell builtin and `token@-` makes `curl` read the token from stdin, so the token never appears in a process's arguments.
 
    ```sh
-   curl -sS -X POST "<revocation_endpoint>" \
-     --data-urlencode "token=$SURFACE_DIFF_BEARER_TOKEN" \
+   printf '%s' "$SURFACE_DIFF_BEARER_TOKEN" | curl -sS -X POST "<revocation_endpoint>" \
+     --data-urlencode "token@-" \
      --data-urlencode "client_id=<client_id>"
    unset SURFACE_DIFF_BEARER_TOKEN
    ```
