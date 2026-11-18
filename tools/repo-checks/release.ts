@@ -116,18 +116,15 @@ function commitsToCheck(rules: readonly ReleaseRule[]): Commit[] {
     ...commitlintConventional.rules['type-enum'][2],
     ...rules.flatMap((rule) => (rule.type === undefined ? [] : [rule.type])),
   ]);
-  const shapes = [
-    ...[...types, undefined].map((type) => ({ type, revert: false })),
-    { type: undefined, revert: true },
-  ];
-  return shapes.flatMap((shape) => [
-    { ...shape, breaking: false },
-    { ...shape, breaking: true },
-  ]);
+  return [...types, undefined].flatMap((type) =>
+    [false, true].flatMap((revert) =>
+      [false, true].map((breaking) => ({ type, revert, breaking })),
+    ),
+  );
 }
 
 function describe({ type, breaking, revert }: Commit): string {
-  return `${revert ? '(revert)' : (type ?? '(no type)')}${breaking ? '!' : ''}`;
+  return `${revert ? '(revert) ' : ''}${type ?? '(no type)'}${breaking ? '!' : ''}`;
 }
 
 export function findMajorReleases(rawRules: readonly unknown[]): string[] {

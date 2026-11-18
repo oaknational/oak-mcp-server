@@ -40,7 +40,7 @@ describe('release rules', () => {
         { breaking: true, release: false },
         { type: 'perf', breaking: true, release: 'premajor' },
       ]),
-    ).toEqual(['perf!']);
+    ).toEqual(['perf!', '(revert) perf!']);
   });
 
   it('fail a major rule that a later no-release rule follows, since major ends the analysis', () => {
@@ -49,7 +49,13 @@ describe('release rules', () => {
         { type: 'docs', breaking: true, release: 'major' },
         { breaking: true, release: false },
       ]),
-    ).toEqual(['docs!']);
+    ).toEqual(['docs!', '(revert) docs!']);
+  });
+
+  it('fail a config that maps a typed revert to major', () => {
+    expect(
+      findMajorReleases([...RELEASE_RULES, { type: 'revert', revert: true, release: 'major' }]),
+    ).toEqual(['(revert) revert', '(revert) revert!']);
   });
 
   it('refuse a rule it cannot model', () => {
