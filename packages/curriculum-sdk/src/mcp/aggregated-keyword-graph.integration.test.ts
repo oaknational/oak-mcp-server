@@ -20,12 +20,24 @@ import {
   createCurriculumGraphViews,
   MAX_KEYWORD_LIMIT,
 } from '@oaknational/graph-corpus-sdk/curriculum';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
-import { GET_KEYWORD_GRAPH_TOOL_DEF, runKeywordGraphTool } from './aggregated-keyword-graph.js';
+import {
+  GET_KEYWORD_GRAPH_TOOL_DEF,
+  parseKeywordGraphInput,
+  runKeywordGraphTool,
+} from './aggregated-keyword-graph.js';
 
 const views = createCurriculumGraphViews(fixtureCorpus);
+
+function callKeywordGraph(args: unknown, graphViews: CurriculumGraphViews): CallToolResult {
+  const input = parseKeywordGraphInput(args);
+  return input.ok ? runKeywordGraphTool(input.value, graphViews) : formatError(input.error);
+}
 
 /** Narrows a deterministic fixture pick, failing loudly if the corpus cannot supply it. */
 function required<T>(value: T | undefined, message: string): T {
@@ -118,19 +130,19 @@ describe('GET_KEYWORD_GRAPH_TOOL_DEF', () => {
 
 describe('runKeywordGraphTool — anchor requirements at the boundary', () => {
   it('rejects a call with no anchor', () => {
-    const result = runKeywordGraphTool({}, views);
+    const result = callKeywordGraph({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a subject without its keyStage half', () => {
-    const result = runKeywordGraphTool({ subject: knownAnchor.subject }, views);
+    const result = callKeywordGraph({ subject: knownAnchor.subject }, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a keyStage without its subject half', () => {
-    const result = runKeywordGraphTool({ keyStage: knownAnchor.keyStage }, views);
+    const result = callKeywordGraph({ keyStage: knownAnchor.keyStage }, views);
 
     expect(result.isError).toBe(true);
   });
@@ -139,7 +151,7 @@ describe('runKeywordGraphTool — anchor requirements at the boundary', () => {
   // fires at the Zod parse boundary; the view-layer validateLimit remains
   // as defence-in-depth for direct unvalidated calls.
   it('rejects a limit beyond the view ceiling as a boundary error', () => {
-    const result = runKeywordGraphTool(
+    const result = callKeywordGraph(
       {
         ...knownAnchor,
         limit: MAX_KEYWORD_LIMIT + 1,
@@ -153,7 +165,7 @@ describe('runKeywordGraphTool — anchor requirements at the boundary', () => {
 
 describe('runKeywordGraphTool — anchored retrieval envelope', () => {
   it('returns ranked bounded keywords in structuredContent with paired TextContent', () => {
-    const result = runKeywordGraphTool(knownAnchor, views);
+    const result = callKeywordGraph(knownAnchor, views);
 
     expect(result.isError).toBeUndefined();
     expect(result.content).toHaveLength(2);
@@ -170,7 +182,7 @@ describe('runKeywordGraphTool — anchored retrieval envelope', () => {
   });
 
   it('propagates an explicit limit into the envelope', () => {
-    const result = runKeywordGraphTool({ ...knownAnchor, limit: 3 }, views);
+    const result = callKeywordGraph({ ...knownAnchor, limit: 3 }, views);
 
     expect(result.isError).toBeUndefined();
     const envelope = KEYWORD_ENVELOPE.parse(result.structuredContent);
@@ -179,7 +191,7 @@ describe('runKeywordGraphTool — anchored retrieval envelope', () => {
   });
 
   it('reports unknown narrowing slugs without erroring', () => {
-    const result = runKeywordGraphTool(
+    const result = callKeywordGraph(
       {
         ...knownAnchor,
         unitSlugs: ['no-such-unit-slug-xyz'],
@@ -195,7 +207,7 @@ describe('runKeywordGraphTool — anchored retrieval envelope', () => {
   });
 
   it('returns a well-formed empty result for an unknown subject', () => {
-    const result = runKeywordGraphTool(
+    const result = callKeywordGraph(
       {
         subject: 'no-such-subject-xyz',
         keyStage: knownAnchor.keyStage,

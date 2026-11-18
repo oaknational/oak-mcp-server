@@ -23,6 +23,7 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
+import { err, ok, type Result } from '@oaknational/result';
 import {
   DEFAULT_THREAD_UNIT_LIMIT,
   MAX_THREAD_UNIT_LIMIT,
@@ -201,29 +202,35 @@ function dispatchAnchor(
   return { errorText: 'get-misconception-graph failed: no anchor resolved after validation.' };
 }
 
+type MisconceptionInput = z.infer<typeof MISCONCEPTION_INPUT_VALIDATED>;
+
 /**
- * Execute the anchored get-misconception-graph tool.
- *
- * Validation is the schema parse itself — anchor exclusivity, window
+ * Parse raw get-misconception-graph arguments. Anchor exclusivity, window
  * coupling, and the window ceiling fall out of
- * {@link MISCONCEPTION_INPUT_VALIDATED}. The bounded result is returned in
- * structuredContent with the summary and serialised JSON alongside as
- * TextContent (MCP spec SHOULD for structured results).
+ * {@link MISCONCEPTION_INPUT_VALIDATED}; the error is the model-facing text.
+ */
+export function parseMisconceptionGraphInput(input: unknown): Result<MisconceptionInput, string> {
+  const parsed = MISCONCEPTION_INPUT_VALIDATED.safeParse(input);
+  return parsed.success
+    ? ok(parsed.data)
+    : err(`Invalid get-misconception-graph input: ${parsed.error.message}`);
+}
+
+/**
+ * Execute the anchored get-misconception-graph tool on parsed input. The
+ * bounded result is returned in structuredContent with the summary and
+ * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
+ * results).
  *
- * @param input - Raw MCP tool-call arguments.
+ * @param input - Arguments from {@link parseMisconceptionGraphInput}.
  * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored result in structuredContent.
  */
 export function runMisconceptionGraphTool(
-  input: unknown,
+  input: MisconceptionInput,
   views: CurriculumGraphViews,
 ): CallToolResult {
-  const parsed = MISCONCEPTION_INPUT_VALIDATED.safeParse(input);
-  if (!parsed.success) {
-    return formatError(`Invalid get-misconception-graph input: ${parsed.error.message}`);
-  }
-
-  const dispatched = dispatchAnchor(parsed.data, views);
+  const dispatched = dispatchAnchor(input, views);
   if ('errorText' in dispatched) {
     return formatError(dispatched.errorText);
   }

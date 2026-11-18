@@ -20,17 +20,26 @@ import {
   DEFAULT_THREAD_UNIT_LIMIT,
   MAX_THREAD_UNIT_LIMIT,
 } from '@oaknational/graph-corpus-sdk/curriculum';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import {
   GET_MISCONCEPTION_GRAPH_TOOL_DEF,
   GET_MISCONCEPTION_GRAPH_INPUT_SCHEMA,
+  parseMisconceptionGraphInput,
   runMisconceptionGraphTool,
 } from './aggregated-misconception-graph.js';
 import { wireProperties } from './test-helpers/advertised-examples.js';
 
 const views = createCurriculumGraphViews(fixtureCorpus);
+
+function callMisconceptionGraph(args: unknown, graphViews: CurriculumGraphViews): CallToolResult {
+  const input = parseMisconceptionGraphInput(args);
+  return input.ok ? runMisconceptionGraphTool(input.value, graphViews) : formatError(input.error);
+}
 
 /** Narrows a deterministic fixture pick, failing loudly if the corpus cannot supply it. */
 function required<T>(value: T | undefined, message: string): T {
@@ -145,7 +154,7 @@ describe('GET_MISCONCEPTION_GRAPH_TOOL_DEF', () => {
 
 describe('runMisconceptionGraphTool', () => {
   it('returns the lesson-anchored envelope: summary + JSON content and structuredContent', () => {
-    const result = runMisconceptionGraphTool({ lessonSlugs: [knownLessonSlug] }, views);
+    const result = callMisconceptionGraph({ lessonSlugs: [knownLessonSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     // MCP spec SHOULD: structured content is mirrored by serialised TextContent.
@@ -164,7 +173,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns the unit-anchored envelope with the unit entry shape', () => {
-    const result = runMisconceptionGraphTool({ unitSlugs: [knownUnitSlug] }, views);
+    const result = callMisconceptionGraph({ unitSlugs: [knownUnitSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = UNIT_ENVELOPE.parse(result.structuredContent);
@@ -174,7 +183,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns the thread-anchored envelope with honest window coverage (heavy tail)', () => {
-    const result = runMisconceptionGraphTool({ threadSlug: megaThread.threadSlug }, views);
+    const result = callMisconceptionGraph({ threadSlug: megaThread.threadSlug }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = THREAD_ENVELOPE.parse(result.structuredContent);
@@ -188,7 +197,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('summarises an offset-beyond-length window as empty, never an inverted range', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         threadSlug: megaThread.threadSlug,
         unitOffset: megaThread.unitCount,
@@ -204,7 +213,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('honours an explicit thread window within the ceiling', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         threadSlug: megaThread.threadSlug,
         unitOffset: 1,
@@ -220,7 +229,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('reports unknown anchors as information, not an error', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         lessonSlugs: [knownLessonSlug, 'definitely-not-a-real-lesson-slug-xyz'],
       },
@@ -235,7 +244,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('returns a well-formed empty envelope when no anchors resolve', () => {
-    const result = runMisconceptionGraphTool({ lessonSlugs: ['no-such-lesson-anywhere'] }, views);
+    const result = callMisconceptionGraph({ lessonSlugs: ['no-such-lesson-anywhere'] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = LESSON_ENVELOPE.parse(result.structuredContent);
@@ -245,13 +254,13 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('rejects a call with no anchor at the input boundary', () => {
-    const result = runMisconceptionGraphTool({}, views);
+    const result = callMisconceptionGraph({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects a call with two anchor modes at the input boundary', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         lessonSlugs: [knownLessonSlug],
         unitSlugs: [knownUnitSlug],
@@ -263,7 +272,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('rejects a unit window on a non-thread anchor at the input boundary', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         lessonSlugs: [knownLessonSlug],
         unitLimit: 5,
@@ -275,7 +284,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('rejects a unit window beyond the ceiling at the input boundary', () => {
-    const result = runMisconceptionGraphTool(
+    const result = callMisconceptionGraph(
       {
         threadSlug: megaThread.threadSlug,
         unitLimit: MAX_THREAD_UNIT_LIMIT + 1,
@@ -287,7 +296,7 @@ describe('runMisconceptionGraphTool', () => {
   });
 
   it('rejects non-object input at the input boundary', () => {
-    const result = runMisconceptionGraphTool('lessonSlugs', views);
+    const result = callMisconceptionGraph('lessonSlugs', views);
 
     expect(result.isError).toBe(true);
   });

@@ -16,17 +16,26 @@
  */
 
 import { createCurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import {
   GET_THREAD_PROGRESSIONS_TOOL_DEF,
   GET_THREAD_PROGRESSIONS_INPUT_SCHEMA,
+  parseThreadProgressionsInput,
   runThreadProgressionsTool,
 } from './aggregated-thread-progressions.js';
 import { wireProperties } from './test-helpers/advertised-examples.js';
 
 const views = createCurriculumGraphViews(fixtureCorpus);
+
+function callThreadProgressions(args: unknown, graphViews: CurriculumGraphViews): CallToolResult {
+  const input = parseThreadProgressionsInput(args);
+  return input.ok ? runThreadProgressionsTool(input.value, graphViews) : formatError(input.error);
+}
 
 /** Narrows a deterministic fixture pick, failing loudly if the corpus cannot supply it. */
 function required<T>(value: T | undefined, message: string): T {
@@ -151,13 +160,13 @@ describe('GET_THREAD_PROGRESSIONS_TOOL_DEF', () => {
 
 describe('runThreadProgressionsTool — anchor exclusivity at the boundary', () => {
   it('rejects a call with no anchor', () => {
-    const result = runThreadProgressionsTool({}, views);
+    const result = callThreadProgressions({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects combining threadSlug with the discovery anchor', () => {
-    const result = runThreadProgressionsTool(
+    const result = callThreadProgressions(
       {
         threadSlug: knownThreadSlug,
         subject: knownSubjectKeyStage.subject,
@@ -170,7 +179,7 @@ describe('runThreadProgressionsTool — anchor exclusivity at the boundary', () 
   });
 
   it('rejects a discovery anchor missing its other half', () => {
-    const result = runThreadProgressionsTool({ subject: knownSubjectKeyStage.subject }, views);
+    const result = callThreadProgressions({ subject: knownSubjectKeyStage.subject }, views);
 
     expect(result.isError).toBe(true);
   });
@@ -178,7 +187,7 @@ describe('runThreadProgressionsTool — anchor exclusivity at the boundary', () 
 
 describe('runThreadProgressionsTool — thread detail anchor', () => {
   it('returns one thread’s progression in structuredContent with paired TextContent', () => {
-    const result = runThreadProgressionsTool({ threadSlug: knownThreadSlug }, views);
+    const result = callThreadProgressions({ threadSlug: knownThreadSlug }, views);
 
     expect(result.isError).toBeUndefined();
     expect(result.content).toHaveLength(2);
@@ -194,7 +203,7 @@ describe('runThreadProgressionsTool — thread detail anchor', () => {
   });
 
   it('returns exactly one run for a thread confined to a single subject', () => {
-    const result = runThreadProgressionsTool({ threadSlug: singleSubjectThreadSlug }, views);
+    const result = callThreadProgressions({ threadSlug: singleSubjectThreadSlug }, views);
 
     const envelope = THREAD_ENVELOPE.parse(result.structuredContent);
     expect(envelope.threads[0]?.progressions).toHaveLength(1);
@@ -204,7 +213,7 @@ describe('runThreadProgressionsTool — thread detail anchor', () => {
     const expectedRuns = fixtureCorpus.sequences.filter(
       (sequence) => sequence.threadId === `thread:${multiSubjectThreadSlug}`,
     ).length;
-    const result = runThreadProgressionsTool({ threadSlug: multiSubjectThreadSlug }, views);
+    const result = callThreadProgressions({ threadSlug: multiSubjectThreadSlug }, views);
 
     const envelope = THREAD_ENVELOPE.parse(result.structuredContent);
     expect(expectedRuns).toBeGreaterThan(1);
@@ -215,7 +224,7 @@ describe('runThreadProgressionsTool — thread detail anchor', () => {
   // the per-subject shape and the ordering basis must survive in prose, not
   // only in structuredContent.
   it('states the run count, the subjects, and the ordering basis in the summary text', () => {
-    const result = runThreadProgressionsTool({ threadSlug: multiSubjectThreadSlug }, views);
+    const result = callThreadProgressions({ threadSlug: multiSubjectThreadSlug }, views);
     const summary = result.content[0];
     const subjects = fixtureCorpus.sequences
       .filter((sequence) => sequence.threadId === `thread:${multiSubjectThreadSlug}`)
@@ -230,14 +239,14 @@ describe('runThreadProgressionsTool — thread detail anchor', () => {
   });
 
   it('says "subject run" in the singular for a single-subject thread', () => {
-    const result = runThreadProgressionsTool({ threadSlug: singleSubjectThreadSlug }, views);
+    const result = callThreadProgressions({ threadSlug: singleSubjectThreadSlug }, views);
 
     const text = TEXT_CONTENT.parse(result.content[0]).text;
     expect(text).toContain('1 subject run (');
   });
 
   it('reports an unknown thread slug without erroring (well-formed empty)', () => {
-    const result = runThreadProgressionsTool({ threadSlug: 'no-such-thread' }, views);
+    const result = callThreadProgressions({ threadSlug: 'no-such-thread' }, views);
 
     expect(result.isError).toBeUndefined();
     const envelope = THREAD_ENVELOPE.parse(result.structuredContent);
@@ -248,7 +257,7 @@ describe('runThreadProgressionsTool — thread detail anchor', () => {
 
 describe('runThreadProgressionsTool — subject+keyStage discovery anchor', () => {
   it('returns bounded descriptors without sequences', () => {
-    const result = runThreadProgressionsTool(knownSubjectKeyStage, views);
+    const result = callThreadProgressions(knownSubjectKeyStage, views);
 
     expect(result.isError).toBeUndefined();
     const envelope = DISCOVERY_ENVELOPE.parse(result.structuredContent);
@@ -258,10 +267,7 @@ describe('runThreadProgressionsTool — subject+keyStage discovery anchor', () =
   });
 
   it('returns a well-formed empty result for an unmatched anchor', () => {
-    const result = runThreadProgressionsTool(
-      { subject: 'no-such-subject', keyStage: 'ks2' },
-      views,
-    );
+    const result = callThreadProgressions({ subject: 'no-such-subject', keyStage: 'ks2' }, views);
 
     expect(result.isError).toBeUndefined();
     const envelope = DISCOVERY_ENVELOPE.parse(result.structuredContent);

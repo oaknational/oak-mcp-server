@@ -14,15 +14,24 @@
  */
 
 import { createCurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import {
   GET_PRIOR_KNOWLEDGE_GRAPH_TOOL_DEF,
+  parsePriorKnowledgeGraphInput,
   runPriorKnowledgeGraphTool,
 } from './aggregated-prior-knowledge-graph.js';
 
 const views = createCurriculumGraphViews(fixtureCorpus);
+
+function callPriorKnowledgeGraph(args: unknown, graphViews: CurriculumGraphViews): CallToolResult {
+  const input = parsePriorKnowledgeGraphInput(args);
+  return input.ok ? runPriorKnowledgeGraphTool(input.value, graphViews) : formatError(input.error);
+}
 
 /** A corpus unit slug, chosen deterministically (lexicographic minimum). */
 const firstUnitSlug = fixtureCorpus.nodes
@@ -73,7 +82,7 @@ describe('GET_PRIOR_KNOWLEDGE_GRAPH_TOOL_DEF', () => {
 
 describe('runPriorKnowledgeGraphTool', () => {
   it('returns the statements envelope for a known anchor: summary + JSON content and structuredContent', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug] }, views);
+    const result = callPriorKnowledgeGraph({ unitSlugs: [knownUnitSlug] }, views);
 
     expect(result.isError).toBeUndefined();
     // MCP spec SHOULD: structured content is mirrored by serialised TextContent.
@@ -91,7 +100,7 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('reports unknown anchors as information, not an error', () => {
-    const result = runPriorKnowledgeGraphTool(
+    const result = callPriorKnowledgeGraph(
       {
         unitSlugs: [knownUnitSlug, 'definitely-not-a-real-unit-slug-xyz'],
       },
@@ -106,7 +115,7 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('returns a well-formed empty envelope when no anchors resolve', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: ['no-such-unit-anywhere'] }, views);
+    const result = callPriorKnowledgeGraph({ unitSlugs: ['no-such-unit-anywhere'] }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = STATEMENTS_ENVELOPE.parse(result.structuredContent);
@@ -116,7 +125,7 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('strips the retired depth input rather than erroring (old callers keep working)', () => {
-    const result = runPriorKnowledgeGraphTool({ unitSlugs: [knownUnitSlug], depth: 2 }, views);
+    const result = callPriorKnowledgeGraph({ unitSlugs: [knownUnitSlug], depth: 2 }, views);
 
     expect(result.isError).toBeUndefined();
     const structured = STATEMENTS_ENVELOPE.parse(result.structuredContent);
@@ -124,13 +133,13 @@ describe('runPriorKnowledgeGraphTool', () => {
   });
 
   it('rejects input without unitSlugs at the input boundary', () => {
-    const result = runPriorKnowledgeGraphTool({}, views);
+    const result = callPriorKnowledgeGraph({}, views);
 
     expect(result.isError).toBe(true);
   });
 
   it('rejects non-object input at the input boundary', () => {
-    const result = runPriorKnowledgeGraphTool('unitSlugs', views);
+    const result = callPriorKnowledgeGraph('unitSlugs', views);
 
     expect(result.isError).toBe(true);
   });
