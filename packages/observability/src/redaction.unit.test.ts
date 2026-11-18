@@ -193,6 +193,49 @@ describe('redactTelemetryValue', () => {
   });
 });
 
+describe('redactTelemetryObject credential-barrier percent-encoding (MCP-693)', () => {
+  const CANARY = 'CANARY-SECRET-TOKEN-99887766';
+
+  function serialisedMsg(msg: string): string {
+    return JSON.stringify(redactTelemetryObject({ msg }));
+  }
+
+  it('redacts a Bearer credential separated by a literal space', () => {
+    const serialised = serialisedMsg(`Authorization: Bearer ${CANARY}`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a Bearer credential whose separator is percent-encoded', () => {
+    const serialised = serialisedMsg(`Authorization: Bearer%20${CANARY}`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a percent-encoded Bearer credential embedded in a URL path', () => {
+    const serialised = serialisedMsg(`https://api.example.com/Bearer%20${CANARY}`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a Bearer credential that appears alongside an unrelated URL', () => {
+    const serialised = serialisedMsg(`Bearer ${CANARY} see https://example.test/docs`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a Bearer credential inside a URL query string', () => {
+    const serialised = serialisedMsg(`https://example.test/path?info=Bearer ${CANARY}`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a Bearer credential inside a URL fragment', () => {
+    const serialised = serialisedMsg(`https://example.test/path#frag=Bearer ${CANARY}`);
+    expect(serialised).not.toContain(CANARY);
+  });
+
+  it('redacts a key=value credential whose leading separator is percent-encoded', () => {
+    const serialised = serialisedMsg(`log line: foo%20token=${CANARY} extra`);
+    expect(serialised).not.toContain(CANARY);
+  });
+});
+
 describe('redactHeaderValue', () => {
   it('fully redacts sensitive header values', () => {
     expect(redactHeaderValue('authorization', 'Bearer abc123')).toBe(REDACTED_VALUE);
