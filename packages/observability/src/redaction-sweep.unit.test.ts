@@ -48,13 +48,89 @@ const HIDDEN_ON_MAIN_AT_82F928B: readonly (readonly [string, readonly string[]])
   ['Bearer /cb?code=C2 retrying', ['C2', 'retrying']],
 ];
 
-function visibleWords(text: string): ReadonlySet<string> {
-  return new Set(decodeURIComponent(text.replaceAll('+', ' ')).split(/[^\p{L}\p{N}]+/u));
+const HIDDEN_ON_MAIN_AT_CD8A4DE: readonly (readonly [string, readonly string[]])[] = [
+  ['boom Bearer abc123 https://example.test/callback?code=secret-code', ['abc123', 'secret']],
+  ['password=open sesame&hint=sesame', ['open']],
+  ['password=hunter !!$$&safe=ok', ['hunter']],
+  ['boom Bearer abc123 /callback?code=secret-code retrying', ['abc123', 'secret', 'retrying']],
+  [
+    'grant_type=authorization_code&code=secret-code&code_verifier=pkce-secret&client_id=oak-client&state=opaque-state&nonce=random-nonce&client_assertion=signed-client-jwt',
+    ['secret', 'pkce', 'opaque', 'random', 'signed', 'jwt'],
+  ],
+  ['Authorization: Bearer CANARY-SECRET-TOKEN-99887766', ['CANARY', 'SECRET', 'TOKEN', '99887766']],
+  [
+    'Authorization: Bearer%20CANARY-SECRET-TOKEN-99887766',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  [
+    'https://api.example.com/Bearer%20CANARY-SECRET-TOKEN-99887766',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  [
+    'Bearer CANARY-SECRET-TOKEN-99887766 see https://example.test/docs',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  [
+    'https://example.test/path?info=Bearer CANARY-SECRET-TOKEN-99887766',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  [
+    'https://example.test/path#frag=Bearer CANARY-SECRET-TOKEN-99887766',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  [
+    'log line: foo%20token=CANARY-SECRET-TOKEN-99887766 extra',
+    ['CANARY', 'SECRET', 'TOKEN', '99887766'],
+  ],
+  ['boom Bearer tok123 /cb?code=correct horse', ['tok123', 'correct', 'horse']],
+];
+
+const SHOWN_ON_MAIN_AT_CD8A4DE: readonly (readonly [string, readonly string[]])[] = [
+  ['password%3Dhunter2', ['hunter2']],
+  ['secret%3Dhunter2', ['hunter2']],
+  ['token%3Dhunter2', ['hunter2']],
+  ['password%253Dhunter2', ['hunter2']],
+  ['log line password%3Dhunter2 more', ['hunter2']],
+  ['x%20password%3Dhunter2&y=1', ['hunter2']],
+  ['Bearer%2520tok123', ['tok123']],
+  ['Authorization: Bearer%2520tok123', ['tok123']],
+  ['boom%2520Bearer%2520tok123', ['tok123']],
+  ['Bearer abc%20SECRETTAIL', ['abc', 'SECRETTAIL']],
+  ['login failed password=correct horse battery staple', ['correct', 'horse', 'battery', 'staple']],
+  ['note: secret=alpha bravo charlie then more text', ['alpha', 'bravo', 'charlie']],
+  ['boom%20Bearer%20tok123', ['tok123']],
+  ['boom%20Bearer%20tok123 /cb?code=correct horse', ['tok123', 'correct', 'horse']],
+  ['password=correct horse x=1', ['correct', 'horse']],
+  ['password=correct horse\nnext line', ['correct', 'horse']],
+];
+
+function decodeFully(text: string): string {
+  let previous: string;
+  let decoded = text.replaceAll('+', ' ');
+  do {
+    previous = decoded;
+    decoded = decoded.replaceAll(/(?:%[\da-f]{2})+/giu, (escapes) => {
+      try {
+        return decodeURIComponent(escapes);
+      } catch {
+        return escapes;
+      }
+    });
+  } while (decoded !== previous);
+  return decoded;
 }
 
-describe('redactTelemetryValue never shows a word that main at 82f928b hid', () => {
-  it.each(HIDDEN_ON_MAIN_AT_82F928B)('%s', (input, hiddenOnMain) => {
+function visibleWords(text: string): ReadonlySet<string> {
+  return new Set(decodeFully(text).split(/[^\p{L}\p{N}]+/u));
+}
+
+describe.each([
+  ['main at 82f928b hid', HIDDEN_ON_MAIN_AT_82F928B],
+  ['main at cd8a4de hid', HIDDEN_ON_MAIN_AT_CD8A4DE],
+  ['main at cd8a4de showed', SHOWN_ON_MAIN_AT_CD8A4DE],
+])('redactTelemetryValue never shows a credential word that %s', (_, rows) => {
+  it.each(rows)('%j', (input, hidden) => {
     const visible = visibleWords(redactTelemetryValue(input));
-    expect(hiddenOnMain.filter((word) => visible.has(word))).toStrictEqual([]);
+    expect(hidden.filter((word) => visible.has(word))).toStrictEqual([]);
   });
 });

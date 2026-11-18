@@ -113,9 +113,7 @@ function partiallyRedactValue(value: string): string {
  * Deliberately narrow to `%20`: `+` only means "space" inside
  * `application/x-www-form-urlencoded` content, which `redactFormEncodedString`
  * already redacts upstream, and no real `Authorization` header uses a tab
- * separator (RFC 7235 requires `1*SP`). Double percent-encoding (`%2520`)
- * is a known residual gap this fix does not close; it would need a decode
- * pass rather than a wider character class, and is tracked separately.
+ * separator (RFC 7235 requires `1*SP`).
  */
 function redactEmbeddedCredentials(value: string): string {
   return value
@@ -123,6 +121,33 @@ function redactEmbeddedCredentials(value: string): string {
     .replaceAll(
       /(^|\s|%20)(--?(?:access-token|api-key|api_key|client-secret|client_secret|password|token)|(?:access_token|api_key|client_secret|password|token))=([^\s&]+)/giu,
       '$1$2=[REDACTED]',
+    );
+}
+
+const ENCODED_SPACE = String.raw`%(?:25)*20`;
+const ENCODED_EQUALS = String.raw`%(?:25)*3D`;
+const ENCODED_REDACTED_VALUE = encodeURIComponent(REDACTED_VALUE);
+
+const RESIDUAL_AUTH_SCHEME = new RegExp(
+  String.raw`(?:\b|(?<=%(?:25){0,8}[\dA-F]{2}))(Bearer|Basic)(?:\s|${ENCODED_SPACE})+[^\s,]+`,
+  'giu',
+);
+
+const CREDENTIAL_KEY = String.raw`(?:password|secret|token|api[_-]?key)[\w.-]{0,64}(?:=|${ENCODED_EQUALS})`;
+const VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END = String.raw`(?=\s[^\s=&]+(?:=|${ENCODED_EQUALS})|[\r\n&]|$)`;
+
+const RESIDUAL_KEY_VALUE = new RegExp(
+  String.raw`(${CREDENTIAL_KEY})([^\r\n&]*?)${VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END}`,
+  'giu',
+);
+
+function redactResidualCredentials(value: string): string {
+  return value
+    .replaceAll(RESIDUAL_AUTH_SCHEME, `$1 ${REDACTED_VALUE}`)
+    .replaceAll(RESIDUAL_KEY_VALUE, (match, key: string, secret: string) =>
+      secret === '' || secret === REDACTED_VALUE || secret === ENCODED_REDACTED_VALUE
+        ? match
+        : `${key}${REDACTED_VALUE}`,
     );
 }
 
@@ -187,7 +212,7 @@ function redactScalarForKey(key: string | undefined, value: string): string {
     }
   }
 
-  return redactString(value);
+  return redactResidualCredentials(redactString(value));
 }
 
 function redactArray(values: readonly JsonValue[], key: string | undefined): readonly JsonValue[] {
