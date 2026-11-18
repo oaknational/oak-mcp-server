@@ -7,6 +7,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPError,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { format, resolveConfig } from 'prettier';
 import { tsImport } from 'tsx/esm/api';
 
@@ -474,22 +475,27 @@ function mayCarryToken(target: URL): boolean {
   );
 }
 
-function redactedTargetError(error: unknown, token: string | undefined): Error {
-  if (
-    error instanceof StreamableHTTPError &&
-    token !== undefined &&
-    (error.code === 401 || error.code === 403)
-  ) {
+function tokenSafeError(error: unknown): Error {
+  if (error instanceof StreamableHTTPError && error.code !== undefined && error.code > 0) {
     return new Error(
-      `HTTP ${String(error.code)}: the target refused ${TOKEN_VARIABLE}. Use a current OAuth access token issued for this /mcp`,
+      error.code === 401 || error.code === 403
+        ? `HTTP ${String(error.code)}: the target refused ${TOKEN_VARIABLE}. Use a current OAuth access token issued for this /mcp`
+        : `HTTP ${String(error.code)}`,
     );
+  }
+  return new Error(error instanceof TypeError ? 'network error' : 'invalid response');
+}
+
+function targetError(error: unknown, token: string | undefined): Error {
+  if (token !== undefined) {
+    return tokenSafeError(error);
   }
   const message = error instanceof Error ? error.message : String(error);
   const status = error instanceof StreamableHTTPError ? `HTTP ${String(error.code)}: ` : '';
-  return new Error(
-    `${status}${token === undefined ? message : message.replaceAll(token, '[redacted]')}`,
-  );
+  return new Error(`${status}${message}`);
 }
+
+const fetchWithoutRedirects: FetchLike = (url, init) => fetch(url, { ...init, redirect: 'error' });
 
 export async function captureTarget(
   target: URL,
@@ -500,18 +506,23 @@ export async function captureTarget(
       `${TOKEN_VARIABLE} is sent only over https or to localhost, without URL credentials`,
     );
   }
-  const requestInit: RequestInit =
-    token === undefined ? {} : { headers: { Authorization: `Bearer ${token}` }, redirect: 'error' };
+  const options =
+    token === undefined
+      ? {}
+      : {
+          requestInit: { headers: { Authorization: `Bearer ${token}` } },
+          fetch: fetchWithoutRedirects,
+        };
   const client = new Client({ name: 'oak-surface-diff', version: '0.0.0' });
   try {
-    await client.connect(new StreamableHTTPClientTransport(target, { requestInit }));
+    await client.connect(new StreamableHTTPClientTransport(target, options));
     try {
       return await captureSurface(client);
     } finally {
       await client.close();
     }
   } catch (error) {
-    throw redactedTargetError(error, token);
+    throw targetError(error, token);
   }
 }
 
@@ -565,6 +576,9 @@ async function main(argv: readonly string[]): Promise<number> {
   const token = parseBearerToken(process.env[TOKEN_VARIABLE]);
   if (token !== undefined && values.target === undefined) {
     throw new Error(`${TOKEN_VARIABLE} is set, but only --target sends it`);
+  }
+  if (token !== undefined && values['write-baseline'] !== undefined) {
+    throw new Error(`${TOKEN_VARIABLE} is set, so --write-baseline is refused`);
   }
   const current =
     values.target === undefined
