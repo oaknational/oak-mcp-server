@@ -193,8 +193,7 @@ const GRAPH_FALLBACKS = 'Use search, fetch or browse-curriculum instead.';
 const GRAPH_UNAVAILABLE_ADVICE: Readonly<Record<GraphCorpusLoadError['kind'], string>> = {
   'not-found': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
   'invalid-snapshot': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
-  'read-failed':
-    'This may be temporary, so you can retry this call once with the same arguments. If it fails again, use search, fetch or browse-curriculum instead.',
+  'read-failed': `This may be temporary, so you can retry this call once with the same arguments. If the retry also fails, stop retrying. ${GRAPH_FALLBACKS}`,
 };
 
 function withCurriculumGraph<Input>(
@@ -224,7 +223,7 @@ function withCurriculumGraph<Input>(
     } catch (error: unknown) {
       logger.error('mcp-tool.curriculum-graph.failed', normalizeError(error), { tool });
       return formatError(
-        `${tool} failed with an internal server error. This was not caused by your input, so do not change the arguments or retry. ${GRAPH_FALLBACKS}`,
+        `${tool} failed with an internal server error. This is probably a server-side problem, so changing the arguments or retrying is unlikely to help. ${GRAPH_FALLBACKS}`,
       );
     }
   };

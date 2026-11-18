@@ -400,9 +400,7 @@ describe('graph tools through the curriculum graph loader', () => {
         const text = content.type === 'text' ? content.text : '';
         expect(text).toContain(tool);
         expect(text).toContain(retryAdvice);
-        for (const fallback of ['search', 'fetch', 'browse-curriculum']) {
-          expect(text).toContain(fallback);
-        }
+        expect(text).toMatch(/ Use search, fetch or browse-curriculum instead\.$/);
         expect(text).not.toContain(kind);
         expect(text).not.toContain('latest.json');
         expect(error).toHaveBeenCalledWith(
@@ -469,7 +467,9 @@ describe('graph tools through the curriculum graph loader', () => {
       expect(result.content).toHaveLength(1);
       const [content] = result.content;
       const text = content.type === 'text' ? content.text : '';
-      expect(text).toContain(tool);
+      expect(text).toBe(
+        `${tool} failed with an internal server error. This is probably a server-side problem, so changing the arguments or retrying is unlikely to help. Use search, fetch or browse-curriculum instead.`,
+      );
       expect(text).not.toContain(internalDetail);
       expect(error).toHaveBeenCalledWith(
         'mcp-tool.curriculum-graph.failed',
