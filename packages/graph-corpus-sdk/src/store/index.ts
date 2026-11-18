@@ -23,6 +23,7 @@ export {
   type GraphCorpusSnapshotStore,
   type WrittenSnapshot,
 } from './snapshot-store.js';
+export { GraphRefreshError, type RefreshFailure } from './refresh-error.js';
 export {
   DEFAULT_MIN_RETENTION_RATIO,
   refreshGraphCorpus,

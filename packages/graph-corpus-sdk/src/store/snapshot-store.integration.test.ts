@@ -181,6 +181,49 @@ describe('conditional writes over the Blob store', () => {
   });
 });
 
+describe('conditional writes over a Blob store whose reads carry no ETag', () => {
+  it('refuse, writing nothing, rather than write unconditionally', async () => {
+    const client = createFakeBlobClient({ omitEtag: true });
+    const store = createGraphCorpusSnapshotStore(createBlobObjectStore(client));
+    await store.write(snapshotAt(day(1)));
+    const read = await store.readLatestVersioned();
+    const putsBefore = client.puts.length;
+
+    await expect(
+      store.writeIfLatestIs(read?.version ?? null, snapshotAt(day(2))),
+    ).rejects.toMatchObject({
+      name: 'GraphRefreshError',
+      failure: 'missing-etag',
+    });
+    expect(client.puts).toHaveLength(putsBefore);
+    expect(unwrap(parseGraphCorpusSnapshot((await store.readLatest()) ?? '')).downloadedAt).toBe(
+      day(1),
+    );
+  });
+});
+
+describe('a failed conditional Blob write whose version cannot be read back', () => {
+  it('rejects with the write failure as its cause', async () => {
+    const putFailure = new Error('service unavailable');
+    const store = createGraphCorpusSnapshotStore(
+      createBlobObjectStore({
+        ...createFakeBlobClient(),
+        put: () => Promise.reject(putFailure),
+        get: () => Promise.reject(new Error('read timed out')),
+      }),
+    );
+
+    const rejection = await store
+      .writeIfLatestIs(null, snapshotAt(day(1)))
+      .catch((error: unknown) => error);
+
+    expect(rejection).toMatchObject({
+      message: expect.stringContaining('read timed out') as unknown,
+    });
+    expect((rejection as Error).cause).toBe(putFailure);
+  });
+});
+
 describe('readLatest', () => {
   afterEach(() => {
     vi.useRealTimers();

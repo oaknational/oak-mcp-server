@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+
+import { isRecord } from './corpus-shape.js';
+import { GraphRefreshError } from './refresh-error.js';
 
 /** A stored body and a token that changes whenever the body changes. */
 export interface VersionedObject {
@@ -33,25 +37,113 @@ const versionOf = (body: string): string => createHash('sha256').update(body).di
 const LOCK_WAIT_MS = 5_000;
 const LOCK_POLL_MS = 20;
 
+interface LockHolder {
+  readonly pid: number;
+  readonly host: string;
+  readonly startedAt: string;
+  readonly id: string;
+}
+
+function parseLockHolder(text: string): LockHolder | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value)) {
+    return null;
+  }
+  const { pid, host, startedAt, id } = value;
+  return typeof pid === 'number' &&
+    Number.isSafeInteger(pid) &&
+    pid > 0 &&
+    typeof host === 'string' &&
+    typeof startedAt === 'string' &&
+    typeof id === 'string'
+    ? { pid, host, startedAt, id }
+    : null;
+}
+
+function hasExited(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return hasCode(error, 'ESRCH');
+  }
+}
+
+async function readOrNull(file: string): Promise<string | null> {
+  try {
+    return await readFile(file, 'utf8');
+  } catch (error) {
+    if (hasCode(error, 'ENOENT')) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function tryTakeLockWithHolderRecord(lock: string): Promise<boolean> {
+  const holder: LockHolder = {
+    pid: process.pid,
+    host: hostname(),
+    startedAt: new Date().toISOString(),
+    id: randomUUID(),
+  };
+  const temp = `${lock}.${holder.id}.tmp`;
+  await writeFile(temp, JSON.stringify(holder), 'utf8');
+  try {
+    await link(temp, lock);
+    return true;
+  } catch (error) {
+    if (hasCode(error, 'EEXIST')) {
+      return false;
+    }
+    throw error;
+  } finally {
+    await rm(temp, { force: true });
+  }
+}
+
+async function breakStaleLock(lock: string, stale: string): Promise<void> {
+  const aside = `${lock}.${randomUUID()}.stale`;
+  try {
+    await rename(lock, aside);
+  } catch (error) {
+    if (hasCode(error, 'ENOENT')) {
+      return;
+    }
+    throw error;
+  }
+  const retakenByAnotherWaiter = (await readFile(aside, 'utf8')) !== stale;
+  if (retakenByAnotherWaiter) {
+    await link(aside, lock);
+  }
+  await rm(aside, { force: true });
+}
+
 async function whileLocked<T>(file: string, write: () => Promise<T>): Promise<T> {
   const lock = `${file}.lock`;
   const deadline = Date.now() + LOCK_WAIT_MS;
-  for (;;) {
-    try {
-      await (await open(lock, 'wx')).close();
-      break;
-    } catch (error) {
-      if (!hasCode(error, 'EEXIST')) {
-        throw error;
-      }
-      if (Date.now() >= deadline) {
-        throw new Error(
-          `${lock} was held for ${String(LOCK_WAIT_MS)} ms; delete it if no refresh is running`,
-          { cause: error },
-        );
-      }
-      await sleep(LOCK_POLL_MS);
+  while (!(await tryTakeLockWithHolderRecord(lock))) {
+    const held = await readOrNull(lock);
+    const holder = held === null ? null : parseLockHolder(held);
+    if (held !== null && holder?.host === hostname() && hasExited(holder.pid)) {
+      await breakStaleLock(lock, held);
+      continue;
     }
+    if (Date.now() >= deadline) {
+      const by =
+        holder === null
+          ? ''
+          : ` by pid ${String(holder.pid)} on ${holder.host} since ${holder.startedAt}`;
+      throw new Error(
+        `${lock} was held${by} for ${String(LOCK_WAIT_MS)} ms; delete it if no refresh is running`,
+      );
+    }
+    await sleep(LOCK_POLL_MS);
   }
   try {
     return await write();
@@ -63,16 +155,7 @@ async function whileLocked<T>(file: string, write: () => Promise<T>): Promise<T>
 /** Stores each key as a file under `root`. */
 export function createLocalFileObjectStore(root: string): ObjectStore {
   const fileFor = (key: string): string => path.join(root, ...key.split('/'));
-  const read = async (key: string): Promise<string | null> => {
-    try {
-      return await readFile(fileFor(key), 'utf8');
-    } catch (error) {
-      if (hasCode(error, 'ENOENT')) {
-        return null;
-      }
-      throw error;
-    }
-  };
+  const read = (key: string): Promise<string | null> => readOrNull(fileFor(key));
   const replace = async (file: string, body: string): Promise<void> => {
     const temp = `${file}.${randomUUID()}.tmp`;
     try {
@@ -173,6 +256,12 @@ export function createBlobObjectStore(client: BlobClient, token?: string): Objec
       await client.put(key, body, { ...write, allowOverwrite: true });
     },
     async putIfVersion(key, body, version) {
+      if (version === '') {
+        throw new GraphRefreshError(
+          'missing-etag',
+          `${key} was read without an ETag, so it cannot be written only if unchanged`,
+        );
+      }
       try {
         await client.put(
           key,
@@ -184,7 +273,18 @@ export function createBlobObjectStore(client: BlobClient, token?: string): Objec
         return true;
       } catch (error) {
         // The SDK has no error class for an existing blob, so the version tells a lost race from a failure.
-        if (((await getVersioned(key))?.version ?? null) !== version) {
+        const reread = await getVersioned(key).then(
+          (current) => ({ current }),
+          (readError: unknown) => ({ readError }),
+        );
+        if ('readError' in reread) {
+          const { readError } = reread;
+          throw new Error(
+            `writing ${key} failed, then reading its version failed: ${readError instanceof Error ? readError.message : String(readError)}`,
+            { cause: error },
+          );
+        }
+        if ((reread.current?.version ?? null) !== version) {
           return false;
         }
         throw error;

@@ -376,6 +376,52 @@ describe.each(racingStores)('refreshGraphCorpus racing over the %s store', (_nam
   );
 });
 
+describe('refreshGraphCorpus failures that throw', () => {
+  const bulk = () => bulkDir({ 'maths-primary.json': bulkFile(2) });
+
+  it('names five lost races in a row write-contention', async () => {
+    const objects = createLocalFileObjectStore(await tempDir());
+    const alwaysLoses: ObjectStore = { ...objects, putIfVersion: () => Promise.resolve(false) };
+
+    await expect(
+      refreshFromDir(createGraphCorpusSnapshotStore(alwaysLoses), await bulk()),
+    ).rejects.toMatchObject({ name: 'GraphRefreshError', failure: 'write-contention' });
+  });
+
+  it('names a latest.json read that throws latest-read-failed, keeping the read error as its cause', async () => {
+    const readFailure = new Error('blob service unavailable');
+    const objects = createLocalFileObjectStore(await tempDir());
+    const unreadable: ObjectStore = { ...objects, getVersioned: () => Promise.reject(readFailure) };
+
+    const rejection = await refreshFromDir(
+      createGraphCorpusSnapshotStore(unreadable),
+      await bulk(),
+    ).catch((error: unknown) => error);
+
+    expect(rejection).toMatchObject({ name: 'GraphRefreshError', failure: 'latest-read-failed' });
+    expect((rejection as Error).cause).toBe(readFailure);
+  });
+
+  it('names a Blob read without an ETag missing-etag and leaves latest.json unchanged', async () => {
+    const client = createFakeBlobClient({ omitEtag: true });
+    const objects = createBlobObjectStore(client);
+    const store = createGraphCorpusSnapshotStore(objects);
+    await refreshFromDir(
+      store,
+      await bulkDir({ 'maths-primary.json': bulkFile(2) }, '2026-07-01T00:00:00.000Z'),
+    );
+    const before = await objects.get(LATEST_KEY);
+
+    await expect(
+      refreshFromDir(store, await bulkDir({ 'maths-primary.json': bulkFile(3) })),
+    ).rejects.toMatchObject({
+      name: 'GraphRefreshError',
+      failure: 'missing-etag',
+    });
+    expect(await objects.get(LATEST_KEY)).toBe(before);
+  });
+});
+
 describe('digestBulkFiles', () => {
   const unwrapBulk = async (bulk: ReturnType<typeof resolveBulkFiles>): Promise<BulkFiles> => {
     const result = await bulk;

@@ -6,6 +6,7 @@ import express, { type Express } from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { err, ok } from '@oaknational/result';
 import {
+  GraphRefreshError,
   createGraphCorpusSnapshotStore,
   createLocalFileObjectStore,
 } from '@oaknational/graph-corpus-sdk/store';
@@ -43,15 +44,16 @@ function buildApp(refresher?: GraphRefresher) {
         )),
   );
   const captureHandledError = vi.fn();
+  const setTag = vi.fn();
   const app: Express = express();
   registerRefreshGraphRoute({
     app,
     secret: SECRET,
     refresher: refresh,
-    observability: { captureHandledError },
+    observability: { captureHandledError, setTag },
     log: createFakeLogger(),
   });
-  return { app, refresh, captureHandledError };
+  return { app, refresh, captureHandledError, setTag };
 }
 
 const tempDirs: string[] = [];
@@ -117,6 +119,33 @@ describe('GET /api/cron/refresh-graph', () => {
     expect(res.body).toEqual({ status: 'refused', guard: 'retention' });
     expect(captureHandledError).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    [
+      'a named refresh failure',
+      new GraphRefreshError('write-contention', 'latest.json changed 5 times'),
+      'write-contention',
+    ],
+    ['any other error', new Error('socket hang up'), 'unexpected'],
+  ])(
+    'reports %s that throws with 500, its name, and one Sentry capture',
+    async (_name, thrown, failure) => {
+      const { app, captureHandledError, setTag } = buildApp(() => Promise.reject(thrown));
+
+      const res = await request(app)
+        .get(REFRESH_GRAPH_PATH)
+        .set('Authorization', `Bearer ${SECRET}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ status: 'failed', failure });
+      expect(setTag).toHaveBeenCalledWith('graph_refresh.failure', failure);
+      expect(captureHandledError).toHaveBeenCalledOnce();
+      expect(captureHandledError).toHaveBeenCalledWith(
+        thrown,
+        expect.objectContaining({ boundary: 'cron_refresh_graph', failure }),
+      );
+    },
+  );
 });
 
 describe('createGraphRefresher', () => {
