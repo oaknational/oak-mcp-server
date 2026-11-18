@@ -18,6 +18,7 @@ const { values } = parseArgs({
   options: {
     store: { type: 'string', default: 'local' },
     'bulk-dir': { type: 'string' },
+    'allow-rollback': { type: 'boolean', default: false },
   },
 });
 
@@ -44,6 +45,7 @@ const result = await refreshGraphCorpus({
   }),
   store: createGraphCorpusSnapshotStore(objects),
   minRetentionRatio: parseRetentionRatio(env.GRAPH_MIN_RETENTION_RATIO),
+  allowRollback: values['allow-rollback'],
   log: (line) => process.stderr.write(`graph:refresh: ${line}\n`),
 });
 

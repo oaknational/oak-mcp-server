@@ -1,4 +1,5 @@
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 /** Keys are slash-separated paths such as `graph-corpus/v1/latest.json`. */
@@ -31,7 +32,13 @@ export function createLocalFileObjectStore(root: string): ObjectStore {
     async put(key, body) {
       const file = fileFor(key);
       await mkdir(path.dirname(file), { recursive: true });
-      await writeFile(file, body, 'utf8');
+      const temp = `${file}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(temp, body, 'utf8');
+        await rename(temp, file);
+      } finally {
+        await rm(temp, { force: true });
+      }
     },
     async list(prefix) {
       try {
@@ -54,7 +61,7 @@ export function createLocalFileObjectStore(root: string): ObjectStore {
 export interface BlobClient {
   get(
     pathname: string,
-    options: { access: 'private'; token?: string },
+    options: { access: 'private'; useCache: false; token?: string },
   ): Promise<{ stream: ReadableStream<Uint8Array> | null } | null>;
   put(
     pathname: string,
@@ -80,7 +87,7 @@ export function createBlobObjectStore(client: BlobClient, token?: string): Objec
   const auth = token === undefined ? {} : { token };
   return {
     async get(key) {
-      const blob = await client.get(key, { access: 'private', ...auth });
+      const blob = await client.get(key, { access: 'private', useCache: false, ...auth });
       if (blob?.stream == null) {
         return null;
       }

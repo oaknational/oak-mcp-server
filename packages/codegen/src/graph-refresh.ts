@@ -58,7 +58,12 @@ const BULK_SUBJECTS = [
 ] as const;
 
 export type RefreshGuard =
-  'missing-api-key' | 'fetch-failed' | 'bulk-parse-failed' | 'empty-corpus' | 'retention';
+  | 'missing-api-key'
+  | 'fetch-failed'
+  | 'bulk-parse-failed'
+  | 'empty-corpus'
+  | 'retention'
+  | 'older-download';
 
 export interface RefreshRefusal {
   readonly guard: RefreshGuard;

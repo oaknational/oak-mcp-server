@@ -36,6 +36,7 @@ export type RefreshOutcome = RefreshedSnapshot | SkippedRefresh;
 interface StoredSummary {
   readonly nodes: number;
   readonly edges: number;
+  readonly downloadedAt: string;
   readonly sourceDigest: string | undefined;
 }
 
@@ -59,6 +60,7 @@ async function readStored(
     return {
       nodes: parsed.value.corpus.stats.totalNodes,
       edges: parsed.value.corpus.stats.totalEdges,
+      downloadedAt: parsed.value.downloadedAt,
       sourceDigest: parsed.value.sourceDigest,
     };
   } catch (error) {
@@ -69,13 +71,15 @@ async function readStored(
 
 /**
  * Builds the corpus from `bulk` and writes it, unless the stored snapshot was
- * built from the same data files. Refuses rather than writes an empty corpus or
- * one that falls below `minRetentionRatio` of the stored node or edge count.
+ * built from the same data files. Refuses rather than writes an empty corpus,
+ * one that falls below `minRetentionRatio` of the stored node or edge count, or
+ * one downloaded before the stored snapshot unless `allowRollback` is set.
  */
 export async function refreshGraphCorpus(options: {
   readonly bulk: Result<BulkFiles, RefreshRefusal>;
   readonly store: GraphCorpusSnapshotStore;
   readonly minRetentionRatio?: number;
+  readonly allowRollback?: boolean;
   readonly log?: (line: string) => void;
 }): Promise<Result<RefreshOutcome, RefreshRefusal>> {
   const log = options.log ?? (() => undefined);
@@ -87,6 +91,16 @@ export async function refreshGraphCorpus(options: {
   const stored = await readStored(options.store, log);
   if (stored !== null && stored.sourceDigest === sourceDigest) {
     return ok({ status: 'skipped', sourceDigest });
+  }
+  if (
+    stored !== null &&
+    options.allowRollback !== true &&
+    Date.parse(bulk.fetchedAt) < Date.parse(stored.downloadedAt)
+  ) {
+    return err({
+      guard: 'older-download',
+      message: `the bulk data was downloaded at ${bulk.fetchedAt}, before the stored snapshot's ${stored.downloadedAt}`,
+    });
   }
   const built = await buildGraphCorpus(bulk);
   if (!isOk(built)) {

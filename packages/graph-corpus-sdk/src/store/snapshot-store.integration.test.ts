@@ -26,7 +26,7 @@ function createFakeBlobClient(): BlobClient & { readonly blobs: Map<string, stri
   return {
     blobs,
     get(pathname, options) {
-      expect(options.access).toBe('private');
+      expect(options).toMatchObject({ access: 'private', useCache: false });
       const body = blobs.get(pathname);
       return Promise.resolve(body === undefined ? null : { stream: new Blob([body]).stream() });
     },
