@@ -485,6 +485,14 @@ describe('git-guard review fixes', () => {
     'gh pr view 1 -- -q .env',
     "jq -R --arg k < .env '' '.'",
     "jq -R --rawfile k < .env '' '.'",
+    'jq -ffilter.jq .env',
+    'jq -rf filter.jq .env',
+    'jq --from-file=filter.jq .env.local',
+    'jq --from=f .env',
+    'jq --rawfile=k .env',
+    'jq .env -f prog.jq',
+    'jq -Z .env',
+    'jq -- .env',
   ])('refuses the env file in %s', (command) => {
     expect(bash(clean, command).status).toBe(2);
   });
@@ -498,6 +506,9 @@ describe('git-guard review fixes', () => {
     "jq -e '.env.PATH' .claude/settings.local.json",
     'jq .env settings.json',
     "jq -r --arg key PATH '.env[$key]' settings.json",
+    "jq -r '.env.PATH' settings.json",
+    "jq -e '.env.PATH' settings.json",
+    'jq -rc --raw-output .env.PATH settings.json',
     "gh api repos/o/r/actions/variables --jq '.env.PATH'",
     'gh pr view 1 --json body -q .env.PATH',
     'cat .env.example',
