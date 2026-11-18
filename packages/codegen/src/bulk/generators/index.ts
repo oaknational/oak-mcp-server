@@ -24,15 +24,6 @@ export {
 } from './analysis-report-generator.js';
 
 export {
-  generateNCCoverageGraphData,
-  serializeNCCoverageGraph,
-  writeNCCoverageGraphAsJson,
-  type NCCoverageGraph,
-  type NCCoverageGraphStats,
-  type NCStatementNode,
-} from './nc-coverage-generator.js';
-
-export {
   extractSynonymFromDefinition,
   generateMinedSynonyms,
   serializeMinedSynonyms,
@@ -51,18 +42,3 @@ export {
   type GraphCorpusStats,
   type GraphCorpusDroppedEdge,
 } from './graph-corpus-generator.js';
-
-export {
-  generateVocabularyGraphData,
-  serializeVocabularyGraph,
-  writeVocabularyGraphAsJson,
-  type VocabularyGraph,
-  type VocabularyGraphStats,
-  type VocabularyNode,
-} from './vocabulary-graph-generator.js';
-
-export {
-  serializeDatasetToJson,
-  writeJsonDataset,
-  type JsonDatasetDescriptor,
-} from './write-json-dataset.js';

@@ -15,7 +15,7 @@
 // - Reader utilities (discoverBulkFiles, parseBulkFile, etc.)
 // - Extractors (extractKeywords, extractMisconceptions, etc.)
 // - Processing (processBulkData)
-// - Generators (generateVocabularyGraphData, etc.)
+// - Generators (generateMinedSynonyms, etc.)
 
 export {
   keyLearningPointSchema,
@@ -56,16 +56,10 @@ export {
   generateAnalysisReport,
   serializeAnalysisReport,
   writeAnalysisReportFile,
-  generateNCCoverageGraphData,
-  serializeNCCoverageGraph,
-  writeNCCoverageGraphAsJson,
   extractSynonymFromDefinition,
   generateMinedSynonyms,
   serializeMinedSynonyms,
   writeMinedSynonymsFile,
-  generateVocabularyGraphData,
-  serializeVocabularyGraph,
-  writeVocabularyGraphAsJson,
   generateGraphCorpusData,
 } from './bulk/index.js';
 
@@ -115,15 +109,9 @@ export type {
   SubjectRankEntry,
   SynonymCandidate,
   SynonymPatterns,
-  NCCoverageGraph,
-  NCCoverageGraphStats,
-  NCStatementNode,
   MinedSynonym,
   MinedSynonymsData,
   MinedSynonymsStats,
-  VocabularyGraph,
-  VocabularyGraphStats,
-  VocabularyNode,
   GraphCorpus,
   GraphCorpusUnitNode,
   GraphCorpusEdge,

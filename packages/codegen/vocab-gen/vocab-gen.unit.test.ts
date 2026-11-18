@@ -166,7 +166,7 @@ describe('formatPipelineResult', () => {
 
   it('formats successful result with all extraction stats', () => {
     const result = createResult({
-      outputFiles: ['prerequisite-graph', 'vocabulary-graph'],
+      outputFiles: ['reports/bulk-analysis-2026-11-18.md', 'synonyms/definition-synonyms.ts'],
     });
 
     const formatted = formatPipelineResult(result);
