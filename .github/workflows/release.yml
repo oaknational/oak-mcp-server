@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ci-gate-passed:
+    name: ci-gate passed
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require ci-gate success on the merged pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].head.sha // empty')
+          if [ -z "$head_sha" ]; then
+            echo "::error::No merged pull request into main made ${GITHUB_SHA}. Not releasing."
+            exit 1
+          fi
+          passed=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}/check-runs?check_name=ci-gate" \
+            --jq '[.check_runs[] | select(.conclusion == "success")] | length')
+          if [ "$passed" -lt 1 ]; then
+            echo "::error::ci-gate did not succeed on ${head_sha}. Not releasing."
+            exit 1
+          fi
+          echo "ci-gate succeeded on ${head_sha}."
+
+  dry-run:
+    name: release dry run
+    needs: ci-gate-passed
+    if: vars.RELEASE_ENABLED != 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      # semantic-release checks push access even in a dry run, so it runs
+      # against the local clone with only the plugins that read commits.
+      - name: Show the release main would get
+        run: >-
+          pnpm exec semantic-release --dry-run
+          --repository-url "file://${GITHUB_WORKSPACE}"
+          --plugins @semantic-release/commit-analyzer,@semantic-release/release-notes-generator
+
+  release:
+    name: release
+    needs: ci-gate-passed
+    if: vars.RELEASE_ENABLED == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Get the release App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          run_install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec semantic-release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

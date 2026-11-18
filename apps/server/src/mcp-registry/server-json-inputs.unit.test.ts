@@ -129,6 +129,7 @@ describe('resolveServerJsonInputs', () => {
     expect(inputs.description).toBe(DESCRIPTION);
     expect(inputs.websiteUrl).toBe(OAK_SERVER_BRANDING.websiteUrl);
     expect(inputs.version).toBe(VERSION);
+    expect(inputs.repositoryUrl).toBe('https://github.com/oaknational/oak-mcp-server');
     expect(inputs.repositorySource).toBe('github');
   });
 
