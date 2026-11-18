@@ -96,6 +96,7 @@ export default defineConfig(
       '**/dist/**',
       '**/coverage/**',
       '.cache/**',
+      '.claude/worktrees/**',
       'tools/import-from-ooce/supplied/**',
       'packages/widget-tokens/**',
       'apps/server/.widget-build/**',
