@@ -28,13 +28,16 @@ function serveMcp(req: IncomingMessage, res: ServerResponse): void {
   void server.connect(transport).then(() => transport.handleRequest(req, res));
 }
 
-const ECHOES: Readonly<Record<string, (authorization: string) => string>> = {
-  '/echo-raw': (authorization) => `boom ${authorization}`,
-  '/echo-base64': (authorization) => Buffer.from(authorization).toString('base64'),
-  '/echo-percent': (authorization) => encodeURIComponent(authorization),
-  '/echo-json': (authorization) => JSON.stringify({ echo: authorization.replaceAll('/', '\\/') }),
-  '/echo-lower': (authorization) => authorization.toLowerCase(),
-};
+const ECHOES: ReadonlyMap<string, (authorization: string) => string> = new Map([
+  ['/echo-raw', (authorization: string) => `boom ${authorization}`],
+  ['/echo-base64', (authorization: string) => Buffer.from(authorization).toString('base64')],
+  ['/echo-percent', (authorization: string) => encodeURIComponent(authorization)],
+  [
+    '/echo-json',
+    (authorization: string) => JSON.stringify({ echo: authorization.replaceAll('/', '\\/') }),
+  ],
+  ['/echo-lower', (authorization: string) => authorization.toLowerCase()],
+]);
 
 beforeAll(async () => {
   stub = createServer((req, res) => {
@@ -56,7 +59,7 @@ beforeAll(async () => {
       res.end(`rejected ${authorization}`);
       return;
     }
-    const echo = ECHOES[path];
+    const echo = ECHOES.has(path) ? ECHOES.get(path) : undefined;
     if (echo !== undefined) {
       res.writeHead(500, { 'content-type': 'text/plain' });
       res.end(echo(authorization));
@@ -129,7 +132,7 @@ describe('surface diff against a protected target', () => {
     expect(text).not.toContain('wrong');
   });
 
-  it.each(Object.keys(ECHOES))('prints only the status for a 500 at %s', async (path) => {
+  it.each([...ECHOES.keys()])('prints only the status for a 500 at %s', async (path) => {
     const text = await failureOf(captureTarget(at(path), TOKEN));
     expect(text.split('\n')[0]).toBe('HTTP 500');
     expect(text.toLowerCase()).not.toContain('canary');
