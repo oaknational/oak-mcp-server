@@ -3,8 +3,8 @@
  *
  * @remarks
  * This module provides the pipeline entry point for extracting vocabulary
- * data from Oak National Academy bulk download files and generating
- * static graph data files for the SDK.
+ * data from Oak National Academy bulk download files, then writing the
+ * mined synonyms to the SDK and an analysis report beside this module.
  *
  * @example
  * ```bash
@@ -17,7 +17,6 @@
  *
  * @see ADR-086 (`docs/architecture/architectural-decisions/086-vocab-gen-graph-export-pattern.md`) for the pipeline specification
  */
-import { readFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,12 +24,8 @@ import type { Logger } from '@oaknational/logger';
 import {
   generateAnalysisReport,
   generateMinedSynonyms,
-  generateNCCoverageGraphData,
-  generateVocabularyGraphData,
   writeAnalysisReportFile,
   writeMinedSynonymsFile,
-  writeNCCoverageGraphAsJson,
-  writeVocabularyGraphAsJson,
 } from '../src/bulk.js';
 import { readAllBulkFiles } from './lib/index.js';
 import { processBulkData, type ProcessingResult } from './vocab-gen-core.js';
@@ -57,57 +52,12 @@ export {
 // Re-export formatting function
 export { formatPipelineResult } from './vocab-gen-format.js';
 
-/**
- * Type guard for objects with a string `downloadedAt` property.
- */
-function hasDownloadedAt(value: unknown): value is { downloadedAt: string } {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    'downloadedAt' in value &&
-    typeof value.downloadedAt === 'string'
-  );
-}
-
-/**
- * Reads the source version from the bulk data manifest.
- *
- * The manifest file (`manifest.json`) in the bulk download directory
- * contains a `downloadedAt` ISO timestamp identifying when the data
- * was fetched from the Oak API.
- *
- * @param bulkDataPath - Path to bulk download directory
- * @returns ISO timestamp from the manifest's `downloadedAt` field
- *
- * @example
- * ```ts
- * await readSourceVersion('/path/to/bulk-downloads');
- * // Returns: '2026-01-15T15:39:50.310Z'
- * ```
- */
-async function readSourceVersion(bulkDataPath: string): Promise<string> {
-  const manifestPath = join(bulkDataPath, 'manifest.json');
-  const content = await readFile(manifestPath, 'utf-8').catch((error: unknown) => {
-    throw new Error(
-      `No manifest.json found at ${manifestPath}. ` +
-        `Bulk download directory must contain a manifest.json with a downloadedAt field. ` +
-        `(${error instanceof Error ? error.message : String(error)})`,
-    );
-  });
-  const parsed: unknown = JSON.parse(content);
-  if (!hasDownloadedAt(parsed)) {
-    throw new Error(`manifest.json missing downloadedAt field at ${manifestPath}`);
-  }
-  return parsed.downloadedAt;
-}
-
 async function generateOutputFiles(
   result: ProcessingResult,
   config: PipelineConfig,
   logger?: Logger,
 ): Promise<string[]> {
   const outputFiles: string[] = [];
-  const sourceVersion = await readSourceVersion(config.bulkDataPath);
 
   // Generate analysis report (written to vocab-gen/reports in the SDK)
   const analysisReport = generateAnalysisReport(result.extractedData);
@@ -119,27 +69,6 @@ async function generateOutputFiles(
   const synonymsDir = join(config.outputPath, 'synonyms');
   const synonymsFilePath = await writeMinedSynonymsFile(minedSynonyms, synonymsDir, logger);
   outputFiles.push(`synonyms/${basename(synonymsFilePath)}`);
-
-  // Generate vocabulary graph (JSON + typed loader)
-  const vocabularyGraph = generateVocabularyGraphData(result.extractedData.keywords, sourceVersion);
-  const vocabularyDirPath = await writeVocabularyGraphAsJson(
-    vocabularyGraph,
-    config.outputPath,
-    logger,
-  );
-  outputFiles.push(basename(vocabularyDirPath));
-
-  // Generate NC coverage graph (JSON + typed loader)
-  const ncCoverageGraph = generateNCCoverageGraphData(
-    result.extractedData.ncStatements,
-    sourceVersion,
-  );
-  const ncCoverageDirPath = await writeNCCoverageGraphAsJson(
-    ncCoverageGraph,
-    config.outputPath,
-    logger,
-  );
-  outputFiles.push(basename(ncCoverageDirPath));
 
   return outputFiles;
 }

@@ -1,7 +1,7 @@
 /**
  * Subpath barrel: `@oaknational/sdk-codegen/vocab`
  *
- * Types and hand-authored domain ontology for vocabulary graphs.
+ * Types and hand-authored domain ontology for curriculum vocabulary.
  *
  * Mined synonym DATA is in the separate `@oaknational/sdk-codegen/vocab-data`
  * subpath.
@@ -18,14 +18,4 @@ export type {
   ConceptEdge,
 } from './mcp/property-graph-data.js';
 
-export type {
-  NCCoverageGraph,
-  NCCoverageGraphStats,
-  NCStatementNode,
-  MinedSynonym,
-  MinedSynonymsData,
-  MinedSynonymsStats,
-  VocabularyGraph,
-  VocabularyGraphStats,
-  VocabularyNode,
-} from './bulk/index.js';
+export type { MinedSynonym, MinedSynonymsData, MinedSynonymsStats } from './bulk/index.js';
