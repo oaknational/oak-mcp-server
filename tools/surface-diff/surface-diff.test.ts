@@ -7,6 +7,7 @@ import {
   EXPECTED_DIFFERENCES,
   captureSurface,
   diffSurfaces,
+  formatCounts,
   formatReport,
   judgeDifferences,
   judgeSurface,
@@ -158,6 +159,33 @@ describe('surface diff', () => {
     expect(surfaceMatches(result)).toBe(false);
     expect(formatReport(result)).toContain(
       'expected difference no longer occurs: removed tool "fixture-retired". Remove it from EXPECTED_DIFFERENCES.',
+    );
+  });
+
+  it('counts differences by kind without naming any server text', async () => {
+    const current = await surfaceOf([
+      { name: 'fixture-lookup', description: 'Look up a secret fixture.', readOnlyHint: false },
+      { name: 'fixture-added', description: 'A new tool.' },
+    ]);
+    const result = report(await surfaceOf(BASE_TOOLS), current, [
+      {
+        location: { kind: 'removed', collection: 'tools', id: 'fixture-retired' },
+        reason: 'retired on purpose',
+      },
+      {
+        location: { kind: 'removed', collection: 'prompts', id: 'fixture-prompt' },
+        reason: 'never served',
+      },
+    ]);
+    expect(formatCounts(result)).toBe(
+      [
+        'surface differs: 3 unexpected differences',
+        '  added tool: 1',
+        '  changed tool field: 2',
+        'expected differences: 1 present, 1 no longer occur',
+        'details withheld while SURFACE_DIFF_BEARER_TOKEN is set',
+        '',
+      ].join('\n'),
     );
   });
 
