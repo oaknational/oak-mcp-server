@@ -1,14 +1,5 @@
-/**
- * E2E (G2 c3): `tools/call` on the anchored get-misconception-graph.
- *
- * Exercises the real corpus path through the full HTTP stack — no upstream
- * stub is involved because the aggregated graph tool reads the compile-time
- * corpus, not the live API. The anchor is chosen deterministically from the
- * corpus so the test describes behaviour over any valid corpus.
- */
-
 import assert from 'node:assert/strict';
-import { graphCorpus } from '@oaknational/sdk-codegen/graph-corpus';
+import { fixtureCorpus } from '../../../packages/graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import { request, type Response } from '../src/test-helpers/loopback-request.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
@@ -62,7 +53,7 @@ const idSorted = (ids: readonly string[]): string[] => [...ids].sort((a, b) => a
 // Fixtures chosen for the property under test: a unit whose authored lesson
 // order, and a thread whose curriculum unit order, provably differ from id
 // order — so an id-sorted result anywhere between the view and the wire fails.
-const reorderedRun = graphCorpus.unitLessonRuns.find(
+const reorderedRun = fixtureCorpus.unitLessonRuns.find(
   (run) => run.lessonIds.length > 2 && run.lessonIds.join() !== idSorted(run.lessonIds).join(),
 );
 assert.ok(
@@ -77,8 +68,8 @@ assert.ok(
 const THREAD_PAGE_LIMIT = 25;
 const isReordered = (ids: readonly string[]): boolean =>
   ids.length > 2 && ids.join() !== idSorted(ids).join();
-const sequencesByThread = new Map<string, (typeof graphCorpus.sequences)[number][]>();
-for (const sequence of graphCorpus.sequences) {
+const sequencesByThread = new Map<string, (typeof fixtureCorpus.sequences)[number][]>();
+for (const sequence of fixtureCorpus.sequences) {
   sequencesByThread.set(sequence.threadId, [
     ...(sequencesByThread.get(sequence.threadId) ?? []),
     sequence,
@@ -102,7 +93,7 @@ const expectedThreadPage = [
 ];
 const bare = (id: string): string => id.slice(id.indexOf(':') + 1);
 /** A lesson slug carrying a misconception, chosen deterministically (lexicographic minimum edge source). */
-const firstLessonId = graphCorpus.edges
+const firstLessonId = fixtureCorpus.edges
   .filter((edge) => edge.type === 'addressesMisconception')
   .map((edge) => edge.source)
   .sort((a, b) => a.localeCompare(b))[0];

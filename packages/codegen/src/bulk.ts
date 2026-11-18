@@ -67,7 +67,6 @@ export {
   serializeVocabularyGraph,
   writeVocabularyGraphAsJson,
   generateGraphCorpusData,
-  writeGraphCorpusAsJson,
 } from './bulk/index.js';
 
 export type {
