@@ -4,6 +4,8 @@ Oak National Academy's Model Context Protocol server for the Oak Curriculum API.
 
 A rule below links to the check that enforces it, or says `prose-only` when no check exists yet.
 
+Operator- and bot-identity-specific working practice — who commits as what, merge authorization, local orchestration state — lives in a file that is never committed to this repository. It is not part of this document.
+
 ## Repository map
 
 - `apps/` and `packages/` hold the server, its widgets and its libraries. They arrive in later PRs, so check they exist before you rely on them.
