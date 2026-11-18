@@ -12,8 +12,17 @@ import { diffFromMergeBase } from './changed-files.ts';
 
 const HEADER = /^(?:[A-Z][A-Z0-9]*-\d+: )?(\w+)(?:\([^)]*\))?(!)?: /;
 const BREAKING_FOOTER = /^BREAKING[ -]CHANGES?\b/m;
-const NON_RELEASING = new Set(['chore', 'docs', 'ci', 'test']);
-const RELEASING = new Set(['feat', 'fix']);
+export const RELEASE_BY_TYPE = {
+  feat: 'minor',
+  fix: 'patch',
+  chore: false,
+  docs: false,
+  ci: false,
+  test: false,
+} as const;
+const types = Object.entries(RELEASE_BY_TYPE);
+const NON_RELEASING = new Set(types.filter(([, release]) => !release).map(([type]) => type));
+const RELEASING = new Set(types.filter(([, release]) => release).map(([type]) => type));
 const BREAKING_SECTION = /^##\s+Breaking change\s*$/im;
 const SERVED_SURFACE = 'apps/server/served-surface.json';
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)(?:__tests__|e2e-tests)\//;
