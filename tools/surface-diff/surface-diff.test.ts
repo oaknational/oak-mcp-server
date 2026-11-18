@@ -9,6 +9,7 @@ import {
   diffSurfaces,
   formatReport,
   judgeDifferences,
+  judgeSurface,
   normaliseSnapshot,
   parseBaseline,
   surfaceMatches,
@@ -192,5 +193,32 @@ describe('surface diff', () => {
         expect(baseline[location.collection]).toHaveProperty([location.id]);
       }
     }
+  });
+
+  describe('rollback mode', () => {
+    const baseline = parseBaseline(readFileSync(new URL('baseline.json', import.meta.url), 'utf8'));
+    const withoutUnderTheHood: SurfaceSnapshot = {
+      ...baseline,
+      tools: Object.fromEntries(
+        Object.entries(baseline.tools).filter(([name]) => name !== 'oak-under-the-hood'),
+      ),
+    };
+
+    it('passes a surface identical to the baseline', () => {
+      const result = judgeSurface(baseline, baseline, { expectIdentical: true });
+      expect(surfaceMatches(result)).toBe(true);
+      expect(formatReport(result)).toBe('surface identical\n');
+    });
+
+    it('fails a surface that still carries an expected difference', () => {
+      const result = judgeSurface(baseline, withoutUnderTheHood, { expectIdentical: true });
+      expect(surfaceMatches(result)).toBe(false);
+      expect(formatReport(result)).toContain('removed tool "oak-under-the-hood"');
+    });
+
+    it('keeps the cutover check failing on a surface identical to the baseline', () => {
+      const result = judgeSurface(baseline, baseline, { expectIdentical: false });
+      expect(surfaceMatches(result)).toBe(false);
+    });
   });
 });

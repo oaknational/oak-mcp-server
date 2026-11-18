@@ -3,7 +3,11 @@ import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { format, resolveConfig } from 'prettier';
 import { tsImport } from 'tsx/esm/api';
 
@@ -352,6 +356,17 @@ export function judgeDifferences(
   };
 }
 
+export function judgeSurface(
+  baseline: SurfaceSnapshot,
+  current: SurfaceSnapshot,
+  { expectIdentical }: { readonly expectIdentical: boolean },
+): SurfaceReport {
+  return judgeDifferences(
+    diffSurfaces(baseline, current),
+    expectIdentical ? [] : EXPECTED_DIFFERENCES,
+  );
+}
+
 export function surfaceMatches(report: SurfaceReport): boolean {
   return report.unexpected.length === 0 && report.expectedAbsent.length === 0;
 }
@@ -436,13 +451,78 @@ export function parseBaseline(text: string): SurfaceSnapshot {
   });
 }
 
-async function captureTarget(target: URL): Promise<SurfaceSnapshot> {
+const TOKEN_VARIABLE = 'SURFACE_DIFF_BEARER_TOKEN';
+const BEARER_TOKEN = /^[A-Za-z0-9\-._~+/]+=*$/;
+const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+export function parseBearerToken(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!BEARER_TOKEN.test(value)) {
+    throw new Error(`${TOKEN_VARIABLE} is not a valid bearer token`);
+  }
+  return value;
+}
+
+function mayCarryToken(target: URL): boolean {
+  if (target.username !== '' || target.password !== '') {
+    return false;
+  }
+  return (
+    target.protocol === 'https:' ||
+    (target.protocol === 'http:' && LOOPBACK_HOSTS.has(target.hostname))
+  );
+}
+
+function tokenSafeError(error: unknown): Error {
+  if (error instanceof StreamableHTTPError && error.code !== undefined && error.code > 0) {
+    return new Error(
+      error.code === 401 || error.code === 403
+        ? `HTTP ${String(error.code)}: the target refused ${TOKEN_VARIABLE}. Use a current OAuth access token issued for this /mcp`
+        : `HTTP ${String(error.code)}`,
+    );
+  }
+  return new Error(error instanceof TypeError ? 'network error' : 'invalid response');
+}
+
+function targetError(error: unknown, token: string | undefined): Error {
+  if (token !== undefined) {
+    return tokenSafeError(error);
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  const status = error instanceof StreamableHTTPError ? `HTTP ${String(error.code)}: ` : '';
+  return new Error(`${status}${message}`);
+}
+
+const fetchWithoutRedirects: FetchLike = (url, init) => fetch(url, { ...init, redirect: 'error' });
+
+export async function captureTarget(
+  target: URL,
+  token: string | undefined,
+): Promise<SurfaceSnapshot> {
+  if (token !== undefined && !mayCarryToken(target)) {
+    throw new Error(
+      `${TOKEN_VARIABLE} is sent only over https or to localhost, without URL credentials`,
+    );
+  }
+  const options =
+    token === undefined
+      ? {}
+      : {
+          requestInit: { headers: { Authorization: `Bearer ${token}` } },
+          fetch: fetchWithoutRedirects,
+        };
   const client = new Client({ name: 'oak-surface-diff', version: '0.0.0' });
-  await client.connect(new StreamableHTTPClientTransport(target));
   try {
-    return await captureSurface(client);
-  } finally {
-    await client.close();
+    await client.connect(new StreamableHTTPClientTransport(target, options));
+    try {
+      return await captureSurface(client);
+    } finally {
+      await client.close();
+    }
+  } catch (error) {
+    throw targetError(error, token);
   }
 }
 
@@ -483,16 +563,57 @@ export async function renderSurfaceFile(
   return format(text, { ...options, filepath: path });
 }
 
+function tokenForms(token: string): string[] {
+  return [token, `Bearer ${token}`].flatMap((value) => [
+    value,
+    Buffer.from(value).toString('base64'),
+    Buffer.from(value).toString('base64url'),
+    encodeURIComponent(value),
+    value.replaceAll('/', '\\/'),
+  ]);
+}
+
+function* textsOf(value: Json): Generator<string> {
+  if (typeof value === 'string') {
+    yield value;
+  } else if (isArrayNode(value)) {
+    for (const item of value) {
+      yield* textsOf(item);
+    }
+  } else if (isObjectNode(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      yield key;
+      yield* textsOf(item);
+    }
+  }
+}
+
+export function carriesToken(text: string, token: string): boolean {
+  const folded = text.toLowerCase();
+  return tokenForms(token).some((form) => folded.includes(form.toLowerCase()));
+}
+
 async function main(argv: readonly string[]): Promise<number> {
   const { values } = parseArgs({
     args: [...argv],
-    options: { target: { type: 'string' }, 'write-baseline': { type: 'string' } },
+    options: {
+      target: { type: 'string' },
+      'write-baseline': { type: 'string' },
+      'expect-identical': { type: 'boolean', default: false },
+    },
     strict: true,
   });
+  const token = parseBearerToken(process.env[TOKEN_VARIABLE]);
+  if (token !== undefined && values.target === undefined) {
+    throw new Error(`${TOKEN_VARIABLE} is set, but only --target sends it`);
+  }
+  if (token !== undefined && values['write-baseline'] !== undefined) {
+    throw new Error(`${TOKEN_VARIABLE} is set, so --write-baseline is refused`);
+  }
   const current =
     values.target === undefined
       ? await captureInMemory()
-      : await captureTarget(new URL(values.target));
+      : await captureTarget(new URL(values.target), token);
   const source = values['write-baseline'];
   if (source !== undefined) {
     writeFileSync(BASELINE_PATH, await renderSurfaceFile(current, source, BASELINE_PATH));
@@ -500,8 +621,14 @@ async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
   const baseline = parseBaseline(readFileSync(BASELINE_PATH, 'utf8'));
-  const report = judgeDifferences(diffSurfaces(baseline, current), EXPECTED_DIFFERENCES);
-  process.stdout.write(formatReport(report));
+  const report = judgeSurface(baseline, current, {
+    expectIdentical: values['expect-identical'],
+  });
+  const output = formatReport(report);
+  if (token !== undefined && carriesToken([...textsOf(current), output].join('\n'), token)) {
+    throw new Error("the target's response contains the bearer token; report suppressed");
+  }
+  process.stdout.write(output);
   return surfaceMatches(report) ? 0 : 1;
 }
 
