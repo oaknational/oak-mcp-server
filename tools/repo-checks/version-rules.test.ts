@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { JsonObject, SurfaceSnapshot } from '../surface-diff/surface-diff.ts';
-import { checkVersion, isRuntimeFile } from './version-rules.ts';
+import { changesCode, checkVersion, isRuntimeFile } from './version-rules.ts';
 
 const runtime = ['packages/search/src/index.ts'];
 const docsOnly = ['README.md', 'docs/guide.md'];
@@ -56,6 +56,52 @@ describe('version-rules', () => {
     expect(isRuntimeFile('apps/server/README.md')).toBe(false);
     expect(isRuntimeFile('packages/a/package.json')).toBe(false);
     expect(isRuntimeFile('apps/server/src/main.ts')).toBe(true);
+  });
+
+  it('does not count e2e or __tests__ helpers as runtime code', () => {
+    expect(isRuntimeFile('apps/server/e2e-tests/helpers/store.ts')).toBe(false);
+    expect(isRuntimeFile('packages/a/src/__tests__/fixture.ts')).toBe(false);
+    expect(isRuntimeFile('apps/server/src/e2e-tests-config.ts')).toBe(true);
+  });
+
+  describe('changesCode', () => {
+    const path = 'apps/server/src/schema.ts';
+    const base = [
+      '/**',
+      ' * Parses the token.',
+      ' * Kept for forward compatibility.',
+      ' */',
+      'export const limit = 10; // per page',
+      'const pattern = /https?:\\/\\//;',
+      'export const greet = (name: string) => `hi ${name} // not a comment`;',
+      '',
+    ].join('\n');
+
+    it('ignores an edit that changes only comments', () => {
+      const head = base
+        .replace(' * Kept for forward compatibility.\n', '')
+        .replace('// per page', '// items per page');
+      expect(changesCode(path, base, head)).toBe(false);
+    });
+
+    it('counts a code change in the same file', () => {
+      expect(changesCode(path, base, base.replace('limit = 10', 'limit = 20'))).toBe(true);
+    });
+
+    it('counts a change inside a regex or template literal that holds //', () => {
+      expect(changesCode(path, base, base.replace('https?:', 'http:'))).toBe(true);
+      expect(changesCode(path, base, base.replace('not a comment', 'not a remark'))).toBe(true);
+    });
+
+    it('counts an added or deleted file', () => {
+      expect(changesCode(path, undefined, base)).toBe(true);
+      expect(changesCode(path, base, undefined)).toBe(true);
+    });
+
+    it('counts any edit to a file it cannot parse as script', () => {
+      const json = 'apps/server/vercel.json';
+      expect(changesCode(json, '{"a": 1}', '{"a": 1} ')).toBe(true);
+    });
   });
 
   describe('served surface', () => {
