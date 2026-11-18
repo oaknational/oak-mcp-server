@@ -33,6 +33,8 @@ import { z } from 'zod';
 /** The check/step statuses MCPJam's json-summary reporter emits. */
 const mcpjamCaseStatusSchema = z.enum(['passed', 'failed', 'skipped']);
 
+const mcpjamOutcomeSchema = z.enum(['passed', 'failed', 'incomplete']);
+
 /**
  * One check (protocol/apps suites) or flow step (oauth suite) in a
  * json-summary report. `details` stays `unknown`: the wrapper never
@@ -45,6 +47,8 @@ const mcpjamCaseSchema = z
     title: z.string(),
     category: z.string(),
     status: mcpjamCaseStatusSchema,
+    skipReason: z.enum(['not-applicable', 'could-not-run']).optional(),
+    pending: z.boolean().optional(),
     durationMs: z.number(),
     description: z.string().optional(),
     error: z.string().optional(),
@@ -66,6 +70,35 @@ const mcpjamGroupSchema = z
   })
   .strict();
 
+const mcpjamScoreSchema = z
+  .object({
+    score: z.number().nullable(),
+    outcome: mcpjamOutcomeSchema,
+    applicable: z.number(),
+    passed: z.number(),
+    failed: z.number(),
+    couldNotRun: z.number(),
+    notApplicable: z.number(),
+    pending: z.number(),
+    advisories: z.array(z.object({ id: z.string(), tier: z.enum(['should', 'may']) }).strict()),
+    advicePointsLost: z.number(),
+    protocolVersion: z.string().optional(),
+  })
+  .strict();
+
+const mcpjamProfileSchema = z
+  .object({
+    profileId: z.enum(['mcp-protocol', 'mcp-tasks']),
+    profileVersion: z.string(),
+    manifestDigest: z.string(),
+    checkerVersion: z.string(),
+    protocolVersion: z.string().optional(),
+    extensionVersions: z.record(z.string(), z.string()).optional(),
+    schemaDigest: z.string().optional(),
+    pendingCheckIds: z.array(z.string()),
+  })
+  .strict();
+
 /**
  * The MCPJam `--reporter json-summary` document. `schemaVersion` is pinned
  * as a literal: a reporter schema bump must fail loudly at the parse
@@ -77,6 +110,10 @@ export const mcpjamReportSchema = z
     kind: z.string().min(1),
     name: z.string(),
     passed: z.boolean(),
+    outcome: mcpjamOutcomeSchema.optional(),
+    incompleteReason: z.string().optional(),
+    score: mcpjamScoreSchema.optional(),
+    profile: mcpjamProfileSchema.optional(),
     durationMs: z.number(),
     groups: z.array(mcpjamGroupSchema).min(1),
   })

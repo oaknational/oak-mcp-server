@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "oauth-conformance",
+  "name": "OAuth Conformance",
+  "passed": false,
+  "outcome": "failed",
+  "score": {
+    "score": 5,
+    "outcome": "failed",
+    "applicable": 1,
+    "passed": 0,
+    "failed": 1,
+    "couldNotRun": 0,
+    "notApplicable": 0,
+    "pending": 0,
+    "advisories": [],
+    "advicePointsLost": 0,
+    "protocolVersion": "2025-11-25"
+  },
+  "durationMs": 11,
+  "groups": [
+    {
+      "id": "oauth-1",
+      "title": "2025-11-25/dcr",
+      "target": "http://127.0.0.1:9/mcp",
+      "passed": false,
+      "durationMs": 11,
+      "summary": "OAuth conformance failed at Initial MCP Request: Failed to request MCP server: Refusing outbound OAuth fetch to loopback host \"127.0.0.1\" (no loopback opt-in)",
+      "cases": [
+        {
+          "id": "request_without_token",
+          "title": "Initial MCP Request",
+          "category": "oauth",
+          "status": "failed",
+          "durationMs": 7,
+          "description": "The client sends an unauthenticated initialize request to discover whether OAuth is required.",
+          "error": "Failed to request MCP server: Refusing outbound OAuth fetch to loopback host \"127.0.0.1\" (no loopback opt-in)",
+          "details": {
+            "teachableMoments": [
+              "OAuth flows usually begin with a protected resource request that deliberately lacks credentials.",
+              "The response determines which discovery path the client must follow."
+            ]
+          },
+          "output": "POST http://127.0.0.1:9/mcp → No response"
+        }
+      ]
+    }
+  ]
+}
