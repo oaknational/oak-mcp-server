@@ -131,10 +131,10 @@ export function parsePriorKnowledgeGraphInput(input: unknown): Result<PriorKnowl
 }
 
 /**
- * Execute the anchored get-prior-knowledge-graph tool on parsed input.
- * Retrieval is infallible for parsed input. The statements are returned in
- * structuredContent with the summary and serialised JSON alongside as
- * TextContent (MCP spec SHOULD for structured results).
+ * Execute the anchored get-prior-knowledge-graph tool on parsed input. The
+ * statements are returned in structuredContent with the summary and
+ * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
+ * results).
  *
  * @param input - Arguments from {@link parsePriorKnowledgeGraphInput}.
  * @param views - The curriculum graph views to answer from.

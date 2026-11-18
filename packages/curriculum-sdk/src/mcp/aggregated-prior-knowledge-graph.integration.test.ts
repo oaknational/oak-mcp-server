@@ -13,9 +13,11 @@
  * describe behaviour over any valid corpus rather than pinning content.
  */
 
-import { createCurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import {
+  createCurriculumGraphViews,
+  type CurriculumGraphViews,
+} from '@oaknational/graph-corpus-sdk/curriculum';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
-import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
 import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';

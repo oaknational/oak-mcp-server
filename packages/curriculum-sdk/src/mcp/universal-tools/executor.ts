@@ -190,10 +190,6 @@ type CurriculumGraphToolName = Extract<
 
 const GRAPH_FALLBACKS = 'Use search, fetch or browse-curriculum instead.';
 
-/**
- * Client text per load failure. Only a read failure is transient, because the
- * loader does not cache failures; the kind itself never reaches the client.
- */
 const GRAPH_UNAVAILABLE_ADVICE: Readonly<Record<GraphCorpusLoadError['kind'], string>> = {
   'not-found': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
   'invalid-snapshot': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
@@ -201,11 +197,6 @@ const GRAPH_UNAVAILABLE_ADVICE: Readonly<Record<GraphCorpusLoadError['kind'], st
     'This may be temporary, so you can retry this call once with the same arguments. If it fails again, use search, fetch or browse-curriculum instead.',
 };
 
-/**
- * Wraps a graph tool so input is validated before the graph loads, a load
- * failure returns advice matched to its cause, and a throwing runner returns
- * generic text while the exception is logged server-side only.
- */
 function withCurriculumGraph<Input>(
   tool: CurriculumGraphToolName,
   parse: (input: unknown) => Result<Input, string>,

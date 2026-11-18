@@ -166,11 +166,9 @@ export function parseKeywordGraphInput(input: unknown): Result<KeywordGraphInput
 /**
  * Execute the anchored get-keyword-graph tool on parsed input.
  *
- * The view keeps its own limit contract — a limit outside [1, max] surfaces
- * as a boundary error (the view returns `KeywordLimitInvalid`; the envelope
- * reports it as an error result). The bounded result is returned in
- * structuredContent with the summary and serialised JSON alongside as
- * TextContent (MCP spec SHOULD for structured results).
+ * The bounded result is returned in structuredContent with the summary and
+ * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
+ * results).
  *
  * @param input - Arguments from {@link parseKeywordGraphInput}.
  * @param views - The curriculum graph views to answer from.

@@ -19,9 +19,9 @@
 import {
   createCurriculumGraphViews,
   MAX_KEYWORD_LIMIT,
+  type CurriculumGraphViews,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
-import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
 import { formatError } from './universal-tool-shared.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
