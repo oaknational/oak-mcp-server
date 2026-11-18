@@ -102,6 +102,64 @@ describe('version-rules', () => {
       const json = 'apps/server/vercel.json';
       expect(changesCode(json, '{"a": 1}', '{"a": 1} ')).toBe(true);
     });
+
+    describe('directive comments', () => {
+      const tsx = 'apps/server/src/widget.tsx';
+      const widget = [
+        '/// <reference types="vite/client" />',
+        '/** @jsxImportSource preact */',
+        '/** @jsxRuntime automatic */',
+        '// Renders the badge.',
+        'export const badge = /*#__PURE__*/ make(<b>hi</b>);',
+        'export const other = /*@__PURE__*/ make(1);',
+        '',
+      ].join('\n');
+      const classic = [
+        '/** @jsx h */',
+        '/** @jsxFrag Fragment */',
+        'export const list = <><i /></>;',
+        '',
+      ].join('\n');
+
+      it.each([
+        ['@jsxImportSource', widget, '@jsxImportSource preact', '@jsxImportSource react'],
+        ['@jsxRuntime', widget, '@jsxRuntime automatic', '@jsxRuntime classic'],
+        ['@jsx', classic, '@jsx h', '@jsx createElement'],
+        ['@jsxFrag', classic, '@jsxFrag Fragment', '@jsxFrag Frag'],
+        ['/*#__PURE__*/', widget, '/*#__PURE__*/ ', ''],
+        ['/*@__PURE__*/', widget, '/*@__PURE__*/ ', ''],
+        ['/// <reference>', widget, 'vite/client', 'node'],
+      ])('counts a change to a %s comment', (_name, base, from, to) => {
+        expect(changesCode(tsx, base, base.replace(from, to))).toBe(true);
+      });
+
+      it('counts an added directive comment', () => {
+        const head = widget.replace('make(1)', '/*#__PURE__*/ make(1)');
+        expect(changesCode(tsx, widget, head)).toBe(true);
+      });
+
+      it('counts a pragma moved below the code it governs', () => {
+        const head =
+          classic.replace('/** @jsxFrag Fragment */\n', '') + '/** @jsxFrag Fragment */\n';
+        expect(changesCode(tsx, classic, head)).toBe(true);
+      });
+
+      it('ignores an ordinary comment change beside directives', () => {
+        const head = widget.replace(
+          '// Renders the badge.',
+          '// Renders the status badge.\n// Second line.',
+        );
+        expect(changesCode(tsx, widget, head)).toBe(false);
+      });
+
+      it('ignores a JSDoc tag added beside directives', () => {
+        const head = widget.replace(
+          '// Renders the badge.\n',
+          '/**\n * Renders the badge.\n * @param label the text\n */\n',
+        );
+        expect(changesCode(tsx, widget, head)).toBe(false);
+      });
+    });
   });
 
   describe('served surface', () => {

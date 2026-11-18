@@ -30,9 +30,46 @@ export function isRuntimeFile(path: string): boolean {
 }
 
 const printer = ts.createPrinter({ removeComments: true });
+const COMPILER_DIRECTIVE_COMMENT = /@jsx|[#@]__[A-Z_]+__|^\/\/\/\s*</;
 
-function printWithoutComments(path: string, text: string): string {
-  return printer.printFile(ts.createSourceFile(path, text, ts.ScriptTarget.Latest));
+function isJSDocNode(node: ts.Node): boolean {
+  return node.kind >= ts.SyntaxKind.FirstJSDocNode && node.kind <= ts.SyntaxKind.LastJSDocNode;
+}
+
+interface Directive {
+  readonly tokensBefore: number;
+  readonly text: string;
+}
+
+function directivesByTokenOffset(file: ts.SourceFile): Directive[] {
+  const text = file.getFullText();
+  const found: Directive[] = [];
+  let tokens = 0;
+  const visit = (node: ts.Node): void => {
+    const children = node.getChildren(file).filter((child) => !isJSDocNode(child));
+    if (children.length > 0) {
+      children.forEach(visit);
+      return;
+    }
+    const ranges = [
+      ...(ts.getTrailingCommentRanges(text, node.pos) ?? []),
+      ...(ts.getLeadingCommentRanges(text, node.pos) ?? []),
+    ];
+    for (const range of ranges) {
+      const comment = text.slice(range.pos, range.end);
+      if (COMPILER_DIRECTIVE_COMMENT.test(comment)) {
+        found.push({ tokensBefore: tokens, text: comment });
+      }
+    }
+    tokens += 1;
+  };
+  visit(file);
+  return found;
+}
+
+function fingerprint(path: string, text: string): string {
+  const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+  return JSON.stringify([printer.printFile(file), directivesByTokenOffset(file)]);
 }
 
 export function changesCode(
@@ -43,7 +80,7 @@ export function changesCode(
   if (before === undefined || after === undefined || !SCRIPT_FILE.test(path)) {
     return before !== after;
   }
-  return printWithoutComments(path, before) !== printWithoutComments(path, after);
+  return fingerprint(path, before) !== fingerprint(path, after);
 }
 
 export interface SurfaceChange {
