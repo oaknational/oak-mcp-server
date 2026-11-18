@@ -501,7 +501,7 @@ const GH_JQ_COMMANDS = new Set([
   'repo view',
   'release view',
 ]);
-const READS_PROGRAM_FILE = /^(?:-[a-z]*f[a-z]*|--from-file)$/i;
+const READS_PROGRAM_FILE = /^(?:-[a-z]*f[a-z]*|--from-file|--run-tests)$/i;
 const REDIRECT = /^\d*[<>]/;
 function queryFilterIndex(command, args) {
   if (command === 'gh') {

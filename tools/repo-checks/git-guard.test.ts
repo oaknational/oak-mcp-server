@@ -468,6 +468,7 @@ describe('git-guard review fixes', () => {
     'jq . ./.env.local',
     "jq -e '.env.PATH' .env.local",
     'jq -f .env data.json',
+    'jq --run-tests .env',
     'jq <.env .',
     'jq < .env .',
     'jq --rawfile key .env . data.json',
