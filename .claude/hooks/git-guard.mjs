@@ -165,6 +165,314 @@ function tokenize(text) {
   return segments;
 }
 
+// A heredoc delimiter word follows ordinary shell quoting: single- and double-quoted
+// pieces may sit next to bare characters and concatenate, e.g. E"OF" names EOF. Quoting
+// (or backslash-escaping) any part of the word also disables expansion in the body.
+function readHeredocDelimiter(text, at) {
+  let index = at;
+  let word = '';
+  let quoted = false;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === '$' && (text[index + 1] === "'" || text[index + 1] === '"')) {
+      refuse(
+        `a heredoc delimiter quoted with ${char}${text[index + 1]} is one the guard cannot read. Use a plain or quoted delimiter such as 'EOF'.`,
+      );
+    }
+    if (char === "'" || char === '"') {
+      const end = text.indexOf(char, index + 1);
+      if (end === -1) {
+        return null;
+      }
+      word += text.slice(index + 1, end);
+      index = end + 1;
+      quoted = true;
+      continue;
+    }
+    if (char === '\\' && text[index + 1] === '\n') {
+      // A backslash-newline is a line continuation the shell removes, not a quoted
+      // character: the delimiter carries on with the next physical line.
+      index += 2;
+      continue;
+    }
+    if (char === '\\' && index + 1 < text.length) {
+      word += text[index + 1];
+      index += 2;
+      quoted = true;
+      continue;
+    }
+    if (/[\s<>|&;()\n]/.test(char)) {
+      break;
+    }
+    word += char;
+    index += 1;
+  }
+  return word === '' ? null : { word, next: index, quoted };
+}
+
+const refuseUnclosed = (word, stripTabs) =>
+  refuse(
+    `a heredoc opened with <<${stripTabs ? '-' : ''}${word} never reaches a closing ${word} line, so the guard cannot tell what the rest of the command does. Close every heredoc you open.`,
+  );
+
+const HEREDOC_RUNNERS = new Set([...SHELLS, 'ksh', 'source', '.', 'eval']);
+const runsHeredoc = (line) =>
+  tokenize(line).some((segment) =>
+    segment.some((word) => HEREDOC_RUNNERS.has(word.replace(/^\\/, '').split('/').pop())),
+  );
+
+const UNCERTAIN = -1;
+const XARGS_VALUE_FLAGS = /^-[ILnPsdEa]/;
+const XARGS_FLAGS = new Set(['-0', '-r', '-t', '-p', '-x', '--null', '--no-run-if-empty']);
+const isRedirect = (word) => OUTPUT_REDIRECT.test(word) || /^\d*<[<&]*$/.test(word);
+
+// The index of the command word in a simple command's words, past leading NAME=value
+// words, redirections and the wrappers checkSegment unwraps. words.length means none is
+// there yet. UNCERTAIN means a wrapper option the guard doesn't know hides it.
+function commandWordIndex(words) {
+  let start = 0;
+  let wrapper = '';
+  for (; start < words.length; start += 1) {
+    const word = words[start];
+    if (isRedirect(word)) {
+      start += 1;
+      continue;
+    }
+    if (PREFIXES.has(word) || word === 'builtin') {
+      wrapper = word;
+      continue;
+    }
+    if (word.startsWith('-') && wrapper === 'xargs') {
+      if (XARGS_FLAGS.has(word)) {
+        continue;
+      }
+      if (!XARGS_VALUE_FLAGS.test(word)) {
+        return UNCERTAIN;
+      }
+      start += word.length === 2 ? 1 : 0;
+      continue;
+    }
+    if (word.startsWith('-')) {
+      const option = wrapper === '' ? undefined : wrapperOption(word, words[start + 1], wrapper);
+      if (option === undefined) {
+        return UNCERTAIN;
+      }
+      start += option.consumesNext ? 1 : 0;
+      continue;
+    }
+    if (!word.includes('=')) {
+      break;
+    }
+  }
+  if (start >= words.length) {
+    return start;
+  }
+  const inner = unwrap(words[start].replace(/^\\/, '').split('/').pop(), words.slice(start + 1));
+  if (inner === undefined) {
+    return start;
+  }
+  const index = commandWordIndex(inner);
+  return index === UNCERTAIN ? UNCERTAIN : words.length - inner.length + index;
+}
+
+// A $(...) or `...` runs its output unless it is data: an assignment value, or a word
+// after the command word. `before` is the command text up to the substitution.
+function substitutionRuns(before) {
+  const last = before.at(-1) ?? '';
+  if (last === '' || SEPARATORS.has(last) || /[ \t]/.test(last)) {
+    const trimmed = before.replace(/[ \t]+$/, '');
+    if (trimmed === '' || SEPARATORS.has(trimmed.at(-1))) {
+      return true;
+    }
+  }
+  const words = tokenize(before).at(-1) ?? [];
+  const inWord = !/[ \t]/.test(last);
+  const at = inWord ? words.length - 1 : words.length;
+  const command = commandWordIndex(words.slice(0, Math.max(at, 0)));
+  if (command === UNCERTAIN) {
+    return true;
+  }
+  if (command < at) {
+    return false;
+  }
+  return !(inWord && /^[A-Za-z_]\w*=/.test(words[at] ?? ''));
+}
+
+// Removes heredoc bodies so the env-file check skips prose that mentions .env. A body
+// that runs (its line names a shell, source, . or eval, the innermost substitution
+// around it starts a command, or `bodiesRun` is set) is returned in `commands`, as is
+// any $(...) or `...` the shell expands in an unquoted body.
+function stripHeredocs(text, bodiesRun) {
+  let result = '';
+  let quote = '';
+  let inComment = false;
+  let arith = 0;
+  let at = 0;
+  let lineStart = 0;
+  const pending = [];
+  const commands = [];
+  // Open $( ( and ` outside quotes. A substitution records whether its output runs.
+  const nesting = [];
+  while (at < text.length) {
+    const char = text[at];
+    if (char === '\n') {
+      const lineRuns = pending.length > 0 && (bodiesRun || runsHeredoc(text.slice(lineStart, at)));
+      inComment = false;
+      result += char;
+      at += 1;
+      while (pending.length > 0) {
+        const { word, stripTabs, quoted, enclosedRuns } = pending.shift();
+        let body = '';
+        let terminated = false;
+        for (;;) {
+          const newline = text.indexOf('\n', at);
+          const line = newline === -1 ? text.slice(at) : text.slice(at, newline);
+          const bare = stripTabs ? line.replace(/^\t+/, '') : line;
+          const done = bare === word;
+          at = newline === -1 ? text.length : newline + 1;
+          if (done) {
+            terminated = true;
+          } else {
+            body += `${line}\n`;
+          }
+          if (done || newline === -1) {
+            break;
+          }
+        }
+        if (!terminated) {
+          refuseUnclosed(word, stripTabs);
+        }
+        if (lineRuns || enclosedRuns) {
+          commands.push(body);
+        } else if (!quoted) {
+          for (const [, inner] of body.matchAll(/\$\(([^()]*)\)/g)) {
+            commands.push(inner ?? '');
+          }
+          for (const [, inner] of body.matchAll(/`([^`]*)`/g)) {
+            commands.push(inner ?? '');
+          }
+        }
+      }
+      lineStart = at;
+      continue;
+    }
+    if (inComment) {
+      result += char;
+      at += 1;
+      continue;
+    }
+    if (quote) {
+      // Inside double quotes, a backslash escapes the very next character (at
+      // minimum " \ $ ` and newline), so `\"` never closes the string early.
+      // Single quotes take no escaping at all, so this only applies to `"`.
+      if (quote === '"' && char === '\\' && at + 1 < text.length) {
+        result += char + text[at + 1];
+        at += 2;
+        continue;
+      }
+      result += char;
+      if (char === quote) {
+        quote = '';
+      }
+      at += 1;
+      continue;
+    }
+    // Outside quotes, a backslash escapes the very next character, so it can
+    // never be misread as a heredoc opener, a quote boundary, or a comment
+    // start — e.g. `\<<EOF` is a literal `<` followed by a lone `<`, not a
+    // heredoc, because the escaped first `<` is never a `<<` operator start.
+    if (char === '\\' && at + 1 < text.length) {
+      result += char + text[at + 1];
+      at += 2;
+      continue;
+    }
+    // A # only opens a comment at the start of a word, not inside one like file#1.
+    if (char === '#' && (at === 0 || /[\s;&|()`<>]/.test(text[at - 1]))) {
+      inComment = true;
+      result += char;
+      at += 1;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      result += char;
+      at += 1;
+      continue;
+    }
+    if (char === '$' && text[at + 1] === '(' && text[at + 2] !== '(') {
+      nesting.push({ close: ')', runs: substitutionRuns(text.slice(0, at)) });
+      result += '$(';
+      at += 2;
+      continue;
+    }
+    if (char === '`') {
+      if (nesting.at(-1)?.close === '`') {
+        nesting.pop();
+      } else {
+        nesting.push({ close: '`', runs: substitutionRuns(text.slice(0, at)) });
+      }
+    } else if (char === '(' && text[at + 1] !== '(') {
+      nesting.push({ close: ')' });
+    } else if (char === ')' && !(text[at + 1] === ')' && arith > 0)) {
+      if (nesting.at(-1)?.close === ')') {
+        nesting.pop();
+      }
+    }
+    // ((...)) arithmetic evaluation, including $((...)) arithmetic expansion, also
+    // spells << as a bitwise shift. Track it so that form is never read as a heredoc.
+    if (char === '(' && text[at + 1] === '(') {
+      arith += 1;
+      result += text.slice(at, at + 2);
+      at += 2;
+      continue;
+    }
+    if (char === ')' && text[at + 1] === ')' && arith > 0) {
+      arith -= 1;
+      result += text.slice(at, at + 2);
+      at += 2;
+      continue;
+    }
+    if (text.startsWith('<<<', at)) {
+      // A here-string feeds its operand to the command, so it stays in the text.
+      result += '<<<';
+      at += 3;
+      continue;
+    }
+    if (arith === 0 && char === '<' && text[at + 1] === '<') {
+      let scan = at + 2;
+      let stripTabs = false;
+      if (text[scan] === '-') {
+        stripTabs = true;
+        scan += 1;
+      }
+      while (text[scan] === ' ' || text[scan] === '\t') {
+        scan += 1;
+      }
+      const delimiter = readHeredocDelimiter(text, scan);
+      if (delimiter !== null) {
+        // Drop the opener itself rather than keeping it in the output: a command
+        // substitution wrapped around this heredoc is rescanned once stripping is
+        // done, and a leftover "<<DELIM" with its body already gone would misread
+        // as a second, unterminated heredoc there.
+        pending.push({
+          word: delimiter.word,
+          stripTabs,
+          quoted: delimiter.quoted,
+          enclosedRuns: nesting.findLast((open) => open.runs !== undefined)?.runs ?? false,
+        });
+        at = delimiter.next;
+        continue;
+      }
+    }
+    result += char;
+    at += 1;
+  }
+  if (pending.length > 0) {
+    refuseUnclosed(pending[0].word, pending[0].stripTabs);
+  }
+  return { text: result, commands };
+}
+
 const ENV_TEMPLATE = /^\.env\.(?:example|sample|template)$/;
 const isEnvPath = (path) => {
   const name = path.split('/').pop() ?? '';
@@ -521,9 +829,10 @@ function unwrap(command, args) {
 }
 
 const WRAPPER_VALUE_LETTERS = 'uCngUS';
+const WRAPPER_VALUE_LETTERS_BY_PREFIX = { sudo: 'uUgCp' };
 const WRAPPER_LONG_OPTIONS = new Set(['--unset', '--chdir']);
 
-function wrapperOption(word, next) {
+function wrapperOption(word, next, wrapper) {
   const [name, attached] = word.split(/=(.*)/s);
   if (WRAPPER_LONG_OPTIONS.has(name)) {
     return {
@@ -535,8 +844,9 @@ function wrapperOption(word, next) {
   if (!/^-[a-zA-Z]/.test(word)) {
     return undefined;
   }
+  const valueLetters = WRAPPER_VALUE_LETTERS_BY_PREFIX[wrapper] ?? WRAPPER_VALUE_LETTERS;
   for (let at = 1; at < word.length && /[a-zA-Z]/.test(word[at]); at += 1) {
-    if (WRAPPER_VALUE_LETTERS.includes(word[at])) {
+    if (valueLetters.includes(word[at])) {
       const rest = word.slice(at + 1);
       return {
         value: rest === '' ? next : rest,
@@ -548,20 +858,22 @@ function wrapperOption(word, next) {
   return undefined;
 }
 
-function checkSegment(words, startDir, depth) {
+function checkSegment(words, startDir, depth, checkEnv) {
   if (depth > 4) {
     return;
   }
   let callDir = startDir;
-  let wrapped = false;
+  let wrapper = '';
   let start = 0;
   for (; start < words.length; start += 1) {
     const word = words[start];
     if (/^GIT_(?:DIR|WORK_TREE)=/.test(word)) {
       callDir = UNKNOWN_DIR;
     }
-    wrapped ||= PREFIXES.has(word);
-    const option = wrapped ? wrapperOption(word, words[start + 1]) : undefined;
+    if (PREFIXES.has(word)) {
+      wrapper = word;
+    }
+    const option = wrapper !== '' ? wrapperOption(word, words[start + 1], wrapper) : undefined;
     if (option !== undefined) {
       if (option.chdir) {
         callDir = cdTarget(callDir, option.value);
@@ -586,7 +898,7 @@ function checkSegment(words, startDir, depth) {
   const args = words.slice(start + 1);
   const inner = unwrap(command, args);
   if (inner !== undefined) {
-    checkSegment(inner, callDir, depth + 1);
+    checkSegment(inner, callDir, depth + 1, checkEnv);
   }
   if (command === 'git') {
     checkGit(args, callDir);
@@ -595,12 +907,12 @@ function checkSegment(words, startDir, depth) {
   } else if (SHELLS.has(command)) {
     const flag = args.findIndex((word) => /^-[a-z]*c$/.test(word));
     if (flag !== -1) {
-      checkCommand(args[flag + 1] ?? '', callDir, depth + 1);
+      checkCommand(args[flag + 1] ?? '', callDir, depth + 1, true, true);
     }
   } else if (command === 'eval') {
-    checkCommand(args.join(' '), callDir, depth + 1);
+    checkCommand(args.join(' '), callDir, depth + 1, true, true);
   }
-  if (!['git', 'echo', 'printf'].includes(command)) {
+  if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
     const secret = args.find((word) => namesEnvFile(word.replace(/^\d*[<>]+/, '')));
     if (secret !== undefined) {
       refuse(`reading ${secret} is refused. Environment files hold secrets.`);
@@ -659,13 +971,30 @@ function touchesHooks(command, args, hookFile) {
   return GIT_HOOK_EDITS.has(sub);
 }
 
-function checkCommand(text, callDir, depth = 0) {
+// Every rule but the env-file check reads the command as written, heredoc bodies
+// included. The env-file check reads it with heredoc bodies removed, and separately
+// reads each body or substitution that the shell runs.
+function checkCommand(text, callDir, depth = 0, checkEnv = true, bodiesRun = false) {
   if (depth > 4) {
-    return;
+    refuse(
+      'the command nests shells, substitutions or heredocs too deeply for the guard to check. Flatten it.',
+    );
   }
+  if (checkEnv) {
+    const { text: cleaned, commands } = stripHeredocs(text, bodiesRun);
+    for (const inner of commands) {
+      checkCommand(inner, callDir, depth + 1);
+    }
+    scanSegments(cleaned, callDir, depth, true, bodiesRun);
+  }
+  scanSegments(text, callDir, depth, false, false);
+}
+
+function scanSegments(text, callDir, depth, checkEnv, bodiesRun) {
   const dirs = [callDir];
-  for (const [, inner] of text.matchAll(/\$\(([^()]*)\)/g)) {
-    checkCommand(inner ?? '', callDir, depth + 1);
+  for (const match of text.matchAll(/\$\(([^()]*)\)/g)) {
+    const runs = bodiesRun || (checkEnv && substitutionRuns(text.slice(0, match.index)));
+    checkCommand(match[1] ?? '', callDir, depth + 1, checkEnv, runs);
   }
   for (const segment of tokenize(text.replace(/\\\r?\n/g, ''))) {
     const words = segment.filter((word, at) => at > 0 || !['builtin', 'command'].includes(word));
@@ -674,7 +1003,7 @@ function checkCommand(text, callDir, depth = 0) {
       dirs.push(cdTarget(dirs.at(-1), target));
     }
     for (const dir of dirs) {
-      checkSegment(segment, dir, depth);
+      checkSegment(segment, dir, depth, checkEnv);
     }
   }
 }

@@ -681,6 +681,207 @@ describe('git-guard tripwire forms agents emit', () => {
   });
 });
 
+describe('git-guard heredoc bodies', () => {
+  it.each([
+    "cat <<'EOF'\nnever read .env\nEOF",
+    'cat <<EOF\nnever read .env\nEOF',
+    "cat <<EOF\nit's in .env.example\nEOF",
+    'gh pr comment 1 --body "... doesn\'t read .env."',
+  ])('allows %s, which only mentions .env in prose', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it.each([
+    'cat .env',
+    'cat < .env',
+    'cat .env <<EOF\nbody\nEOF',
+    'cat <<EOF\n.env\nEOF\ncat .env',
+  ])('refuses %s, which actually reads the env file', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it('allows an unquoted heredoc whose body would substitute if read as a command', () => {
+    expect(bash(clean, 'cat <<EOF\nnever read .envrc either\nEOF').status).toBe(0);
+  });
+
+  it.each(['cat <<EOF\n$(cat .env)\nEOF', 'cat <<EOF\ntext $(cat .env) more\nEOF'])(
+    'refuses %s, whose unquoted body still substitutes a command',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it("allows a quoted heredoc's body even when it looks like a substitution", () => {
+    expect(bash(clean, "cat <<'EOF'\n$(cat .env)\nEOF").status).toBe(0);
+  });
+
+  it('refuses a command hidden after a comment that only looks like a heredoc opener', () => {
+    expect(bash(clean, ': # <<EOF\ncat .env').status).toBe(2);
+  });
+
+  it('matches a heredoc delimiter built from mixed quoting', () => {
+    expect(bash(clean, 'cat <<E"OF"\nnever read .env\nEOF\ncat .env').status).toBe(2);
+  });
+
+  it('does not read an arithmetic bitwise shift as a heredoc opener', () => {
+    expect(bash(clean, '((n = 1 << 2))\ncat .env').status).toBe(2);
+  });
+
+  it('allows an arithmetic shift on its own', () => {
+    expect(bash(clean, '((n = 1 << 2))').status).toBe(0);
+  });
+
+  it('refuses a backtick substitution inside an unquoted heredoc body', () => {
+    expect(bash(clean, 'cat <<EOF\n`cat .env`\nEOF').status).toBe(2);
+  });
+
+  it('follows a backslash-continued heredoc delimiter onto the next line', () => {
+    expect(bash(clean, 'cat <<\\\nEOF\nnever read .env\nEOF').status).toBe(0);
+  });
+
+  it('still refuses a command after a properly closed, backslash-continued heredoc', () => {
+    expect(bash(clean, 'cat <<\\\nEOF\nbody\nEOF\ncat .env').status).toBe(2);
+  });
+
+  it('refuses a heredoc that never reaches its closing line', () => {
+    expect(bash(clean, 'cat <<EOF\nnever read .env').status).toBe(2);
+  });
+
+  it.each(['cat <<EOF', 'git commit -F - <<EOF'])(
+    'refuses %s, a heredoc opener with no body or trailing newline',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('refuses a heredoc whose delimiter it cannot parse (ANSI-C quoting), rather than guessing', () => {
+    expect(bash(clean, "cat <<$'EOF'\nbody\nEOF\ncat .env").status).toBe(2);
+  });
+
+  it.each(["cat <<$'EOF'\nprose\nEOF\ncat .env\n$EOF", 'cat <<$"EOF"\nprose\nEOF\ncat .env\n$EOF'])(
+    'refuses %s, whose $-quoted delimiter it cannot read, even when a later line matches it',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('still recognizes a heredoc after a word containing an unrelated #', () => {
+    expect(bash(clean, 'md5sum file#1 <<EOF\nnever read .env\nEOF').status).toBe(0);
+  });
+
+  it('allows a closed heredoc wrapped in a command substitution', () => {
+    expect(bash(clean, "BODY=$(cat <<'EOF'\nrelease notes\nEOF\n)").status).toBe(0);
+  });
+
+  it('still refuses a command substitution inside a heredoc wrapped in $(...)', () => {
+    expect(bash(clean, 'BODY=$(cat <<EOF\n$(cat .env)\nEOF\n)').status).toBe(2);
+  });
+
+  it('still refuses an env-file read that follows a heredoc inside $(...)', () => {
+    expect(bash(clean, "BODY=$(cat <<'EOF'\nnotes\nEOF\ncat .env\n)").status).toBe(2);
+  });
+
+  it('does not read an escaped << as a heredoc opener, so a real command after it still refuses', () => {
+    // The first < is backslash-escaped (literal), so bash never opens a
+    // heredoc here at all — `cat .env` on the next line is a real command,
+    // not heredoc body, and must still be refused.
+    expect(bash(clean, 'printf x \\<<EOF\ncat .env\nEOF').status).toBe(2);
+  });
+
+  it('does not let an escaped quote end a string early and expose a << inside it', () => {
+    expect(bash(clean, 'echo "a \\" <<EOF b"\necho done').status).toBe(0);
+  });
+});
+
+describe('git-guard heredocs that a shell runs', () => {
+  it.each([
+    'bash <<EOF\ngit push --force\nEOF',
+    'cat <<EOF | sh\ngit push --force\nEOF',
+    'bash <<EOF\ncat .env\nEOF',
+    'sh <<EOF\ncat .env\nEOF',
+    'zsh -s <<EOF\ncat .env\nEOF',
+    'source /dev/stdin <<EOF\ncat .env\nEOF',
+    '. /dev/stdin <<EOF\ncat .env\nEOF',
+    "bash <<'EOF'\ncat .env\nEOF",
+    'bash <<EOF\nrm -rf /\nEOF',
+    'bash <<EOF\nrm .husky/pre-push\nEOF',
+    'bash <<EOF\ngit commit --no-verify -m x\nEOF',
+    'bash <<EOF\ngit add -A\nEOF',
+    'bash <<EOF\nHUSKY=0 git commit -m x\nEOF',
+    'eval "$(cat <<EOF\ncat .env\nEOF\n)"',
+    'bash -c "$(cat <<EOF\ncat .env\nEOF\n)"',
+  ])('refuses %s, whose body a shell runs as commands', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    '$(cat <<EOF\ncat .env\nEOF\n)',
+    '`cat <<EOF\ncat .env\nEOF\n`',
+    'cd /tmp && $(cat <<EOF\ncat .env\nEOF\n)',
+    '$(\ncat <<EOF\ncat .env\nEOF\n)',
+    '`\ncat <<EOF\ncat .env\nEOF\n`',
+    'cd /tmp && $(\ncat <<EOF\ncat .env\nEOF\n)',
+    'true; $(\ncat <<EOF\ncat .env\nEOF\n)',
+    'exec $(cat <<EOF\ncat .env\nEOF\n)',
+    'command $(cat <<EOF\ncat .env\nEOF\n)',
+    'builtin $(cat <<EOF\ncat .env\nEOF\n)',
+    'nohup sudo pnpm exec $(cat <<EOF\ncat .env\nEOF\n)',
+    'env $(cat <<EOF\ncat .env\nEOF\n)',
+    'timeout 5 $(cat <<EOF\ncat .env\nEOF\n)',
+    'FOO=bar $(cat <<EOF\ncat .env\nEOF\n)',
+    'case x in x) $(cat <<EOF\ncat .env\nEOF\n) ;; esac',
+    "A=1 B=2 </dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "</dev/null $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "xargs -I XX $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "sudo -np prompt $(cat <<'EOF'\ncat .env\nEOF\n)",
+    "env --frobnicate x $(cat <<'EOF'\ncat .env\nEOF\n)",
+    '"$(cat <<EOF\ncat .env\nEOF\n)"',
+  ])('refuses %s, whose substitution runs as a command', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    'gh pr comment 1 --body "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    "X=$(cat <<'EOF'\nnever read .env\nEOF\n)",
+    "X=`cat <<'EOF'\nnever read .env\nEOF\n`",
+    "X=$(\ncat <<'EOF'\nnever read .env\nEOF\n)",
+    "echo $(cat <<'EOF'\nnever read .env\nEOF\n)",
+    '</dev/null gh pr comment 1 --body "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    "xargs -n 1 echo $(cat <<'EOF'\nnever read .env\nEOF\n)",
+    "FOO=$(cat <<'EOF'\nnever read .env\nEOF\n) true",
+    'timeout 5 git commit -m "$(cat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    'gh pr comment 1 --body "$(\ncat <<\'EOF\'\nnever read .env\nEOF\n)"',
+    'X=$(\ncat <<EOF\nnever read .env\nEOF\n)',
+  ])('allows %s, whose substitution is only an argument or a value', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it('refuses heredocs that a shell runs nested too deep to check', () => {
+    const levels = ['0', '1', '2', '3', '4'];
+    const command = [
+      ...levels.map((level) => `bash <<EOF${level}`),
+      'cat .env',
+      ...levels.toReversed().map((level) => `EOF${level}`),
+    ].join('\n');
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it('refuses a git stash run by a heredoc in a dirty repo', () => {
+    expect(bash(dirty, 'bash <<EOF\ngit stash\nEOF').status).toBe(2);
+  });
+
+  it.each(['cat <<< "$(cat .env)"', 'xargs cat <<< .env'])(
+    'refuses %s, a here-string that reads the env file',
+    (command) => {
+      expect(bash(clean, command).status).toBe(2);
+    },
+  );
+
+  it('allows a here-string that only mentions .env in prose', () => {
+    expect(bash(clean, 'cat <<< "never read .env"').status).toBe(0);
+  });
+});
+
 describe('git-guard with shell redirections', () => {
   it.each(['cp src.txt .husky/pre-push > /dev/null', 'cp src.txt .husky/pre-push 2>&1'])(
     'refuses copying into a protected path even with a trailing redirect: %s',
