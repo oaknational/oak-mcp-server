@@ -110,19 +110,25 @@ function redactEmbeddedCredentials(value: string): string {
     );
 }
 
+/**
+ * Parsing a string as one URL never redacts the words before the first one
+ * that holds `?` or `://`. It only percent-encodes them, which hides a Bearer
+ * token from the credential patterns. So those words get the credential
+ * patterns alone, and the rest stays one value, which keeps a URL or form
+ * value that contains spaces whole.
+ */
 function redactString(value: string): string {
-  if (!/\s/u.test(value)) {
-    return redactWord(value);
+  const urlStart = value.search(/(?<=^|\s)\S*(?:\?|:\/\/)/u);
+  if (urlStart <= 0) {
+    return redactSingleValue(value);
   }
 
-  const redactedWords = value
-    .split(/(\s+)/u)
-    .map((part) => (/\s/u.test(part) ? part : redactWord(part)))
-    .join('');
-  return redactEmbeddedCredentials(redactedWords);
+  return (
+    redactEmbeddedCredentials(value.slice(0, urlStart)) + redactSingleValue(value.slice(urlStart))
+  );
 }
 
-function redactWord(value: string): string {
+function redactSingleValue(value: string): string {
   const redactedUrl = redactUrlString(value, {
     normaliseKey,
     redactedQueryKeys: REDACTED_QUERY_KEYS,

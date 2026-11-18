@@ -58,6 +58,33 @@ describe('redactTelemetryValue', () => {
     ).toBe('boom Bearer [REDACTED] https://example.test/callback?code=%5BREDACTED%5D');
   });
 
+  it('redacts a multi-word value in a form-encoded payload in full', () => {
+    expect(redactTelemetryValue('password=correct horse battery staple&safe=ok')).toBe(
+      'password=%5BREDACTED%5D&safe=ok',
+    );
+  });
+
+  it('redacts a multi-word form value whose words repeat or are symbols', () => {
+    expect(redactTelemetryValue('password=open sesame&hint=sesame')).toBe(
+      'password=%5BREDACTED%5D&hint=sesame',
+    );
+    expect(redactTelemetryValue('password=hunter !!$$&safe=ok')).toBe(
+      'password=%5BREDACTED%5D&safe=ok',
+    );
+  });
+
+  it('redacts a Bearer token before a URL query that has text after it', () => {
+    expect(redactTelemetryValue('boom Bearer abc123 /callback?code=secret-code retrying')).toBe(
+      'boom Bearer [REDACTED] /callback?code=%5BREDACTED%5D',
+    );
+  });
+
+  it('redacts multi-word URL credentials in full', () => {
+    expect(redactTelemetryValue('https://alice:correct horse@localhost/callback?safe=ok')).toBe(
+      'https://%5BREDACTED%5D:%5BREDACTED%5D@localhost/callback?safe=ok',
+    );
+  });
+
   it('redacts email addresses by key name', () => {
     const email = ['teacher', 'example.test'].join('@');
     expect(redactTelemetryObject({ 'user.email': email, contactEmail: email })).toStrictEqual({
