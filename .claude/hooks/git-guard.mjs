@@ -222,8 +222,6 @@ const runsHeredoc = (line) =>
   );
 
 const UNCERTAIN = -1;
-const XARGS_VALUE_FLAGS = /^-[ILnPsdEa]/;
-const XARGS_FLAGS = new Set(['-0', '-r', '-t', '-p', '-x', '--null', '--no-run-if-empty']);
 const isRedirect = (word) => OUTPUT_REDIRECT.test(word) || /^\d*<[<&]*$/.test(word);
 
 // The index of the command word in a simple command's words, past leading NAME=value
@@ -242,18 +240,8 @@ function commandWordIndex(words) {
       wrapper = word;
       continue;
     }
-    if (word.startsWith('-') && wrapper === 'xargs') {
-      if (XARGS_FLAGS.has(word)) {
-        continue;
-      }
-      if (!XARGS_VALUE_FLAGS.test(word)) {
-        return UNCERTAIN;
-      }
-      start += word.length === 2 ? 1 : 0;
-      continue;
-    }
     if (word.startsWith('-')) {
-      const option = wrapper === '' ? undefined : wrapperOption(word, words[start + 1], wrapper);
+      const option = wrapperOption(word, words[start + 1], wrapper);
       if (option === undefined) {
         return UNCERTAIN;
       }
@@ -886,8 +874,10 @@ function checkRm(args, dir) {
 function unwrap(command, args) {
   if (command === 'timeout') {
     let index = 0;
-    while (index < args.length && args[index].startsWith('-')) {
-      index += ['-s', '-k', '--signal', '--kill-after'].includes(args[index]) ? 2 : 1;
+    let option = wrapperOption(args[0] ?? '', args[1], command);
+    while (option !== undefined) {
+      index += option.consumesNext ? 2 : 1;
+      option = wrapperOption(args[index] ?? '', args[index + 1], command);
     }
     return args.slice(index + 1);
   }
@@ -901,34 +891,139 @@ function unwrap(command, args) {
   return undefined;
 }
 
-const WRAPPER_VALUE_LETTERS = 'uCngUS';
-const WRAPPER_VALUE_LETTERS_BY_PREFIX = { sudo: 'uUgCp' };
-const WRAPPER_LONG_OPTIONS = new Set(['--unset', '--chdir']);
+// Left out on purpose: `env -S` and `--split-string`, which turn one word into a command
+// the guard never sees, and `sudo -h`, which sudo documents both as help and as taking
+// a host, so the guard can't tell whether the next word is the command.
+const WRAPPER_OPTIONS = new Map([
+  [
+    'sudo',
+    {
+      flags: 'ABbEeHiKklNnPSsVv',
+      values: 'CDgpRTUu',
+      chdir: new Set(['-D', '--chdir']),
+      long: new Map([
+        ...[
+          '--askpass',
+          '--bell',
+          '--background',
+          '--edit',
+          '--set-home',
+          '--help',
+          '--login',
+          '--remove-timestamp',
+          '--reset-timestamp',
+          '--list',
+          '--no-update',
+          '--non-interactive',
+          '--preserve-groups',
+          '--stdin',
+          '--shell',
+          '--version',
+          '--validate',
+        ].map((name) => [name, 'flag']),
+        ...[
+          '--close-from',
+          '--chdir',
+          '--group',
+          '--prompt',
+          '--chroot',
+          '--other-user',
+          '--command-timeout',
+          '--user',
+        ].map((name) => [name, 'value']),
+        ['--preserve-env', 'attached'],
+      ]),
+    },
+  ],
+  [
+    'env',
+    {
+      flags: '0iv',
+      values: 'CPu',
+      chdir: new Set(['-C', '--chdir']),
+      long: new Map([
+        ['--ignore-environment', 'flag'],
+        ['--null', 'flag'],
+        ['--debug', 'flag'],
+        ['--unset', 'value'],
+        ['--chdir', 'value'],
+      ]),
+    },
+  ],
+  ['nice', { flags: '', values: 'n', long: new Map([['--adjustment', 'value']]) }],
+  ['nohup', { flags: '', values: '', long: new Map() }],
+  [
+    'timeout',
+    {
+      flags: 'fpv',
+      values: 'ks',
+      long: new Map([
+        ['--foreground', 'flag'],
+        ['--preserve-status', 'flag'],
+        ['--verbose', 'flag'],
+        ['--kill-after', 'value'],
+        ['--signal', 'value'],
+      ]),
+    },
+  ],
+  [
+    'xargs',
+    {
+      flags: '0oprtx',
+      values: 'adEIJLnPRsS',
+      long: new Map([
+        ['--null', 'flag'],
+        ['--no-run-if-empty', 'flag'],
+      ]),
+    },
+  ],
+  ['command', { flags: 'pvV', values: '', long: new Map() }],
+  ['exec', { flags: 'cl', values: 'a', long: new Map() }],
+  ['time', { flags: 'p', values: '', long: new Map() }],
+  ['export', { flags: 'fnp', values: '', long: new Map() }],
+]);
+
+const refuseOption = (word, wrapper) =>
+  refuse(
+    `${wrapper} ${word} is not an option the guard knows, so it cannot tell which command runs. Write the options separately, or run the command without ${wrapper}.`,
+  );
 
 function wrapperOption(word, next, wrapper) {
-  const [name, attached] = word.split(/=(.*)/s);
-  if (WRAPPER_LONG_OPTIONS.has(name)) {
-    return {
-      value: attached ?? next,
-      consumesNext: attached === undefined,
-      chdir: name === '--chdir',
-    };
-  }
-  if (!/^-[a-zA-Z]/.test(word)) {
+  const spec = WRAPPER_OPTIONS.get(wrapper);
+  if (spec === undefined || !word.startsWith('-')) {
     return undefined;
   }
-  const valueLetters = WRAPPER_VALUE_LETTERS_BY_PREFIX[wrapper] ?? WRAPPER_VALUE_LETTERS;
-  for (let at = 1; at < word.length && /[a-zA-Z]/.test(word[at]); at += 1) {
-    if (valueLetters.includes(word[at])) {
+  if (word === '--') {
+    return { consumesNext: false, chdir: false };
+  }
+  if (word.startsWith('--')) {
+    const [name, attached] = word.split(/=(.*)/s);
+    const kind = spec.long.get(name);
+    if (kind === undefined || (kind === 'flag' && attached !== undefined)) {
+      refuseOption(word, wrapper);
+    }
+    const consumesNext = kind === 'value' && attached === undefined;
+    return {
+      value: consumesNext ? next : attached,
+      consumesNext,
+      chdir: spec.chdir?.has(name) ?? false,
+    };
+  }
+  for (let at = 1; at < word.length; at += 1) {
+    const letter = word[at];
+    if (spec.values.includes(letter)) {
       const rest = word.slice(at + 1);
       return {
         value: rest === '' ? next : rest,
         consumesNext: rest === '',
-        chdir: word[at] === 'C',
+        chdir: spec.chdir?.has(`-${letter}`) ?? false,
       };
     }
+    if (!spec.flags.includes(letter)) {
+      refuseOption(word, wrapper);
+    }
   }
-  return undefined;
+  return { consumesNext: false, chdir: false };
 }
 
 function checkSegment(words, startDir, depth, checkEnv) {
@@ -984,6 +1079,9 @@ function checkSegment(words, startDir, depth, checkEnv) {
     }
   } else if (command === 'eval') {
     checkCommand(args.join(' '), callDir, depth + 1, true, true);
+  }
+  if (checkEnv && namesEnvFile(words[start].replace(/^\\/, ''))) {
+    refuse(`running ${words[start]} is refused. Environment files hold secrets.`);
   }
   if (checkEnv && !['git', 'echo', 'printf'].includes(command)) {
     const filter = queryFilterIndex(command, args);
