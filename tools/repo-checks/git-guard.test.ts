@@ -477,6 +477,13 @@ describe('git-guard review fixes', () => {
     'yq -p props .env',
     'yq -o json .env.production',
     'gh api repos/o/r --jq .env < .env',
+    'gh gist create -- -q .env',
+    'gh gist create -- --jq .env',
+    'gh gist create --desc --jq .env',
+    'gh gist create -d -q .env',
+    'gh pr view 1 -- -q .env',
+    "jq -R --arg k < .env '' '.'",
+    "jq -R --rawfile k < .env '' '.'",
   ])('refuses the env file in %s', (command) => {
     expect(bash(clean, command).status).toBe(2);
   });
@@ -491,6 +498,7 @@ describe('git-guard review fixes', () => {
     'jq .env settings.json',
     "jq -r --arg key PATH '.env[$key]' settings.json",
     "gh api repos/o/r/actions/variables --jq '.env.PATH'",
+    'gh pr view 1 --json body -q .env.PATH',
     'cat .env.example',
     'cat .env.sample',
     'cat .env.template',

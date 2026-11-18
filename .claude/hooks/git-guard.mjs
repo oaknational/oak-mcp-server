@@ -489,11 +489,27 @@ const JQ_OPTION_ARITY = new Map([
   ['--indent', 1],
   ['-L', 1],
 ]);
+const GH_JQ_COMMANDS = new Set([
+  'api',
+  'pr view',
+  'pr list',
+  'pr checks',
+  'issue view',
+  'issue list',
+  'run view',
+  'run list',
+  'repo view',
+  'release view',
+]);
 const READS_PROGRAM_FILE = /^(?:-[a-z]*f[a-z]*|--from-file)$/i;
 const REDIRECT = /^\d*[<>]/;
 function queryFilterIndex(command, args) {
   if (command === 'gh') {
-    const flag = args.findIndex((word) => word === '--jq' || word === '-q');
+    if (!GH_JQ_COMMANDS.has(args[0]) && !GH_JQ_COMMANDS.has(args.slice(0, 2).join(' '))) {
+      return -1;
+    }
+    const end = args.includes('--') ? args.indexOf('--') : args.length;
+    const flag = args.slice(0, end).findIndex((word) => word === '--jq' || word === '-q');
     return flag === -1 ? -1 : flag + 1;
   }
   if (command !== 'jq' || args.some((word) => READS_PROGRAM_FILE.test(word))) {
@@ -501,10 +517,13 @@ function queryFilterIndex(command, args) {
   }
   for (let index = 0; index < args.length; index += 1) {
     const word = args[index];
+    const arity = JQ_OPTION_ARITY.get(word) ?? 0;
     if (REDIRECT.test(word)) {
       index += /^\d*[<>]+&?$/.test(word) ? 1 : 0;
+    } else if (args.slice(index + 1, index + 1 + arity).some((value) => REDIRECT.test(value))) {
+      return -1;
     } else if (word.startsWith('-')) {
-      index += JQ_OPTION_ARITY.get(word) ?? 0;
+      index += arity;
     } else {
       return index;
     }
