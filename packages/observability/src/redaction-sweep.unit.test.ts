@@ -38,6 +38,14 @@ const HIDDEN_ON_MAIN_AT_82F928B: readonly (readonly [string, readonly string[]])
   ['/callback?code=correct horse battery&state=ok', ['correct', 'horse', 'battery', 'ok']],
   ['request failed for /callback?code=correct horse battery', ['correct', 'horse', 'battery']],
   ['boom Bearer abcdefghijklmnop https://x.test/cb?code=SECRETCODE', ['SECRETCODE']],
+  ['//alice:secret@h/a b?c=1', ['alice', 'secret', 'h']],
+  ['http:alice:secret@h/a b?c=1', ['http', 'alice', 'secret', 'h']],
+  ['//alice:pw@h/x, /y?token=z', ['alice', 'pw', 'h', 'z']],
+  ['redirect to https://host:port/cb?code=SECRET', ['SECRET']],
+  ['redirect to https://localhost:99999/cb?code=SECRET', ['SECRET']],
+  ['upstream sent Bearer tok?en', ['tok', 'en']],
+  ['boom ftp://u:ph@h/x Bearer T2', ['T2']],
+  ['Bearer /cb?code=C2 retrying', ['C2', 'retrying']],
 ];
 
 function visibleWords(text: string): ReadonlySet<string> {

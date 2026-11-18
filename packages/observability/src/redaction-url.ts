@@ -4,6 +4,8 @@ interface UrlRedactionOptions {
   readonly redactedValue: string;
 }
 
+export const RELATIVE_URL_BASE = 'https://oak.local';
+
 interface ParsedUrlForRedaction {
   readonly url: URL;
   readonly base?: string;
@@ -32,7 +34,7 @@ function parseUrlForRedaction(value: string): ParsedUrlForRedaction | undefined 
 
   try {
     const base =
-      value.startsWith('http://') || value.startsWith('https://') ? undefined : 'https://oak.local';
+      value.startsWith('http://') || value.startsWith('https://') ? undefined : RELATIVE_URL_BASE;
     return {
       url: new URL(value, base),
       base,

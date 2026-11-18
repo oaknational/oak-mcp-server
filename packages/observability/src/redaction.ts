@@ -9,7 +9,7 @@
 
 import { typeSafeEntries } from './type-safe.js';
 import { redactFormEncodedString } from './redaction-form.js';
-import { redactUrlString } from './redaction-url.js';
+import { RELATIVE_URL_BASE, redactUrlString } from './redaction-url.js';
 import type { JsonObject, JsonValue } from './types.js';
 
 /**
@@ -110,21 +110,33 @@ function redactEmbeddedCredentials(value: string): string {
     );
 }
 
+const FIRST_URL_WORD = /(?<=^|\s)\S*(?:\?|:\/\/)/u;
+
 /**
- * Parsing a string as one URL never redacts the words before the first one
- * that holds `?` or `://`. It only percent-encodes them, which hides a Bearer
- * token from the credential patterns. So those words get the credential
- * patterns alone, and the rest stays one value, which keeps a URL or form
- * value that contains spaces whole.
+ * Redacting a log message as one relative URL percent-encodes the prose before
+ * its first URL word, which hides a Bearer token from the credential patterns.
+ * Running those patterns on the whole message first doesn't fix that: a token
+ * match can swallow a URL's `?` and change what the URL parse redacts.
  */
 function redactString(value: string): string {
-  const urlStart = value.search(/(?<=^|\s)\S*(?:\?|:\/\/)/u);
-  if (urlStart <= 0) {
+  const urlStart = value.search(FIRST_URL_WORD);
+  const prefix = value.slice(0, urlStart);
+  const rest = redactEmbeddedCredentials(value.slice(urlStart));
+  if (urlStart <= 0 || !isPlainTextBeforeUrl(value, prefix, rest)) {
     return redactSingleValue(value);
   }
 
+  return redactEmbeddedCredentials(prefix) + redactSingleValue(rest);
+}
+
+function isPlainTextBeforeUrl(value: string, prefix: string, rest: string): boolean {
+  const whole = URL.parse(value, RELATIVE_URL_BASE);
   return (
-    redactEmbeddedCredentials(value.slice(0, urlStart)) + redactSingleValue(value.slice(urlStart))
+    whole?.origin === RELATIVE_URL_BASE &&
+    whole.username === '' &&
+    whole.password === '' &&
+    URL.canParse(rest, RELATIVE_URL_BASE) &&
+    !/\b(?:Bearer|Basic)\s+$/iu.test(prefix)
   );
 }
 
