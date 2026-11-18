@@ -100,11 +100,27 @@ function partiallyRedactValue(value: string): string {
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
+/**
+ * Credential separators ordinarily arrive as literal whitespace, but a
+ * caller may have already percent-encoded the string (`%20`) before it
+ * reaches this fallback matcher — `redactUrlString` and
+ * `redactFormEncodedString` only decode separators inside the URL parts or
+ * key=value shapes they each recognise, so `Bearer%20<token>` embedded in
+ * plain text or in a URL path reaches here unchanged. Both regexes below
+ * accept `%20` alongside `\s` so that case is still redacted.
+ *
+ * Deliberately narrow to `%20`: `+` only means "space" inside
+ * `application/x-www-form-urlencoded` content, which `redactFormEncodedString`
+ * already redacts upstream, and no real `Authorization` header uses a tab
+ * separator (RFC 7235 requires `1*SP`). Double percent-encoding (`%2520`)
+ * is a known residual gap this fix does not close; it would need a decode
+ * pass rather than a wider character class, and is tracked separately.
+ */
 function redactEmbeddedCredentials(value: string): string {
   return value
-    .replaceAll(/\b(Bearer|Basic)\s+[^\s,]+/giu, '$1 [REDACTED]')
+    .replaceAll(/\b(Bearer|Basic)(?:\s|%20)+(?:(?!%20)[^\s,])+/giu, '$1 [REDACTED]')
     .replaceAll(
-      /(^|\s)(--?(?:access-token|api-key|api_key|client-secret|client_secret|password|token)|(?:access_token|api_key|client_secret|password|token))=([^\s&]+)/giu,
+      /(^|\s|%20)(--?(?:access-token|api-key|api_key|client-secret|client_secret|password|token)|(?:access_token|api_key|client_secret|password|token))=([^\s&]+)/giu,
       '$1$2=[REDACTED]',
     );
 }
