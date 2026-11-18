@@ -3,7 +3,10 @@ import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { format, resolveConfig } from 'prettier';
 import { tsImport } from 'tsx/esm/api';
 
@@ -352,6 +355,17 @@ export function judgeDifferences(
   };
 }
 
+export function judgeSurface(
+  baseline: SurfaceSnapshot,
+  current: SurfaceSnapshot,
+  { expectIdentical }: { readonly expectIdentical: boolean },
+): SurfaceReport {
+  return judgeDifferences(
+    diffSurfaces(baseline, current),
+    expectIdentical ? [] : EXPECTED_DIFFERENCES,
+  );
+}
+
 export function surfaceMatches(report: SurfaceReport): boolean {
   return report.unexpected.length === 0 && report.expectedAbsent.length === 0;
 }
@@ -436,13 +450,68 @@ export function parseBaseline(text: string): SurfaceSnapshot {
   });
 }
 
-async function captureTarget(target: URL): Promise<SurfaceSnapshot> {
+const TOKEN_VARIABLE = 'SURFACE_DIFF_BEARER_TOKEN';
+const BEARER_TOKEN = /^[A-Za-z0-9\-._~+/]+=*$/;
+const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+export function parseBearerToken(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!BEARER_TOKEN.test(value)) {
+    throw new Error(`${TOKEN_VARIABLE} is not a valid bearer token`);
+  }
+  return value;
+}
+
+function mayCarryToken(target: URL): boolean {
+  if (target.username !== '' || target.password !== '') {
+    return false;
+  }
+  return (
+    target.protocol === 'https:' ||
+    (target.protocol === 'http:' && LOOPBACK_HOSTS.has(target.hostname))
+  );
+}
+
+function redactedTargetError(error: unknown, token: string | undefined): Error {
+  if (
+    error instanceof StreamableHTTPError &&
+    token !== undefined &&
+    (error.code === 401 || error.code === 403)
+  ) {
+    return new Error(
+      `HTTP ${String(error.code)}: the target refused ${TOKEN_VARIABLE}. Use a current OAuth access token issued for this /mcp`,
+    );
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  const status = error instanceof StreamableHTTPError ? `HTTP ${String(error.code)}: ` : '';
+  return new Error(
+    `${status}${token === undefined ? message : message.replaceAll(token, '[redacted]')}`,
+  );
+}
+
+export async function captureTarget(
+  target: URL,
+  token: string | undefined,
+): Promise<SurfaceSnapshot> {
+  if (token !== undefined && !mayCarryToken(target)) {
+    throw new Error(
+      `${TOKEN_VARIABLE} is sent only over https or to localhost, without URL credentials`,
+    );
+  }
+  const requestInit: RequestInit =
+    token === undefined ? {} : { headers: { Authorization: `Bearer ${token}` }, redirect: 'error' };
   const client = new Client({ name: 'oak-surface-diff', version: '0.0.0' });
-  await client.connect(new StreamableHTTPClientTransport(target));
   try {
-    return await captureSurface(client);
-  } finally {
-    await client.close();
+    await client.connect(new StreamableHTTPClientTransport(target, { requestInit }));
+    try {
+      return await captureSurface(client);
+    } finally {
+      await client.close();
+    }
+  } catch (error) {
+    throw redactedTargetError(error, token);
   }
 }
 
@@ -486,13 +555,21 @@ export async function renderSurfaceFile(
 async function main(argv: readonly string[]): Promise<number> {
   const { values } = parseArgs({
     args: [...argv],
-    options: { target: { type: 'string' }, 'write-baseline': { type: 'string' } },
+    options: {
+      target: { type: 'string' },
+      'write-baseline': { type: 'string' },
+      'expect-identical': { type: 'boolean', default: false },
+    },
     strict: true,
   });
+  const token = parseBearerToken(process.env[TOKEN_VARIABLE]);
+  if (token !== undefined && values.target === undefined) {
+    throw new Error(`${TOKEN_VARIABLE} is set, but only --target sends it`);
+  }
   const current =
     values.target === undefined
       ? await captureInMemory()
-      : await captureTarget(new URL(values.target));
+      : await captureTarget(new URL(values.target), token);
   const source = values['write-baseline'];
   if (source !== undefined) {
     writeFileSync(BASELINE_PATH, await renderSurfaceFile(current, source, BASELINE_PATH));
@@ -500,7 +577,9 @@ async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
   const baseline = parseBaseline(readFileSync(BASELINE_PATH, 'utf8'));
-  const report = judgeDifferences(diffSurfaces(baseline, current), EXPECTED_DIFFERENCES);
+  const report = judgeSurface(baseline, current, {
+    expectIdentical: values['expect-identical'],
+  });
   process.stdout.write(formatReport(report));
   return surfaceMatches(report) ? 0 : 1;
 }
