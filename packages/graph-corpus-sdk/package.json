@@ -46,7 +46,7 @@
     "@oaknational/graph-core": "workspace:*",
     "@oaknational/result": "workspace:*",
     "@oaknational/sdk-codegen": "workspace:*",
-    "@vercel/blob": "^2.8.2"
+    "@vercel/blob": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
