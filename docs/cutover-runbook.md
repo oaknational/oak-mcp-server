@@ -15,7 +15,7 @@ A step marked `TBD (decision: …)` waits on an open decision. Do not run a TBD 
 
 ## Open decisions
 
-- Production routing. [ADR 0006](adr/0006-route-each-environment-with-vercel-microfrontends.md) proposes Vercel microfrontends, with `vercel.ts` and a server domain per environment as the fallback. [P19](https://linear.app/oaknational/issue/MCP-817) proves the choice on a staging host. Steps marked `TBD (decision: P19 routing)` depend on it.
+- Production routing. [ADR 0006](adr/0006-route-each-environment-with-vercel-microfrontends.md) proposes Vercel microfrontends, with `vercel.ts` and a server domain per environment as the fallback. [P19](https://linear.app/oaknational/issue/MCP-817) proves the choice on a staging host. Steps marked `TBD (decision: production routing)` depend on it.
 - Production Blob store. [MCP-876](https://linear.app/oaknational/issue/MCP-876) decides how Terraform manages the Blob stores and how the token reaches the server project. Steps marked `TBD (decision: MCP-876)` depend on it.
 - Hardening pass. [MCP-861](https://linear.app/oaknational/issue/MCP-861) runs the deferred live and perf checks before cutover begins. Steps marked `TBD (decision: MCP-861)` depend on its outcome.
 
@@ -24,11 +24,11 @@ A step marked `TBD (decision: …)` waits on an open decision. Do not run a TBD 
 Complete every item before you ask the operator for the go.
 
 1. The cutover agent confirms that MCP-861 is Done. `TBD (decision: MCP-861)`
-2. The cutover agent confirms that P19 has merged and that `pnpm edge:probes https://mcp-staging.thenational.academy` prints `ok` for every line in `tools/edge-probes/expected.txt`.
-3. The cutover agent confirms that P20 has merged.
+2. The cutover agent confirms that [P19](https://linear.app/oaknational/issue/MCP-817) has merged and that `pnpm edge:probes https://mcp-staging.thenational.academy` prints `ok` for every line in `tools/edge-probes/expected.txt`.
+3. The cutover agent confirms that [P20](https://linear.app/oaknational/issue/MCP-820) has merged.
 4. The infrastructure applier applies the production Terraform in `infrastructure/project/`, after the operator's go for that apply. It turns on production for the server and docs projects and sets `CRON_SECRET`.
 5. The infrastructure applier gives the production server write access to the production Blob store. `TBD (decision: MCP-876)`
-6. The infrastructure applier adds the production host to the routing configuration. `TBD (decision: P19 routing)`
+6. The infrastructure applier adds the production host to the routing configuration. `TBD (decision: production routing)`
 7. The cutover agent confirms that the production deployments from this repository are live, and that `x-app-version` on their `/mcp/healthz` shows this repository's release version.
 8. The cutover agent captures the pre-cutover snapshot from a clean checkout of `main`. Keep the changed `tools/surface-diff/baseline.json` in that checkout, uncommitted, until the checks after the switch pass.
 
@@ -41,13 +41,13 @@ Complete every item before you ask the operator for the go.
 11. The cutover agent confirms that the rollback rehearsal on staging passed. See [Rehearse the rollback on staging](#rehearse-the-rollback-on-staging).
 12. The cutover agent confirms that Pingdom checks `/mcp/healthz` and is green.
 13. The cutover agent confirms that failed cron runs and failed cron-triggered deployments alert the same channel as failed production deployments.
-14. The cutover agent records the current OOCE production deployment, which stays deployed and serving for 14 days after the switch. `TBD (decision: P19 routing)`
+14. The cutover agent records the current OOCE production deployment, which stays deployed and serving for 14 days after the switch. `TBD (decision: production routing)`
 
 ## Switch production
 
 1. The operator gives an explicit go for the switch. Ask immediately before step 2, not earlier.
 2. The operator records the switch time in UTC.
-3. The operator points `mcp.thenational.academy` at this repository's projects. `TBD (decision: P19 routing)`
+3. The operator points `mcp.thenational.academy` at this repository's projects. `TBD (decision: production routing)`
 4. The cutover agent runs `pnpm edge:probes https://mcp.thenational.academy` until every line prints `ok`. If any line still fails after 5 minutes, start [Roll back](#roll-back).
 
 ## Check production after the switch
@@ -78,17 +78,17 @@ Share screenshots and sign-in captures with the operator in chat only. Do not co
 
 Roll back when the probes fail 5 minutes after the switch, when the latency rule fails, or when the operator decides to. OOCE's production project stays deployed for 14 days after the switch, so rollback needs no new deployment.
 
-1. The operator points `mcp.thenational.academy` back at OOCE's production project. `TBD (decision: P19 routing)`
+1. The operator points `mcp.thenational.academy` back at OOCE's production project. `TBD (decision: production routing)`
 2. The cutover agent runs `pnpm edge:probes https://mcp.thenational.academy`. Rollback passes when every line that printed `ok` in the pre-switch record prints `ok` again within 5 minutes of step 1.
 3. The cutover agent runs `pnpm surface:diff --target https://mcp.thenational.academy/mcp` in the checkout that holds the pre-cutover snapshot. The surface matches the snapshot.
 4. The cutover agent records the rollback time and the reason on the Linear issue for the switch. A rollback restarts the 14-day window at the next switch.
 
 ## Rehearse the rollback on staging
 
-Rehearse before P20 merges. The rehearsal runs the [Roll back](#roll-back) steps against `mcp-staging.thenational.academy` instead of the production host.
+Rehearse before [P20](https://linear.app/oaknational/issue/MCP-820) merges. The rehearsal runs the [Roll back](#roll-back) steps against `mcp-staging.thenational.academy` instead of the production host.
 
 1. The cutover agent confirms that every line of `pnpm edge:probes https://mcp-staging.thenational.academy` prints `ok`.
-2. The operator switches the staging host's routing to the previous origin. `TBD (decision: P19 routing)`
+2. The operator switches the staging host's routing to the previous origin. `TBD (decision: production routing)`
 3. The cutover agent runs the probes against the staging host until they show the previous origin, and records the time it took.
 4. The operator switches the staging routing back. The cutover agent runs the probes until every line prints `ok`.
 5. The cutover agent saves the probe output and both timings as `rollback-rehearsal.txt`, for the operator's review in chat. The rehearsal passes when the probes go green on the previous origin within 5 minutes.
