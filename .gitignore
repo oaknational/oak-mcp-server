@@ -19,8 +19,7 @@ test-results/
 packages/codegen/reference/*.json
 
 packages/codegen/src/generated/vocab/graph-corpus/data.json
-packages/codegen/src/generated/vocab/nc-coverage-graph/data.json
-packages/codegen/src/generated/vocab/vocabulary-graph/data.json
+packages/codegen/vocab-gen/reports/
 
 **/test-results/
 
