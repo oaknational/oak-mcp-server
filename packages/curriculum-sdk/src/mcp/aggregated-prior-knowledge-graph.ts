@@ -33,12 +33,13 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
+import { err, ok, type Result } from '@oaknational/result';
 import type {
   CurriculumGraphViews,
   PriorKnowledgeStatements,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import { SCOPES_SUPPORTED } from './scopes-supported.js';
-import { formatError, formatToolResponse } from './universal-tool-shared.js';
+import { formatToolResponse } from './universal-tool-shared.js';
 
 /**
  * The anchored input contract for `get-prior-knowledge-graph`.
@@ -116,29 +117,34 @@ function summariseStatements(result: PriorKnowledgeStatements): string {
   return `${base} ${String(result.unknownAnchors.length)} unknown anchor slug${result.unknownAnchors.length === 1 ? '' : 's'} reported in unknownAnchors.`;
 }
 
+type PriorKnowledgeInput = z.infer<typeof PRIOR_KNOWLEDGE_INPUT>;
+
 /**
- * Execute the anchored get-prior-knowledge-graph tool.
- *
- * Validation is the schema parse itself — anchor shape falls out of
- * {@link PRIOR_KNOWLEDGE_INPUT}; retrieval is infallible for parsed input.
- * The statements are returned in structuredContent with the summary and
+ * Parse raw get-prior-knowledge-graph arguments against
+ * {@link PRIOR_KNOWLEDGE_INPUT}; the error is the model-facing text.
+ */
+export function parsePriorKnowledgeGraphInput(input: unknown): Result<PriorKnowledgeInput, string> {
+  const parsed = PRIOR_KNOWLEDGE_INPUT.safeParse(input);
+  return parsed.success
+    ? ok(parsed.data)
+    : err(`Invalid get-prior-knowledge-graph input: ${parsed.error.message}`);
+}
+
+/**
+ * Execute the anchored get-prior-knowledge-graph tool on parsed input. The
+ * statements are returned in structuredContent with the summary and
  * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
  * results).
  *
- * @param input - Raw MCP tool-call arguments.
+ * @param input - Arguments from {@link parsePriorKnowledgeGraphInput}.
  * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the stated prior knowledge in structuredContent.
  */
 export function runPriorKnowledgeGraphTool(
-  input: unknown,
+  input: PriorKnowledgeInput,
   views: CurriculumGraphViews,
 ): CallToolResult {
-  const parsed = PRIOR_KNOWLEDGE_INPUT.safeParse(input);
-  if (!parsed.success) {
-    return formatError(`Invalid get-prior-knowledge-graph input: ${parsed.error.message}`);
-  }
-
-  const result = views.priorKnowledgeStatements(parsed.data.unitSlugs);
+  const result = views.priorKnowledgeStatements(input.unitSlugs);
 
   return formatToolResponse({
     summary: summariseStatements(result),

@@ -25,6 +25,7 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
+import { err, ok, type Result } from '@oaknational/result';
 import {
   DEFAULT_KEYWORD_LIMIT,
   KEYWORD_LESSON_DECORATION_LIMIT,
@@ -149,27 +150,35 @@ function summariseKeywords(
   return `Top ${shown} of ${total} keywords for ${subject} at ${keyStage}${narrowed ? ' (narrowed)' : ''}, ranked by in-scope lesson placements.`;
 }
 
+type KeywordGraphInput = z.infer<typeof KEYWORD_GRAPH_INPUT>;
+
 /**
- * Execute the anchored get-keyword-graph tool.
+ * Parse raw get-keyword-graph arguments against {@link KEYWORD_GRAPH_INPUT};
+ * the error is the model-facing text.
+ */
+export function parseKeywordGraphInput(input: unknown): Result<KeywordGraphInput, string> {
+  const parsed = KEYWORD_GRAPH_INPUT.safeParse(input);
+  return parsed.success
+    ? ok(parsed.data)
+    : err(`Invalid get-keyword-graph input: ${parsed.error.message}`);
+}
+
+/**
+ * Execute the anchored get-keyword-graph tool on parsed input.
  *
- * Validation is the schema parse plus the view's own limit contract — a
- * limit outside [1, max] surfaces as a boundary error (the view returns
- * `KeywordLimitInvalid`; the envelope reports it as an error result). The
- * bounded result is returned in structuredContent with the summary and
+ * The bounded result is returned in structuredContent with the summary and
  * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
  * results).
  *
- * @param input - Raw MCP tool-call arguments.
+ * @param input - Arguments from {@link parseKeywordGraphInput}.
  * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored ranked result in structuredContent.
  */
-export function runKeywordGraphTool(input: unknown, views: CurriculumGraphViews): CallToolResult {
-  const parsed = KEYWORD_GRAPH_INPUT.safeParse(input);
-  if (!parsed.success) {
-    return formatError(`Invalid get-keyword-graph input: ${parsed.error.message}`);
-  }
-
-  const { subject, keyStage, unitSlugs, lessonSlugs, limit } = parsed.data;
+export function runKeywordGraphTool(
+  input: KeywordGraphInput,
+  views: CurriculumGraphViews,
+): CallToolResult {
+  const { subject, keyStage, unitSlugs, lessonSlugs, limit } = input;
   const result = views.keywordsForSubjectKeyStage(subject, keyStage, {
     unitSlugs,
     lessonSlugs,

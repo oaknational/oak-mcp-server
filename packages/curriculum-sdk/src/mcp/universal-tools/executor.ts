@@ -8,7 +8,9 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import type { CurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
-import { isOk } from '@oaknational/result';
+import type { GraphCorpusLoadError } from '@oaknational/graph-corpus-sdk/load';
+import { normalizeError } from '@oaknational/logger';
+import type { Result } from '@oaknational/result';
 import type { ToolExecutionResult } from '../execute-tool-call.js';
 import {
   formatToolResponse,
@@ -20,10 +22,19 @@ import {
 } from '../universal-tool-shared.js';
 import { validateFetchArgs, runFetchTool } from '../aggregated-fetch/index.js';
 import { runCurriculumModelTool } from '../aggregated-curriculum-model/index.js';
-import { runThreadProgressionsTool } from '../aggregated-thread-progressions.js';
-import { runPriorKnowledgeGraphTool } from '../aggregated-prior-knowledge-graph.js';
-import { runMisconceptionGraphTool } from '../aggregated-misconception-graph.js';
-import { runKeywordGraphTool } from '../aggregated-keyword-graph.js';
+import {
+  parseThreadProgressionsInput,
+  runThreadProgressionsTool,
+} from '../aggregated-thread-progressions.js';
+import {
+  parsePriorKnowledgeGraphInput,
+  runPriorKnowledgeGraphTool,
+} from '../aggregated-prior-knowledge-graph.js';
+import {
+  parseMisconceptionGraphInput,
+  runMisconceptionGraphTool,
+} from '../aggregated-misconception-graph.js';
+import { parseKeywordGraphInput, runKeywordGraphTool } from '../aggregated-keyword-graph.js';
 import { runEefEvidenceTool } from '../aggregated-eef-evidence.js';
 import { eefEvidenceToCallToolResult } from '../eef-evidence-egress.js';
 import { validateSearchSdkArgs, runSearchSdkTool } from '../aggregated-search/index.js';
@@ -177,23 +188,45 @@ type CurriculumGraphToolName = Extract<
   | 'get-keyword-graph'
 >;
 
-function withCurriculumGraph(
+const GRAPH_FALLBACKS = 'Use search, fetch or browse-curriculum instead.';
+
+const GRAPH_UNAVAILABLE_ADVICE: Readonly<Record<GraphCorpusLoadError['kind'], string>> = {
+  'not-found': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
+  'invalid-snapshot': `This is a server-side problem, so retrying will not help. ${GRAPH_FALLBACKS}`,
+  'read-failed':
+    'This may be temporary, so you can retry this call once with the same arguments. If it fails again, use search, fetch or browse-curriculum instead.',
+};
+
+function withCurriculumGraph<Input>(
   tool: CurriculumGraphToolName,
-  run: (input: unknown, views: CurriculumGraphViews) => CallToolResult,
+  parse: (input: unknown) => Result<Input, string>,
+  run: (input: Input, views: CurriculumGraphViews) => CallToolResult,
 ): AggregatedHandler {
-  return async (input, deps) => {
-    const graph = await deps.loadCurriculumGraph();
-    if (isOk(graph)) {
-      return run(input, graph.value);
+  return async (rawInput, deps) => {
+    const input = parse(rawInput);
+    if (!input.ok) {
+      return formatError(input.error);
     }
-    resolveUniversalToolLogger(deps).error('mcp-tool.curriculum-graph.unavailable', {
-      tool,
-      kind: graph.error.kind,
-      message: graph.error.message,
-    });
-    return formatError(
-      `${tool} could not read Oak's curriculum graph. This is a server-side problem, so retrying now is unlikely to help. Use search, fetch or browse-curriculum instead.`,
-    );
+    const logger = resolveUniversalToolLogger(deps);
+    const graph = await deps.loadCurriculumGraph();
+    if (!graph.ok) {
+      logger.error('mcp-tool.curriculum-graph.unavailable', {
+        tool,
+        kind: graph.error.kind,
+        message: graph.error.message,
+      });
+      return formatError(
+        `${tool} could not read Oak's curriculum graph. ${GRAPH_UNAVAILABLE_ADVICE[graph.error.kind]}`,
+      );
+    }
+    try {
+      return run(input.value, graph.value);
+    } catch (error: unknown) {
+      logger.error('mcp-tool.curriculum-graph.failed', normalizeError(error), { tool });
+      return formatError(
+        `${tool} failed with an internal server error. This was not caused by your input, so do not change the arguments or retry. ${GRAPH_FALLBACKS}`,
+      );
+    }
   };
 }
 
@@ -202,17 +235,24 @@ const AGGREGATED_HANDLERS: Readonly<Record<AggregatedToolName, AggregatedHandler
   'get-curriculum-model': () => Promise.resolve(handleCurriculumModelTool()),
   'get-thread-progressions': withCurriculumGraph(
     'get-thread-progressions',
+    parseThreadProgressionsInput,
     runThreadProgressionsTool,
   ),
   'get-prior-knowledge-graph': withCurriculumGraph(
     'get-prior-knowledge-graph',
+    parsePriorKnowledgeGraphInput,
     runPriorKnowledgeGraphTool,
   ),
   'get-misconception-graph': withCurriculumGraph(
     'get-misconception-graph',
+    parseMisconceptionGraphInput,
     runMisconceptionGraphTool,
   ),
-  'get-keyword-graph': withCurriculumGraph('get-keyword-graph', runKeywordGraphTool),
+  'get-keyword-graph': withCurriculumGraph(
+    'get-keyword-graph',
+    parseKeywordGraphInput,
+    runKeywordGraphTool,
+  ),
   'get-eef-evidence': (input) =>
     Promise.resolve(eefEvidenceToCallToolResult(runEefEvidenceTool(input))),
   fetch: handleFetchTool,

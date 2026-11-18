@@ -27,6 +27,7 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
+import { err, ok, type Result } from '@oaknational/result';
 import {
   threadProgressionStats,
   type CurriculumGraphViews,
@@ -34,7 +35,7 @@ import {
   type ThreadProgressionSubgraph,
 } from '@oaknational/graph-corpus-sdk/curriculum';
 import { SCOPES_SUPPORTED } from './scopes-supported.js';
-import { formatError, formatToolResponse } from './universal-tool-shared.js';
+import { formatToolResponse } from './universal-tool-shared.js';
 
 /**
  * The anchored input contract for `get-thread-progressions`.
@@ -201,28 +202,36 @@ function dispatchAnchor(
   };
 }
 
+type ThreadProgressionsInput = z.infer<typeof THREAD_PROGRESSIONS_INPUT_VALIDATED>;
+
 /**
- * Execute the anchored get-thread-progressions tool.
+ * Parse raw get-thread-progressions arguments. Anchor exclusivity falls out of
+ * {@link THREAD_PROGRESSIONS_INPUT_VALIDATED}; the error is the model-facing text.
+ */
+export function parseThreadProgressionsInput(
+  input: unknown,
+): Result<ThreadProgressionsInput, string> {
+  const parsed = THREAD_PROGRESSIONS_INPUT_VALIDATED.safeParse(input);
+  return parsed.success
+    ? ok(parsed.data)
+    : err(`Invalid get-thread-progressions input: ${parsed.error.message}`);
+}
+
+/**
+ * Execute the anchored get-thread-progressions tool on parsed input. The
+ * bounded result is returned in structuredContent with the summary and
+ * serialised JSON alongside as TextContent (MCP spec SHOULD for structured
+ * results).
  *
- * Validation is the schema parse itself — anchor exclusivity falls out of
- * {@link THREAD_PROGRESSIONS_INPUT_VALIDATED}. The bounded result is returned
- * in structuredContent with the summary and serialised JSON alongside as
- * TextContent (MCP spec SHOULD for structured results).
- *
- * @param input - Raw MCP tool-call arguments.
+ * @param input - Arguments from {@link parseThreadProgressionsInput}.
  * @param views - The curriculum graph views to answer from.
  * @returns CallToolResult with the anchored result in structuredContent.
  */
 export function runThreadProgressionsTool(
-  input: unknown,
+  input: ThreadProgressionsInput,
   views: CurriculumGraphViews,
 ): CallToolResult {
-  const parsed = THREAD_PROGRESSIONS_INPUT_VALIDATED.safeParse(input);
-  if (!parsed.success) {
-    return formatError(`Invalid get-thread-progressions input: ${parsed.error.message}`);
-  }
-
-  const dispatched = dispatchAnchor(parsed.data, views);
+  const dispatched = dispatchAnchor(input, views);
   return formatToolResponse({
     summary: dispatched.summary,
     data: dispatched.data,

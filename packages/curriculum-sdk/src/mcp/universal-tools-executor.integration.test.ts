@@ -13,7 +13,10 @@ import { z } from 'zod';
 import { McpToolError } from './execute-tool-call.js';
 import { err, ok } from '@oaknational/result';
 import type { Logger } from '@oaknational/logger';
-import { createCurriculumGraphViews } from '@oaknational/graph-corpus-sdk/curriculum';
+import {
+  createCurriculumGraphViews,
+  type CurriculumGraphViews,
+} from '@oaknational/graph-corpus-sdk/curriculum';
 import type { CurriculumGraphResult } from '@oaknational/graph-corpus-sdk/load';
 import { fixtureCorpus } from '../../../graph-corpus-sdk/src/curriculum/__tests__/fixture-corpus.js';
 import { createUniversalToolExecutor } from './universal-tools/executor.js';
@@ -370,41 +373,108 @@ describe('graph tools through the curriculum graph loader', () => {
     expect(loadCurriculumGraph).toHaveBeenCalledTimes(1);
   });
 
-  describe.each(['not-found', 'read-failed', 'invalid-snapshot'] as const)(
-    'when the load fails with %s',
-    (kind) => {
-      it.each(GRAPH_TOOL_CALLS)(
-        '%s returns one text error naming the tool and the fallbacks',
-        async (tool, args) => {
-          const { logger, error } = createFakeLogger();
-          const callUniversalTool = createUniversalToolExecutor({
-            executeMcpTool: vi.fn(),
-            searchRetrieval: createStubSearchRetrieval(),
-            generatedTools: registry,
-            loadCurriculumGraph: graphUnavailable(kind),
-            logger,
-          });
+  describe.each([
+    ['not-found', 'retrying will not help'],
+    ['read-failed', 'retry this call once'],
+    ['invalid-snapshot', 'retrying will not help'],
+  ] as const)('when the load fails with %s', (kind, retryAdvice) => {
+    it.each(GRAPH_TOOL_CALLS)(
+      '%s returns one text error naming the tool, the retry advice and the fallbacks',
+      async (tool, args) => {
+        const { logger, error } = createFakeLogger();
+        const callUniversalTool = createUniversalToolExecutor({
+          executeMcpTool: vi.fn(),
+          searchRetrieval: createStubSearchRetrieval(),
+          generatedTools: registry,
+          loadCurriculumGraph: graphUnavailable(kind),
+          logger,
+        });
 
-          const result = await callUniversalTool(tool, args);
+        const result = await callUniversalTool(tool, args);
 
-          expect(result.isError).toBe(true);
-          expect(result.structuredContent).toBeUndefined();
-          expect(result.content).toHaveLength(1);
-          const [content] = result.content;
-          expect(content.type).toBe('text');
-          const text = content.type === 'text' ? content.text : '';
-          expect(text).toContain(tool);
-          expect(text).toContain('retrying');
-          for (const fallback of ['search', 'fetch', 'browse-curriculum']) {
-            expect(text).toContain(fallback);
-          }
-          expect(text).not.toContain(kind);
-          expect(text).not.toContain('latest.json');
-          expect(error).toHaveBeenCalledWith(
-            'mcp-tool.curriculum-graph.unavailable',
-            expect.objectContaining({ tool, kind }),
-          );
-        },
+        expect(result.isError).toBe(true);
+        expect(result.structuredContent).toBeUndefined();
+        expect(result.content).toHaveLength(1);
+        const [content] = result.content;
+        expect(content.type).toBe('text');
+        const text = content.type === 'text' ? content.text : '';
+        expect(text).toContain(tool);
+        expect(text).toContain(retryAdvice);
+        for (const fallback of ['search', 'fetch', 'browse-curriculum']) {
+          expect(text).toContain(fallback);
+        }
+        expect(text).not.toContain(kind);
+        expect(text).not.toContain('latest.json');
+        expect(error).toHaveBeenCalledWith(
+          'mcp-tool.curriculum-graph.unavailable',
+          expect.objectContaining({ tool, kind }),
+        );
+      },
+    );
+  });
+
+  it.each([
+    ['get-thread-progressions', { threadSlug: '' }],
+    ['get-prior-knowledge-graph', {}],
+    ['get-misconception-graph', { unitSlugs: ['unit-a'], threadSlug: 'long-thread' }],
+    ['get-keyword-graph', { subject: 'maths' }],
+  ] as const satisfies readonly (readonly [UniversalToolName, unknown])[])(
+    '%s reports invalid input without loading the graph',
+    async (tool, args) => {
+      const loadCurriculumGraph = vi.fn(graphUnavailable('not-found'));
+      const callUniversalTool = createUniversalToolExecutor({
+        executeMcpTool: vi.fn(),
+        searchRetrieval: createStubSearchRetrieval(),
+        generatedTools: registry,
+        loadCurriculumGraph,
+      });
+
+      const result = await callUniversalTool(tool, args);
+
+      expect(result.isError).toBe(true);
+      const [content] = result.content;
+      expect(content.type === 'text' ? content.text : '').toContain(`Invalid ${tool} input`);
+      expect(loadCurriculumGraph).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(GRAPH_TOOL_CALLS)(
+    '%s returns a generic error and logs the exception when the views throw',
+    async (tool, args) => {
+      const internalDetail = 'mustGet integrity breach: unit-a missing from units';
+      const throwing = (): never => {
+        throw new Error(internalDetail);
+      };
+      const views: CurriculumGraphViews = {
+        priorKnowledgeStatements: throwing,
+        misconceptionsForLessons: throwing,
+        misconceptionsForUnits: throwing,
+        misconceptionsForThread: throwing,
+        progressionForThread: throwing,
+        progressionsForSubjectKeyStage: throwing,
+        keywordsForSubjectKeyStage: throwing,
+      };
+      const { logger, error } = createFakeLogger();
+      const callUniversalTool = createUniversalToolExecutor({
+        executeMcpTool: vi.fn(),
+        searchRetrieval: createStubSearchRetrieval(),
+        generatedTools: registry,
+        loadCurriculumGraph: () => Promise.resolve(ok(views)),
+        logger,
+      });
+
+      const result = await callUniversalTool(tool, args);
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toHaveLength(1);
+      const [content] = result.content;
+      const text = content.type === 'text' ? content.text : '';
+      expect(text).toContain(tool);
+      expect(text).not.toContain(internalDetail);
+      expect(error).toHaveBeenCalledWith(
+        'mcp-tool.curriculum-graph.failed',
+        expect.objectContaining({ message: internalDetail }),
+        expect.objectContaining({ tool }),
       );
     },
   );
