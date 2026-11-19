@@ -104,6 +104,28 @@ const SHOWN_ON_MAIN_AT_CD8A4DE: readonly (readonly [string, readonly string[]])[
   ['password=correct horse\nnext line', ['correct', 'horse']],
 ];
 
+const SHOWN_ON_MAIN_AT_4412760: readonly (readonly [string, readonly string[]])[] = [
+  ['code=CANARYCODE&redirect_uri=https://client.example/callback?state=s1', ['CANARYCODE']],
+  [
+    'grant_type=authorization_code&code=CANARYCODE&redirect_uri=https://client.example/cb',
+    ['CANARYCODE'],
+  ],
+  ['code=CANARYCODE&next=/cb?state=CANARYSTATE', ['CANARYCODE', 'CANARYSTATE']],
+  ['state=CANARYSTATE&redirect_uri=https://client.example/cb?x=1', ['CANARYSTATE']],
+  ['code=CANARYCODE&redirect_uri=https://client.example/cb?x=1\n', ['CANARYCODE']],
+  ['code=CANARYCODE&redirect_uri=https://client.example/cb?x=1&note=a b', ['CANARYCODE']],
+];
+
+const HIDDEN_ON_MAIN_AT_4412760: readonly (readonly [string, readonly string[]])[] = [
+  ['/callback/a=b?code=CANARYCODE', ['CANARYCODE']],
+  ['./callback/a=b?code=CANARYCODE', ['CANARYCODE']],
+  ['../callback/a=b?code=CANARYCODE', ['CANARYCODE']],
+  ['callback/a=b?code=CANARYCODE', ['CANARYCODE']],
+  ['x=1&next=/cb?code=CANARYCODE', ['CANARYCODE']],
+  ['a=b?code=CANARYCODE&c=d', ['CANARYCODE']],
+  ['https://client.example/cb?code=CANARYCODE&x=a=b', ['CANARYCODE']],
+];
+
 const COLON_SEPARATED_SHAPES: readonly ((key: string) => string)[] = [
   (key) => `${key}: alpha bravo charlie`,
   (key) => `${key} : alpha bravo charlie`,
@@ -148,6 +170,8 @@ describe.each([
   ['main at cd8a4de hid', HIDDEN_ON_MAIN_AT_CD8A4DE],
   ['main at cd8a4de showed', SHOWN_ON_MAIN_AT_CD8A4DE],
   ['f4cb6e7 showed', SHOWN_ON_F4CB6E7],
+  ['main at 4412760 showed', SHOWN_ON_MAIN_AT_4412760],
+  ['main at 4412760 hid', HIDDEN_ON_MAIN_AT_4412760],
 ])('redactTelemetryValue never shows a credential word that %s', (_, rows) => {
   it.each(rows)('%j', (input, hidden) => {
     const visible = visibleWords(redactTelemetryValue(input));

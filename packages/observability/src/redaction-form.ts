@@ -12,6 +12,10 @@ function shouldRedactFormKey(key: string, options: FormRedactionOptions): boolea
 }
 
 function isLikelyFormEncodedPayload(value: string): boolean {
+  if (/^[^\s=&/?#]+=/u.test(value) && (value.includes('&') || !/\s/u.test(value.trimEnd()))) {
+    return true;
+  }
+
   if (value.includes('://') || value.includes('?')) {
     return false;
   }
@@ -19,24 +23,28 @@ function isLikelyFormEncodedPayload(value: string): boolean {
   return value.includes('&') || /^[^=\s]+=[^\s]*$/u.test(value);
 }
 
+function decodeFormKey(rawKey: string): string {
+  return new URLSearchParams(rawKey).keys().next().value ?? '';
+}
+
 export function redactFormEncodedString(value: string, options: FormRedactionOptions): string {
   if (!isLikelyFormEncodedPayload(value)) {
     return value;
   }
 
-  const searchParams = new URLSearchParams(value);
-  const redactedParams = new URLSearchParams();
-  let changed = false;
+  const encodedRedactedValue = encodeURIComponent(options.redactedValue);
+  return value
+    .split('&')
+    .map((pair) => {
+      const separator = pair.indexOf('=');
+      if (separator === -1) {
+        return pair;
+      }
 
-  for (const [key, entry] of searchParams.entries()) {
-    if (shouldRedactFormKey(key, options)) {
-      redactedParams.append(key, options.redactedValue);
-      changed = true;
-      continue;
-    }
-
-    redactedParams.append(key, entry);
-  }
-
-  return changed ? redactedParams.toString() : value;
+      const rawKey = pair.slice(0, separator);
+      return shouldRedactFormKey(decodeFormKey(rawKey), options)
+        ? `${rawKey}=${encodedRedactedValue}`
+        : pair;
+    })
+    .join('&');
 }

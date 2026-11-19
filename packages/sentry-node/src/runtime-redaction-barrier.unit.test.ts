@@ -481,6 +481,21 @@ describe('ADR-160 Part 3: redacted-at-destination', () => {
     assertRedactedErrorEvent(result);
   });
 
+  it.each([
+    'code=CANARYCODE&redirect_uri=https://client.example/callback?state=s1',
+    'grant_type=authorization_code&code=CANARYCODE&redirect_uri=https://client.example/cb',
+    '/callback/a=b?code=CANARYCODE',
+    './callback/a=b?code=CANARYCODE',
+    'x=1&next=/cb?code=CANARYCODE',
+  ])('beforeSend: the OAuth code in request.data %j emerges redacted', async (data) => {
+    const options = buildInitOptions();
+    const beforeSend = requireDefined(options.beforeSend, 'Expected beforeSend');
+
+    const result = await resolveHookReturn(beforeSend({ type: undefined, request: { data } }, {}));
+
+    expect(JSON.stringify(result.request?.data)).not.toContain('CANARYCODE');
+  });
+
   it('beforeSendTransaction: PII across headers, url, and transaction name emerges redacted', async () => {
     const options = buildInitOptions();
     const beforeSendTransaction = requireDefined(
