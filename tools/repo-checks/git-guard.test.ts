@@ -957,6 +957,64 @@ describe('git-guard heredocs that a shell runs', () => {
   });
 });
 
+describe('git-guard wrapper options', () => {
+  it.each([
+    'sudo -np cat .env',
+    'sudo -nE cat .env',
+    'sudo -u root -n cat .env',
+    'sudo --non-interactive cat .env',
+    'sudo -e .env',
+    'sudo -D /tmp git push --force',
+    'sudo -T 5 git push --force',
+    'sudo -nT5 git push --force',
+    'sudo -h host git push --force',
+    'sudo --frobnicate git push --force',
+    'sudo --non git push --force',
+    'env -S "cat .env"',
+    'env -vS"git push --force"',
+    'env --split-string="git push --force"',
+    'env -P /bin git push --force',
+    'nice -5 git push --force',
+    'timeout -vs KILL 5 git push --force',
+    'timeout -vk 1 5 git push --force',
+    'xargs -I XX git push --force',
+    'xargs -J XX git push --force',
+    'exec -a x git push --force',
+  ])('refuses %s, whose wrapper options the guard must read to find the command', (command) => {
+    expect(bash(clean, command).status).toBe(2);
+  });
+
+  it.each([
+    'sudo -n ls',
+    'sudo -u root -n ls',
+    'sudo -nu root ls',
+    'sudo --user=root --preserve-env ls',
+    'sudo -- ls',
+    'env -i ls',
+    'env -iu FOO ls',
+    'nice -n 5 ls',
+    'nice -n 5 -- ls',
+    'nohup ls',
+    'nohup -- ls',
+    'timeout -v -s KILL 5 ls',
+    'timeout -vsKILL 5 ls',
+    'xargs -I XX echo XX',
+    'xargs -0 -n 1 ls',
+    'command -v git',
+  ])('allows %s', (command) => {
+    expect(bash(clean, command).status).toBe(0);
+  });
+
+  it.each(['xargs --max-args=1 ls', 'nice -10 ls'])(
+    'refuses %s and names the short form as the fix',
+    (command) => {
+      const { status, stderr } = bash(clean, command);
+      expect(status).toBe(2);
+      expect(stderr).toContain('Use the short form of the option');
+    },
+  );
+});
+
 describe('git-guard with shell redirections', () => {
   it.each(['cp src.txt .husky/pre-push > /dev/null', 'cp src.txt .husky/pre-push 2>&1'])(
     'refuses copying into a protected path even with a trailing redirect: %s',
