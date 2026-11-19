@@ -1,0 +1,546 @@
+{
+  "schemaVersion": 1,
+  "kind": "protocol-conformance",
+  "name": "MCP Protocol Conformance",
+  "passed": false,
+  "outcome": "failed",
+  "score": {
+    "score": 5,
+    "outcome": "failed",
+    "applicable": 19,
+    "passed": 0,
+    "failed": 5,
+    "couldNotRun": 14,
+    "notApplicable": 17,
+    "pending": 8,
+    "advisories": [],
+    "advicePointsLost": 0
+  },
+  "profile": {
+    "profileId": "mcp-protocol",
+    "profileVersion": "2026-08-21.1",
+    "manifestDigest": "913c189e484015fb5e1c32e239393d85cde7b6f783ce72a90aa70b6f9b865bd6",
+    "checkerVersion": "7.1.1",
+    "pendingCheckIds": [
+      "modern-cache-hint-coverage",
+      "modern-cache-hint-values-valid",
+      "modern-cache-scope-stable-across-pages",
+      "modern-header-names-case-insensitive",
+      "modern-missing-method-header-rejected",
+      "modern-resource-read-no-empty-contents",
+      "modern-tool-output-schema-conformant",
+      "wire-schema-valid"
+    ]
+  },
+  "durationMs": 20,
+  "groups": [
+    {
+      "id": "mcp-1",
+      "title": "MCP Protocol Conformance",
+      "target": "http://127.0.0.1:9/mcp",
+      "passed": false,
+      "durationMs": 20,
+      "summary": "0/36 checks passed, 5 failed, 14 could not run, 17 not applicable, 8 pending (unscored by profile mcp-protocol@2026-08-21.1)",
+      "cases": [
+        {
+          "id": "server-initialize",
+          "title": "Server Initialize",
+          "category": "core",
+          "status": "failed",
+          "durationMs": 0,
+          "description": "Server responds to initialize and reports capabilities.",
+          "error": "Failed to connect to MCP server \"__ephemeral__\" using HTTP transports. Streamable HTTP error: Version negotiation probe failed: fetch failed. SSE error: SSE error: TypeError: fetch failed: bad port.",
+          "details": {
+            "errorDetails": {
+              "name": "Error",
+              "message": "Failed to connect to MCP server \"__ephemeral__\" using HTTP transports. Streamable HTTP error: Version negotiation probe failed: fetch failed. SSE error: SSE error: TypeError: fetch failed: bad port.",
+              "cause": {
+                "name": "Error",
+                "message": "SSE error: TypeError: fetch failed: bad port",
+                "event": {
+                  "message": "TypeError: fetch failed: bad port"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "ping",
+          "title": "Ping",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server responds to ping requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "logging-set-level",
+          "title": "Logging Set Level",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server accepts logging/setLevel requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "completion-complete",
+          "title": "Completion Complete",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server responds to completion/complete requests.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "modern-client-handshake",
+          "title": "Modern Client Handshake",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "The official client negotiates the modern revision and receives the server identity and capabilities.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "capabilities-consistent",
+          "title": "Capabilities Consistent",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Advertised server capabilities match the features actually exposed.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "tools-list",
+          "title": "Tools List",
+          "category": "tools",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server lists tools with name, description, and input schema.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "tools-input-schemas-valid",
+          "title": "Tool Input Schemas Valid",
+          "category": "tools",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Every tool's inputSchema has type \"object\" and valid properties/required fields.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "prompts-list",
+          "title": "Prompts List",
+          "category": "prompts",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server lists prompts with name and description.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "resources-list",
+          "title": "Resources List",
+          "category": "resources",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Server lists resources with uri and name.",
+          "error": "Skipping check because the MCP client session could not be established"
+        },
+        {
+          "id": "protocol-invalid-method-error",
+          "title": "Invalid Method Error",
+          "category": "protocol",
+          "status": "failed",
+          "durationMs": 7,
+          "description": "Server returns a valid JSON-RPC error for an unrecognized method name.",
+          "error": "fetch failed",
+          "details": {
+            "errorDetails": {
+              "name": "TypeError",
+              "message": "fetch failed",
+              "cause": {
+                "name": "Error",
+                "message": "bad port"
+              }
+            }
+          }
+        },
+        {
+          "id": "localhost-host-rebinding-rejected",
+          "title": "Reject Evil Host Header",
+          "category": "security",
+          "status": "failed",
+          "durationMs": 8,
+          "description": "Local servers reject initialize requests with a non-localhost Host/Origin header.",
+          "error": "connect ECONNREFUSED 127.0.0.1:9",
+          "details": {
+            "errorDetails": {
+              "name": "Error",
+              "message": "connect ECONNREFUSED 127.0.0.1:9",
+              "code": "ECONNREFUSED",
+              "errno": -61,
+              "syscall": "connect",
+              "address": "127.0.0.1",
+              "port": 9
+            }
+          }
+        },
+        {
+          "id": "localhost-host-valid-accepted",
+          "title": "Accept Valid Local Host Header",
+          "category": "security",
+          "status": "failed",
+          "durationMs": 1,
+          "description": "Local servers accept initialize requests with a valid localhost Host/Origin header.",
+          "error": "connect ECONNREFUSED 127.0.0.1:9",
+          "details": {
+            "errorDetails": {
+              "name": "Error",
+              "message": "connect ECONNREFUSED 127.0.0.1:9",
+              "code": "ECONNREFUSED",
+              "errno": -61,
+              "syscall": "connect",
+              "address": "127.0.0.1",
+              "port": 9
+            }
+          }
+        },
+        {
+          "id": "server-sse-polling-session",
+          "title": "SSE Polling Session",
+          "category": "transport",
+          "status": "failed",
+          "durationMs": 1,
+          "description": "Server provides a streamable HTTP session id.",
+          "error": "Initialize request failed: fetch failed",
+          "details": {
+            "errorDetails": {
+              "name": "TypeError",
+              "message": "fetch failed",
+              "cause": {
+                "name": "Error",
+                "message": "bad port"
+              }
+            }
+          }
+        },
+        {
+          "id": "server-accepts-multiple-post-streams",
+          "title": "Multiple POST Streams",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "The server accepts multiple concurrent POST requests.",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "server-sse-streams-functional",
+          "title": "Functional SSE Streams",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Concurrent SSE streams remain readable.",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "notification-post-accepted",
+          "title": "Notification POST Accepted",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "A POST carrying only a JSON-RPC notification is answered with HTTP 202 Accepted and no body.",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "get-stream-or-405",
+          "title": "GET Opens SSE Or Returns 405",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "A GET to the MCP endpoint either opens a text/event-stream response or returns HTTP 405 Method Not Allowed.",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "session-id-visible-ascii",
+          "title": "Session Id Visible ASCII",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "A minted session id contains only visible ASCII characters (0x21 to 0x7E).",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "post-response-content-type",
+          "title": "POST Response Content-Type",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "The response to a JSON-RPC request carries Content-Type application/json or text/event-stream.",
+          "error": "Skipping check because the Streamable HTTP session could not be initialized: fetch failed"
+        },
+        {
+          "id": "modern-server-discover",
+          "title": "Modern Server Discovery",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "server/discover returns the supported protocol versions, capabilities, and server identity.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-result-type-present",
+          "title": "Modern Result Type",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Every modern result carries the wire member resultType.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-cacheable-result-hints",
+          "title": "Cacheable Result Hints",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Cacheable modern results carry ttlMs and cacheScope.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-protocol-version-header-mismatch",
+          "title": "Protocol Version Header Mismatch",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A MCP-Protocol-Version header disagreeing with the request envelope is rejected with HTTP 400 and JSON-RPC -32020.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-method-header-mismatch",
+          "title": "Mcp-Method Header Mismatch",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "An Mcp-Method header disagreeing with the body method is rejected with HTTP 400 and JSON-RPC -32020.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-name-header-mismatch",
+          "title": "Mcp-Name Header Mismatch",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "An Mcp-Name header disagreeing with the body target is rejected with HTTP 400 and JSON-RPC -32020.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-missing-method-header-rejected",
+          "title": "Missing Mcp-Method Header Rejected",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A request that omits the required Mcp-Method header is rejected with HTTP 400 and JSON-RPC -32020.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-header-names-case-insensitive",
+          "title": "Header Names Are Case-Insensitive",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "The SEP-2243 standard headers are accepted under any case, as RFC 9110 field names require.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-unsupported-version-error",
+          "title": "Unsupported Envelope Version",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "An unsupported envelope protocol version is rejected with JSON-RPC -32022 naming the supported versions.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-undeclared-capability-error",
+          "title": "Undeclared Client Capability",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A server that needs an undeclared client capability for input_required answers JSON-RPC -32021.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-cache-hint-coverage",
+          "title": "Cache Hints On Every Cacheable Operation",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "All six operations the caching utility names — server/discover, tools/list, prompts/list, resources/list, resources/templates/list, resources/read — carry ttlMs and cacheScope on a complete result.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-cache-hint-values-valid",
+          "title": "Cache Hint Values Valid",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "ttlMs is an integer >= 0 and cacheScope is exactly \"public\" or \"private\".",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-cache-scope-stable-across-pages",
+          "title": "Cache Scope Stable Across Pages",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Every page of a paginated list response carries the same cacheScope as the first.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-resource-read-no-empty-contents",
+          "title": "No Empty Contents For A Missing Resource",
+          "category": "resources",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Reading a non-existent resource never answers with an empty contents array, which cannot be told apart from an existing but empty resource.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-tool-output-schema-conformant",
+          "title": "Tool Output Schema Honored",
+          "category": "tools",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "For every operator-supplied fixture call whose tool declares an outputSchema, the result's structuredContent validates against that schema.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-removed-methods-not-found",
+          "title": "Removed Methods Rejected",
+          "category": "protocol",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Methods removed by the 2026 revision answer JSON-RPC -32601 with HTTP 404.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-resource-not-found-invalid-params",
+          "title": "Resource Not Found",
+          "category": "resources",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Reading an unknown resource answers in-band JSON-RPC -32602 on HTTP 200.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-logs-require-log-level",
+          "title": "Logs Require A Log Level",
+          "category": "core",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "No log notifications are emitted for a request that carried no modern log level.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-no-session-id",
+          "title": "No Session Id Minted",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A modern server never mints an Mcp-Session-Id.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-subscription-ack-precedes-notifications",
+          "title": "Subscription Acknowledgement Ordering",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A subscriptions/listen stream acknowledges before it emits any notification.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-subscription-filter-and-tagging",
+          "title": "Subscription Filtering And Tagging",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "A subscription emits only the requested notification types and tags every message with the subscription id.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "modern-subscription-graceful-close",
+          "title": "Subscription Graceful Close",
+          "category": "transport",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Closing a subscription gracefully returns the subscriptions/listen completion result.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "tools-x-mcp-header-declarations-valid",
+          "title": "x-mcp-header Declarations Valid",
+          "category": "tools",
+          "status": "skipped",
+          "skipReason": "not-applicable",
+          "durationMs": 0,
+          "description": "Every published tool's SEP-2243 x-mcp-header declarations satisfy the spec's constraints: statically reachable through a chain of `properties`, an RFC 9110 token name, a primitive type, and case-insensitively unique.",
+          "error": "Not applicable to the legacy era (run pinned to default)"
+        },
+        {
+          "id": "wire-schema-valid",
+          "title": "Wire Schema Valid",
+          "category": "protocol",
+          "status": "skipped",
+          "pending": true,
+          "skipReason": "could-not-run",
+          "durationMs": 0,
+          "description": "Every JSON-RPC message the run observed validates against the protocol revision's published JSON Schema, with responses graded against their method's result definition.",
+          "error": "The run established no protocol version (no client connection and no pin), so there is no revision whose schema to validate against"
+        }
+      ]
+    }
+  ]
+}

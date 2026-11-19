@@ -12,6 +12,7 @@ import {
   UNATTENDED_SUITES,
   type McpjamSpawnResult,
 } from '../../src/mcp-conformance/runner.js';
+import { isJsonObject } from '../../src/core/json.js';
 import { type Baseline } from '../../src/mcp-conformance/baseline-schema.js';
 import { type SuiteOutcome } from '../../src/mcp-conformance/types.js';
 import {
@@ -526,5 +527,115 @@ describe('round-4 review cures — vacuous-plan and whitespace failure fragments
     expect(exitCode).toBe(1);
     expect(report.verdict).toBe('fail');
     expect(report.suites).toEqual([]);
+  });
+});
+
+describe('the pinned @mcpjam/cli 4.2.0 json-summary shape', () => {
+  const CLI_420_TARGET = 'http://127.0.0.1:9/mcp';
+  const PROTOCOL_420_RAW = loadFixtureRaw('protocol-unreachable-local-cli-4.2.0-2026-11-18.json');
+  const OAUTH_420_RAW = loadFixtureRaw('oauth-dcr-unreachable-local-cli-4.2.0-2026-11-18.json');
+
+  function seedProtocol(stdout: string): SuiteOutcome | undefined {
+    const io = fakeIo({ runResults: { protocol: ok({ exitCode: 1, stdout, stderr: '' }) } });
+    const { report } = runMcpConformance(io, {
+      target: CLI_420_TARGET,
+      operation: 'seed' as const,
+      mode: 'unattended' as const,
+      suites: ['protocol'],
+      baselines: {},
+    });
+    return report.suites[0];
+  }
+
+  function objectCopy(value: unknown, label: string): Record<string, unknown> {
+    if (!isJsonObject(value)) {
+      throw new Error(`${label} is not a JSON object`);
+    }
+    return { ...value };
+  }
+
+  function editProtocol(
+    edit: (parts: {
+      readonly root: Record<string, unknown>;
+      readonly score: Record<string, unknown>;
+      readonly skippedCase: Record<string, unknown>;
+    }) => void,
+  ): string {
+    const root = objectCopy(JSON.parse(PROTOCOL_420_RAW), 'protocol fixture root');
+    const groups = root['groups'];
+    const group = objectCopy(Array.isArray(groups) ? groups[0] : undefined, 'first group');
+    const cases = group['cases'];
+    if (!Array.isArray(cases)) {
+      throw new Error('first group has no cases array');
+    }
+    const score = objectCopy(root['score'], 'score');
+    const skippedCase = objectCopy(cases[1], 'second case');
+    edit({ root, score, skippedCase });
+    return JSON.stringify({
+      ...root,
+      score,
+      groups: [{ ...group, cases: [cases[0], skippedCase, ...cases.slice(2)] }],
+    });
+  }
+
+  it('captures carrying outcome, score, profile, skipReason and pending parse and seed', () => {
+    const io = fakeIo({
+      runResults: {
+        protocol: ok({ exitCode: 1, stdout: PROTOCOL_420_RAW, stderr: '' }),
+        oauth: ok({ exitCode: 1, stdout: OAUTH_420_RAW, stderr: '' }),
+      },
+    });
+    const { report, exitCode } = runMcpConformance(io, {
+      target: CLI_420_TARGET,
+      operation: 'seed' as const,
+      mode: 'unattended' as const,
+      suites: UNATTENDED_SUITES,
+      baselines: {},
+    });
+    expect(report.suites.map((s) => [s.suite, s.verdict, s.failureReasons])).toEqual([
+      ['protocol', 'pass', []],
+      ['oauth', 'pass', []],
+    ]);
+    expect(exitCode).toBe(0);
+  });
+
+  it('a report missing a required field still fails validation', () => {
+    const outcome = seedProtocol(
+      editProtocol(({ root }) => {
+        delete root['durationMs'];
+      }),
+    );
+    expect(outcome?.verdict).toBe('fail');
+    expect(reasonsOf(outcome)).toContain('failed validation');
+    expect(reasonsOf(outcome)).toContain('durationMs');
+  });
+
+  it('a score missing its denominator still fails validation', () => {
+    const outcome = seedProtocol(
+      editProtocol(({ score }) => {
+        delete score['applicable'];
+      }),
+    );
+    expect(reasonsOf(outcome)).toContain('applicable');
+  });
+
+  it('an unknown key is still rejected, at the top level and on a case', () => {
+    const outcome = seedProtocol(
+      editProtocol(({ root, skippedCase }) => {
+        root['surprise'] = true;
+        skippedCase['alsoSurprise'] = true;
+      }),
+    );
+    expect(reasonsOf(outcome)).toContain('"surprise"');
+    expect(reasonsOf(outcome)).toContain('"alsoSurprise"');
+  });
+
+  it('a skipReason outside the vendor vocabulary is rejected', () => {
+    const outcome = seedProtocol(
+      editProtocol(({ skippedCase }) => {
+        skippedCase['skipReason'] = 'flaky';
+      }),
+    );
+    expect(reasonsOf(outcome)).toContain('skipReason');
   });
 });
