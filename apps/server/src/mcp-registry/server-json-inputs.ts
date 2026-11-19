@@ -92,7 +92,7 @@ export const MCP_SERVER_NAME = 'oak-curriculum-http';
  * repository the document is built in, not about the deployment it describes,
  * so it cannot drift away from a value configured elsewhere.
  */
-const REPOSITORY_URL = 'https://github.com/oaknational/oak-open-curriculum-ecosystem';
+const REPOSITORY_URL = 'https://github.com/oaknational/oak-mcp-server';
 
 /** The forge identifier the registry validates `repository.url` against. */
 const REPOSITORY_SOURCE = 'github';
