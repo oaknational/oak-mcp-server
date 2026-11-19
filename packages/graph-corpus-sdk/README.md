@@ -88,9 +88,28 @@ pnpm graph:refresh --store local --break-stale-lock
 ```
 
 This removes the lock only when its record names a process on this host that
-has exited, then exits without refreshing. It refuses a running holder, a holder
-on another host and a lock without a record. While it runs it holds
-`latest.json.lock.break`, so two breaks cannot run at once.
+has exited, then exits without refreshing. While it runs it holds
+`latest.json.lock.break`, so two breaks cannot run at once. In every other case
+it exits 1 with a one-line reason and leaves the lock in place. Each refusal
+has its own way out:
+
+- **The holder is running.** Wait for that refresh to finish. It removes its
+  own lock.
+- **The holder is on another host.** Check that no refresh is running on the
+  named host, then delete `latest.json.lock`. A macOS hostname can change
+  between runs, so the named host can be this machine under an old name.
+- **The lock has no holder record.** The file is empty or does not hold a valid
+  record. Check that no refresh is running, then delete `latest.json.lock`.
+- **The lock is a directory.** Check that no refresh is running, then delete
+  the `latest.json.lock` directory.
+- **`latest.json.lock.break` exists.** Another break is running, or one
+  crashed. Check that no break is running, then delete
+  `latest.json.lock.break`.
+- **The lock does not exist.** There is nothing to break, including when the
+  store directory does not exist yet.
+
+Both files sit beside `latest.json` in `graph-corpus/v<schemaVersion>/` under the store root
+(`GRAPH_CORPUS_LOCAL_PATH`, default `.cache/graph-corpus`).
 
 A refresh that cannot finish throws a `GraphRefreshError` naming why:
 `write-contention` when `latest.json` changed under it five times in a row,

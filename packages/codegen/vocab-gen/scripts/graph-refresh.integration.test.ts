@@ -481,6 +481,30 @@ describe('graph:refresh --break-stale-lock', () => {
     },
     30_000,
   );
+
+  it.each([
+    ['a fresh store with no lock directory', tempDir, 'does not exist'],
+    [
+      'a lock path that is a directory',
+      async () => {
+        const root = await tempDir();
+        await mkdir(path.join(root, ...LATEST_KEY.split('/')) + '.lock', { recursive: true });
+        return root;
+      },
+      'is a directory',
+    ],
+  ])(
+    'refuses %s with a one-line reason and no stack trace',
+    async (_name, makeRoot, reason) => {
+      const run = await runBreak(await makeRoot());
+
+      expect(run.code).toBe(1);
+      expect(run.stderr).toContain(reason);
+      expect(run.stderr.trimEnd().split('\n')).toHaveLength(1);
+      expect(run.stderr).not.toMatch(/\n\s+at /);
+    },
+    30_000,
+  );
 });
 
 describe('digestBulkFiles', () => {
