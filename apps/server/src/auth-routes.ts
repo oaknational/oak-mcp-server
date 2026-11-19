@@ -7,6 +7,7 @@ import { createMcpHandler } from './handlers.js';
 import { createMcpRouter } from './mcp-router.js';
 import { createMcpAuthClerk, type CreateMcpAuthClerkDeps } from './auth/mcp-auth/index.js';
 import type { RuntimeConfig } from './runtime-config.js';
+import { parseCsv } from './env.js';
 import type { McpServerFactory } from './mcp-request-context.js';
 import { rewriteAuthServerMetadata, type UpstreamAuthServerMetadata } from './oauth-proxy/index.js';
 import type { HttpObservability } from './observability/http-observability.js';
@@ -162,12 +163,19 @@ function registerAuthenticatedRoutes(deps: {
   readonly observability: HttpObservability;
   readonly mcpAuthClerkDeps?: CreateMcpAuthClerkDeps;
   readonly canonicalOrigin?: string;
+  readonly evalMachineIds: ReadonlySet<string>;
 }): void {
   const { app, mcpFactory, log, allowedHosts, observability } = deps;
-  const { mcpAuthClerkDeps, canonicalOrigin } = deps;
+  const { mcpAuthClerkDeps, canonicalOrigin, evalMachineIds } = deps;
   const authLog = typeof log.child === 'function' ? log.child({ scope: 'mcp-auth' }) : log;
   const mcpRouter = createMcpRouter({
-    auth: createMcpAuthClerk(authLog, allowedHosts, mcpAuthClerkDeps, canonicalOrigin),
+    auth: createMcpAuthClerk(
+      authLog,
+      allowedHosts,
+      mcpAuthClerkDeps,
+      canonicalOrigin,
+      evalMachineIds,
+    ),
   });
   log.debug('Registering POST /mcp route (HTTP-level auth via mcpRouter)');
   app.post('/mcp', mcpRouter, createMcpHandler(mcpFactory, observability, log));
@@ -234,6 +242,7 @@ export function setupAuthRoutes(options: SetupAuthRoutesOptions): void {
       observability,
       mcpAuthClerkDeps,
       canonicalOrigin,
+      evalMachineIds: new Set(parseCsv(runtimeConfig.env.MCP_EVAL_MACHINE_IDS)),
     });
   });
 }

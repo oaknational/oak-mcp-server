@@ -57,3 +57,8 @@ export const authInfoSchema = z
  * @see authInfoSchema — full AuthInfo boundary validation
  */
 export const authInfoExtraSchema = z.object({ userId: z.string().optional() }).loose();
+
+export const machineAuthExtraSchema = z.object({
+  principalType: z.literal('machine'),
+  machineId: z.string(),
+});
