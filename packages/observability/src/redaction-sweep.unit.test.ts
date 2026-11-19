@@ -145,6 +145,30 @@ const SHOWN_ON_F4CB6E7: readonly (readonly [string, readonly string[]])[] = [
   ),
 ];
 
+const SHOWN_ON_MAIN_AT_80F500A: readonly (readonly [string, readonly string[]])[] = [
+  ['passwd=CANARYPW', ['CANARYPW']],
+  ['pwd=CANARYPW', ['CANARYPW']],
+  ['login failed pwd=CANARYPW for user', ['CANARYPW']],
+  ['pwd=CANARYPW&user=u1', ['CANARYPW']],
+  ['Bearer+CANARYTOK', ['CANARYTOK']],
+  ['Authorization: Token CANARYTOK', ['CANARYTOK']],
+  ['proxy-authorization: Digest CANARYTOK', ['CANARYTOK']],
+  ['Cookie: sid=CANARYCK', ['CANARYCK']],
+  ['request had Cookie: sid=CANARYCK; theme=CANARYTWO', ['CANARYCK', 'CANARYTWO']],
+  ['set-cookie: sid=CANARYCK; Path=/', ['CANARYCK']],
+  ['key sk-ant-api03-CANARYabcdefghij0123456789', ['CANARYabcdefghij0123456789']],
+  ['sk-proj-CANARYabcdefghij0123456789', ['CANARYabcdefghij0123456789']],
+  [
+    'jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.CANARYxyz123',
+    ['eyJhbGciOiJIUzI1NiJ9', 'eyJzdWIiOiIxIn0', 'CANARYxyz123'],
+  ],
+  ['id=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.CANARY-xyz_123 rest', ['CANARY', 'xyz_123']],
+];
+
+const HIDDEN_ON_MAIN_AT_80F500A: readonly (readonly [string, readonly string[]])[] = [
+  ['Authorization: password = CANARYPW', ['CANARYPW']],
+];
+
 function decodeFully(text: string): string {
   let previous: string;
   let decoded = text.replaceAll('+', ' ');
@@ -172,6 +196,8 @@ describe.each([
   ['f4cb6e7 showed', SHOWN_ON_F4CB6E7],
   ['main at 4412760 showed', SHOWN_ON_MAIN_AT_4412760],
   ['main at 4412760 hid', HIDDEN_ON_MAIN_AT_4412760],
+  ['main at 80f500a showed', SHOWN_ON_MAIN_AT_80F500A],
+  ['main at 80f500a hid', HIDDEN_ON_MAIN_AT_80F500A],
 ])('redactTelemetryValue never shows a credential word that %s', (_, rows) => {
   it.each(rows)('%j', (input, hidden) => {
     const visible = visibleWords(redactTelemetryValue(input));

@@ -463,7 +463,7 @@ describe('redactHeadersSummary - behavior differences', () => {
       'www-authenticate': 'Bearer realm="api"',
     };
     const redacted = redactHeadersSummary(headers);
-    expect(redacted['www-authenticate']).toBe('Bearer realm="api"');
+    expect(redacted['www-authenticate']).toBe('Bearer [REDACTED]');
   });
 });
 
@@ -499,5 +499,24 @@ describe('redactHeaders vs redactHeadersSummary - consistency', () => {
 
     expect(fullRedacted.accept).toBe('application/json');
     expect(summaryRedacted.accept).toBe('application/json');
+  });
+});
+
+describe('redactHeaders - credentials inside safe header values', () => {
+  it.each([
+    'https://client.example/cb?code=CANARY1&state=s',
+    'Bearer CANARY1',
+    'pwd=CANARY1',
+    'Bearer+CANARY1',
+    'Authorization: Token CANARY1',
+    'Cookie: sid=CANARY1',
+    'set-cookie: sid=CANARY1; Path=/',
+    'sk-ant-api03-CANARY1abcdefghij0123456789',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.CANARY1',
+  ])('hides the credential in %j', (value) => {
+    const headers: IncomingHttpHeaders = { referer: value, 'user-agent': value };
+
+    expect(JSON.stringify(redactHeaders(headers))).not.toContain('CANARY1');
+    expect(JSON.stringify(redactHeadersSummary(headers))).not.toContain('CANARY1');
   });
 });

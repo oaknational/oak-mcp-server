@@ -33,8 +33,10 @@ const FULLY_REDACTED_KEYS = new Set([
   'id_token',
   'ip',
   'nonce',
+  'passwd',
   'password',
   'proxy-authorization',
+  'pwd',
   'refresh_token',
   'secret',
   'set-cookie',
@@ -128,13 +130,29 @@ const ENCODED_SPACE = String.raw`%(?:25)*20`;
 const ENCODED_EQUALS = String.raw`%(?:25)*3D`;
 const ENCODED_REDACTED_VALUE = encodeURIComponent(REDACTED_VALUE);
 
+const AFTER_PERCENT_ESCAPE = String.raw`(?<=%(?:25){0,8}[\dA-F]{2})`;
+const WORD_START = String.raw`(?:\b|${AFTER_PERCENT_ESCAPE})`;
+const TOKEN_START = String.raw`(?:(?<![\w-])|${AFTER_PERCENT_ESCAPE})`;
+const SCHEME_SEPARATOR = String.raw`(?:\+|${ENCODED_SPACE})`;
+
 const RESIDUAL_AUTH_SCHEME = new RegExp(
-  String.raw`(?:\b|(?<=%(?:25){0,8}[\dA-F]{2}))(Bearer|Basic)(?:\s|${ENCODED_SPACE})+[^\s,]+`,
+  String.raw`${WORD_START}(Bearer|Basic)(?:\s|${SCHEME_SEPARATOR})+[^\s,]+`,
   'giu',
 );
 
+const AUTHORIZATION_HEADER_CREDENTIAL = new RegExp(
+  String.raw`${WORD_START}((?:proxy-)?authorization[ \t]*:[ \t]*[a-z][\w-]*)(?:[ \t]|${SCHEME_SEPARATOR})+(?![=:])[^\s,]+`,
+  'giu',
+);
+const COOKIE_HEADER_VALUE = new RegExp(
+  String.raw`${WORD_START}((?:set-)?cookie[ \t]*:[ \t]*)\S[^\r\n]*`,
+  'giu',
+);
+const API_KEY_SK = new RegExp(String.raw`${TOKEN_START}sk-[\w-]{20,}`, 'gu');
+const JWT = new RegExp(String.raw`${TOKEN_START}eyJ[\w-]+\.[\w-]+\.[\w-]+`, 'gu');
+
 const CREDENTIAL_SEPARATOR = String.raw`(?:[=:]|%(?:25)*3[AD])`;
-const CREDENTIAL_KEY = String.raw`(?:password|secret|token|api[_-]?key)[\w.-]{0,64}\\?["']?[ \t]*${CREDENTIAL_SEPARATOR}[ \t]*`;
+const CREDENTIAL_KEY = String.raw`(?:password|passwd|pwd|secret|token|api[_-]?key)[\w.-]{0,64}\\?["']?[ \t]*${CREDENTIAL_SEPARATOR}[ \t]*`;
 const QUOTED_VALUE = String.raw`"((?:[^"\\\r\n]|\\.)*)"`;
 const VALUE_ENDS_AT_NEXT_KEY_OR_LINE_END = String.raw`(?=\s[^\s=&]+(?:=|${ENCODED_EQUALS})|[\r\n&]|$)`;
 
@@ -146,6 +164,10 @@ const RESIDUAL_KEY_VALUE = new RegExp(
 function redactResidualCredentials(value: string): string {
   return value
     .replaceAll(RESIDUAL_AUTH_SCHEME, `$1 ${REDACTED_VALUE}`)
+    .replaceAll(AUTHORIZATION_HEADER_CREDENTIAL, `$1 ${REDACTED_VALUE}`)
+    .replaceAll(COOKIE_HEADER_VALUE, `$1${REDACTED_VALUE}`)
+    .replaceAll(API_KEY_SK, REDACTED_VALUE)
+    .replaceAll(JWT, REDACTED_VALUE)
     .replaceAll(
       RESIDUAL_KEY_VALUE,
       (match, key: string, quoted: string | undefined, unquoted: string | undefined) => {
