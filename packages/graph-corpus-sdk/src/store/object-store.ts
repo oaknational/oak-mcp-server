@@ -90,6 +90,7 @@ async function readOrNull(file: string): Promise<string | null> {
 type LockState =
   | { readonly kind: 'absent' }
   | { readonly kind: 'unrecorded' }
+  | { readonly kind: 'directory' }
   | { readonly kind: 'other-host' | 'running' | 'exited'; readonly holder: LockHolder };
 
 function judgeLock(text: string | null): LockState {
@@ -112,8 +113,13 @@ function describeLock(lock: string, state: LockState): string {
       return `${lock} does not exist`;
     case 'unrecorded':
       return `${lock} has no holder record; delete it if no refresh is running`;
+    case 'directory':
+      return `${lock} is a directory, not a lock file; delete it if no refresh is running`;
     case 'other-host':
-      return `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, another host`;
+      return (
+        `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, another host; ` +
+        'delete it if no refresh is running there'
+      );
     case 'running':
       return `${lock} is held by pid ${String(state.holder.pid)} on ${state.holder.host}, which is running`;
     case 'exited':
@@ -176,6 +182,17 @@ async function whileLocked<T>(file: string, write: () => Promise<T>): Promise<T>
   }
 }
 
+async function readBreakableLock(lock: string): Promise<LockState> {
+  try {
+    return judgeLock(await readOrNull(lock));
+  } catch (error) {
+    if (hasCode(error, 'EISDIR')) {
+      return { kind: 'directory' };
+    }
+    throw error;
+  }
+}
+
 const localFile = (root: string, key: string): string => path.join(root, ...key.split('/'));
 
 /**
@@ -196,10 +213,13 @@ export async function breakStaleLocalLock(
         `${breaking} exists: another break is running, or one crashed; delete it if none is running`,
       );
     }
+    if (hasCode(error, 'ENOENT')) {
+      return err(describeLock(lock, { kind: 'absent' }));
+    }
     throw error;
   }
   try {
-    const state = judgeLock(await readOrNull(lock));
+    const state = await readBreakableLock(lock);
     if (state.kind !== 'exited') {
       return err(describeLock(lock, state));
     }
