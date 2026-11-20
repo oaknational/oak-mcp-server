@@ -179,6 +179,14 @@ describe('redactTelemetryValue', () => {
     'grant_type=authorization_code&client_id=abc&scope=read',
     'client_id=abc&redirect_uri=https://client.example/cb?x=1',
     'next=/cb?page=2&sort=asc',
+    'a risk-free change',
+    'ask-me-anything-about-this-lesson-plan',
+    'task-0123456789abcdefghijklmnop finished',
+    'header starts eyJ and stops',
+    'version eyJ.1.2 loaded',
+    'Authorization: Bearer',
+    'cookie consent given',
+    'pwd is /srv/app',
   ])('returns the clean input %j unchanged', (input) => {
     expect(redactTelemetryValue(input)).toBe(input);
   });

@@ -7,66 +7,7 @@
 
 import type { IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http';
 
-/**
- * Headers that should be completely redacted (replaced with [REDACTED])
- */
-const FULLY_REDACTED_HEADERS = new Set([
-  'authorization',
-  'cookie',
-  'set-cookie',
-  'x-api-key',
-  'x-auth-token',
-  'x-vercel-oidc-token',
-  'x-vercel-proxy-signature',
-]);
-
-/**
- * Headers that should show partial information (first few and last few characters)
- */
-const PARTIALLY_REDACTED_HEADERS = new Set([
-  'cf-connecting-ip',
-  'x-forwarded-for',
-  'x-real-ip',
-  'x-vercel-forwarded-for',
-  'x-vercel-proxied-for',
-]);
-
-/**
- * Redacts a single header value based on the header name.
- *
- * @param name - Header name (case-insensitive)
- * @param value - Header value
- * @returns Redacted value safe for logging
- */
-function redactHeaderValue(name: string, value: string | string[] | number | undefined): string {
-  if (value === undefined) {
-    return '[undefined]';
-  }
-
-  const normalizedName = name.toLowerCase();
-  const stringValue = Array.isArray(value) ? value.join(', ') : String(value);
-
-  // Full redaction for sensitive headers
-  if (FULLY_REDACTED_HEADERS.has(normalizedName)) {
-    return '[REDACTED]';
-  }
-
-  // Redact ANY header containing "token" in the name (catches all token variations)
-  if (normalizedName.includes('token')) {
-    return '[REDACTED]';
-  }
-
-  // Partial redaction for IP addresses and similar
-  if (PARTIALLY_REDACTED_HEADERS.has(normalizedName)) {
-    if (stringValue.length <= 8) {
-      return '[REDACTED]';
-    }
-    return `${stringValue.slice(0, 4)}...${stringValue.slice(-4)}`;
-  }
-
-  // No redaction for safe headers
-  return stringValue;
-}
+import { redactHeaderValue } from '@oaknational/observability';
 
 /**
  * Redacts sensitive information from request or response headers.
