@@ -1,6 +1,14 @@
 name: Terraform Drift Detection
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+      - '.github/workflows/terraform_vercel_drift.yml'
+  schedule:
+    - cron: '23 6 * * *'
   workflow_dispatch:
 
 concurrency:
