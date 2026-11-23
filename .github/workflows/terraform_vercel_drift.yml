@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Run drift detection
-        uses: oaknational/oak-terraform-actions/actions/terraform-vercel-drift@9f75b4438580bc2ce29c75096446b48f57fc7357 # v1.13.3
+        uses: oaknational/oak-terraform-actions/actions/terraform-vercel-drift@1eee7e112bef240667ce849e189955bf6ad08714 # v1.14.0
         with:
           TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
           TF_CLOUD_ORGANIZATION: oak-national-academy
