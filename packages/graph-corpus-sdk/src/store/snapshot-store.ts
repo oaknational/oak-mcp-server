@@ -25,8 +25,8 @@ const PREFIX = `graph-corpus/v${String(GRAPH_CORPUS_SCHEMA_VERSION)}/`;
 export const LATEST_KEY = `${PREFIX}latest.json`;
 const DATED_KEY = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.json$/;
 
-function datedKey(downloadedAt: string): string {
-  return `${PREFIX}${new Date(downloadedAt).toISOString().replace(/[:.]/g, '-')}.json`;
+export function datedSnapshotKey(downloadedAt: Date): string {
+  return `${PREFIX}${downloadedAt.toISOString().replace(/[:.]/g, '-')}.json`;
 }
 
 /**
@@ -119,7 +119,7 @@ export function createGraphCorpusSnapshotStore(
     snapshot: GraphCorpusSnapshot,
     body: string,
   ): Promise<WrittenSnapshot> => {
-    const dated = datedKey(snapshot.downloadedAt);
+    const dated = datedSnapshotKey(new Date(snapshot.downloadedAt));
     await objects.put(dated, body);
     const datedKeys = (await objects.list(PREFIX))
       .filter((key) => DATED_KEY.test(key.slice(PREFIX.length)))

@@ -138,6 +138,7 @@ export function initializeCoreEndpoints(
     : createSearchRetrieval(runtimeConfig.env, log);
   const loadCurriculumGraph = createCurriculumGraph(
     createGraphCorpusLoader({ store: createGraphSnapshotStoreFromEnv(runtimeConfig.env) }),
+    (key) => observability.setActiveSpanAttribute('oak.graph.snapshot_key', key),
   );
   const { resourceUrl } = options;
   // Signed asset download URLs are a served surface, so they name the same
