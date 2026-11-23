@@ -52,6 +52,7 @@ export interface HttpObservability {
   createLogger(options?: HttpLoggerOptions): Logger;
   withSpan<T>(options: HttpSpanOptions<T>): Promise<T>;
   withSpanSync<T>(options: HttpSyncSpanOptions<T>): T;
+  readonly setActiveSpanAttribute: SpanFunctions['setActiveSpanAttribute'];
   captureHandledError(error: unknown, context?: LogContextInput): void;
   /**
    * Set the user identity on the current isolation scope.
@@ -143,6 +144,7 @@ function buildObservabilityObject(params: BuildObservabilityParams): HttpObserva
     ),
     withSpan: spanFunctions.withSpan,
     withSpanSync: spanFunctions.withSpanSync,
+    setActiveSpanAttribute: spanFunctions.setActiveSpanAttribute,
     ...delegates,
   };
 

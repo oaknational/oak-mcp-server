@@ -92,6 +92,9 @@ export function createFakeHttpObservability(): HttpObservability {
     withSpanSync<T>(options: HttpSyncSpanOptions<T>): T {
       return context.with(createFakeActiveContext(nextId), () => options.run(noopSpanHandle));
     },
+    setActiveSpanAttribute() {
+      // Tests can override this to record attributes.
+    },
     ...noopLifecycleDelegates,
   };
 

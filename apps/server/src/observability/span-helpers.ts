@@ -1,6 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
-import { SpanStatusCode, type Span, type SpanContext, type Tracer } from '@opentelemetry/api';
+import {
+  SpanStatusCode,
+  trace,
+  type Span,
+  type SpanContext,
+  type Tracer,
+} from '@opentelemetry/api';
 import {
   getActiveSpanContextSnapshot,
   type SpanAttributeValue,
@@ -180,6 +186,7 @@ export interface SpanFunctions {
   readonly getActiveSpanContext: () => ReturnType<typeof getActiveSpanContextSnapshot>;
   readonly withSpan: <T>(options: HttpSpanOptions<T>) => Promise<T>;
   readonly withSpanSync: <T>(options: HttpSyncSpanOptions<T>) => T;
+  readonly setActiveSpanAttribute: HttpSpanHandle['setAttribute'];
 }
 
 export function createSpanFunctions(tracer: Tracer | undefined): SpanFunctions {
@@ -198,5 +205,11 @@ export function createSpanFunctions(tracer: Tracer | undefined): SpanFunctions {
       ? await runWithLiveSpan(tracer, spanOptions)
       : await runWithSyntheticSpan(syntheticSpanStore, spanOptions);
 
-  return { getActiveSpanContext, withSpan, withSpanSync };
+  const setActiveSpanAttribute: HttpSpanHandle['setAttribute'] = (name, value) => {
+    if (tracer) {
+      safeSpanOp(() => trace.getActiveSpan()?.setAttribute(name, value));
+    }
+  };
+
+  return { getActiveSpanContext, withSpan, withSpanSync, setActiveSpanAttribute };
 }
