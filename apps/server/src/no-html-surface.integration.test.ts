@@ -50,10 +50,15 @@ describe('the served surface carries no HTML (owner instruction 2026-08-20)', ()
     });
   });
 
-  it('has no route at the root, so a browser navigation there is a 404', async () => {
+  it('returns the JSON 404 used in production for the root and other unmatched paths', async () => {
     const res = await request(app).get('/').set('Host', 'localhost').accept(BROWSER_ACCEPT);
+    const unmatched = await request(app).get('/mcpfoo').set('Host', 'localhost');
 
-    expect(res.status).toBe(404);
+    for (const response of [res, unmatched]) {
+      expect(response.status).toBe(404);
+      expect(response.headers['content-type']).toMatch(/application\/json/);
+      expect(response.body).toStrictEqual({ error: 'Not found' });
+    }
   });
 
   it('answers a browser navigation to /mcp with the protocol gate, not a document', async () => {

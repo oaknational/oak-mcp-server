@@ -29,9 +29,6 @@ function send(response: ServerResponse, status: number, type: string, body: stri
   response.writeHead(status, { 'content-type': type }).end(body);
 }
 
-const expressDefaultNotFound = (method: string, path: string): string =>
-  `<pre>Cannot ${method} ${path}</pre>`;
-
 function json(response: ServerResponse, status: number): void {
   send(response, status, 'application/json; charset=utf-8', '{}');
 }
@@ -63,7 +60,7 @@ const serverHandler: Handler = (request, response) => {
   } else {
     const extension = STATIC_TREE.exec(pathname)?.[1];
     if (extension === undefined) {
-      send(response, 404, 'text/html; charset=utf-8', expressDefaultNotFound(method, pathname));
+      json(response, 404);
     } else {
       send(response, 200, STATIC_TYPES[extension] ?? 'application/octet-stream', 'stub');
     }

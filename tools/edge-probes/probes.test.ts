@@ -96,6 +96,21 @@ describe('probes.sh', () => {
     expect(docsRun.code).toBe(1);
   });
 
+  it('matches the live server-only routes and checks the full MCP path list', async () => {
+    const run = await probe('--server-only', server.url);
+    expect(run.code).toBe(0);
+    expect(run.lines).toStrictEqual([
+      ...DOCS_PROBES.map((name) => `ok ${name.replace(/^docs-/, 'server-')}`),
+      ...SERVER_PROBES.map((name) => `ok ${name}`),
+    ]);
+  });
+
+  it('fails the root probe if docs are published in server-only mode', async () => {
+    const run = await probe('--server-only', docs.url);
+    expect(run.code).toBe(1);
+    expect(verdicts(run).get('server-root')).toBe('FAIL');
+  });
+
   it('says why a probe failed', () => {
     expect(verdicts(docsRun).get('mcp-post')).toBe('FAIL');
     expect(docsRun.lines).toContain(
