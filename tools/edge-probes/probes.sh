@@ -3,8 +3,14 @@
 # Set EDGE_PROBE_BYPASS to send it as x-vercel-protection-bypass to a protected preview.
 set -u
 
-if [ "$#" -ne 1 ]; then
-  echo "usage: $0 <host or origin, such as mcp-staging.thenational.academy>" >&2
+server_only=false
+if [ "${1:-}" = "--server-only" ]; then
+  server_only=true
+  shift
+fi
+
+if [ "$#" -ne 1 ] || [ "${1#-}" != "$1" ]; then
+  echo "usage: $0 [--server-only] <host or origin, such as mcp-staging.thenational.academy>" >&2
   exit 2
 fi
 
@@ -61,11 +67,19 @@ probe() {
   fi
 }
 
-probe docs-root GET / "$browser" 200 text/html docs
-probe docs-root-any-accept GET / '*/*' 200 text/html docs
-probe docs-tools GET /tools/ "$browser" 200 text/html docs
-probe docs-mcpfoo GET /mcpfoo "$browser" 404 text/html docs
-probe docs-mcp-not-a-path GET /mcp-not-a-path "$browser" 404 text/html docs
+if [ "$server_only" = true ]; then
+  probe server-root GET / "$browser" 404 application/json server
+  probe server-root-any-accept GET / '*/*' 404 application/json server
+  probe server-tools GET /tools/ "$browser" 404 application/json server
+  probe server-mcpfoo GET /mcpfoo "$browser" 404 application/json server
+  probe server-mcp-not-a-path GET /mcp-not-a-path "$browser" 404 application/json server
+else
+  probe docs-root GET / "$browser" 200 text/html docs
+  probe docs-root-any-accept GET / '*/*' 200 text/html docs
+  probe docs-tools GET /tools/ "$browser" 200 text/html docs
+  probe docs-mcpfoo GET /mcpfoo "$browser" 404 text/html docs
+  probe docs-mcp-not-a-path GET /mcp-not-a-path "$browser" 404 text/html docs
+fi
 
 probe mcp-browser-accept GET /mcp "$browser" 406 application/json server
 probe mcp-slash-html-accept GET /mcp/ text/html 406 application/json server

@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import type { Logger, PhasedTimer } from '@oaknational/logger';
 import listRoutes from 'express-list-routes';
 import {
@@ -28,8 +29,8 @@ function logBootstrapSummary(
 
 /**
  * Runs everything that must register AFTER all routes: the optional
- * diagnostic routes, the error handlers (Sentry's documented ordering
- * requirement), and the bootstrap summary.
+ * diagnostic routes, the JSON 404 for unmatched requests, the error
+ * handlers (Sentry's documented ordering requirement), and the bootstrap summary.
  *
  * Kept out of the composition root so that ordering requirement is stated
  * once, in one place, rather than implied by statement order among the
@@ -50,6 +51,9 @@ export function finalizeApp(deps: {
     env: options.runtimeConfig.env,
     observability,
     log,
+  });
+  app.use((_request: Request, response: Response): void => {
+    response.status(404).json({ error: 'Not found' });
   });
   setupErrorHandlers(app, log, observability, options.setupSentryErrorHandler);
   logBootstrapSummary(app, log, appId, bootstrapTimer);
