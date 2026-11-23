@@ -64,7 +64,7 @@
     "mdast-util-gfm": "^3.1.0",
     "micromark-extension-gfm": "^3.0.0",
     "prettier": "~3.9.6",
-    "semantic-release": "25.0.9",
+    "semantic-release": "26.0.1",
     "shellcheck": "^4.1.0",
     "smol-toml": "^1.9.1",
     "tsup": "^9.0.0",
