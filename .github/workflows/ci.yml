@@ -276,10 +276,15 @@ jobs:
         with:
           terraform_version: 1.17.2
           terraform_wrapper: false
-      - name: Plan or validate the Vercel project Terraform
-        env:
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-        run: sh infrastructure/plan.sh
+      - name: Check Terraform formatting and validate each root
+        run: |
+          terraform fmt -check -recursive -diff infrastructure
+          for config in infrastructure/*/terraform.tf; do
+            root="${config%/*}"
+            export TF_DATA_DIR="$RUNNER_TEMP/terraform/${root##*/}"
+            terraform -chdir="$root" init -backend=false -input=false
+            terraform -chdir="$root" validate
+          done
 
   ci-gate:
     name: ci-gate

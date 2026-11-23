@@ -28,7 +28,6 @@
     "graph:refresh": "tsx packages/codegen/vocab-gen/scripts/run-graph-refresh.ts",
     "format:fix": "prettier --write .",
     "import:ooce": "node tools/import-from-ooce/import.ts",
-    "infra:plan": "sh infrastructure/plan.sh",
     "knip": "knip --treat-config-hints-as-errors",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix .",
